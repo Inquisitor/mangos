@@ -471,14 +471,18 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         else damage = 0;
                         break;
                     }
-                    // Blade of Twilight
+                    // Shadow Cutter (Blade of Twilight) - beam-triggered Twilight Cutter shouldn't deal damage
                     case 74769:
+                    {
+                        damage = 0;
+                    }
+                    // Shadow Cutter (Blade of Twilight) - let damage unchanged
                     case 77844:
                     case 77845:
                     case 77846:
                     {
-                        float distance = unitTarget->GetDistance2d(m_caster); 
-                        damage *= exp(-distance/(10.0f));
+                        //float distance = unitTarget->GetDistance2d(m_caster); 
+                        //damage *= exp(-distance/(10.0f));
                         break;
                     }
                     case 74799:
