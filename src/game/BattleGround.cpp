@@ -727,6 +727,30 @@ void BattleGround::EndBattleGround(Team winner)
             int32 winner_change = winner_arena_team->WonAgainst(loser_rating);
             int32 loser_change = loser_arena_team->LostAgainst(winner_rating);
             DEBUG_LOG("--- Winner rating: %u, Loser rating: %u, Winner change: %i, Loser change: %i ---", winner_rating, loser_rating, winner_change, loser_change);
+
+            // Arena Log
+            std::string winner_ids = "";
+            std::string loser_ids = "";
+            for(BattleGroundPlayerMap::iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+            {
+                Player *plr = sObjectMgr.GetPlayer(itr->first);
+                if (plr == NULL)
+                    continue;
+
+                char _buf[32];
+                sprintf(_buf, ":%d", plr->GetGUIDLow());
+
+                if (itr->second.PlayerTeam == winner)
+                    winner_ids += _buf;
+                else
+                    loser_ids += _buf;
+            }
+
+            CharacterDatabase.PExecute("INSERT INTO `arena_logs` (`team1`,`team1_members`,`team1_rating_change`,`team2`,`team2_members`,`team2_rating_change`,`winner`,`timestamp`) VALUES ('%u','%s','%i','%u','%s','%i','%u','%u')",
+                                        winner_arena_team->GetId(), winner_ids.c_str(), winner_change,
+                                        loser_arena_team->GetId(), loser_ids.c_str(), loser_change,
+                                        winner_arena_team->GetId(), time(NULL) );
+
             SetArenaTeamRatingChangeForTeam(winner, winner_change);
             SetArenaTeamRatingChangeForTeam(GetOtherTeam(winner), loser_change);
             /** World of Warcraft Armory **/
