@@ -1427,7 +1427,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     ((Creature*)unitTarget)->ForcedDespawn(10000);
                     return;
                 }
-            case 39844:                         //Q:Fires Over Skettis
+                case 39844:                         //Q:Fires Over Skettis
                 {
                     if (m_caster->GetTypeId() != TYPEID_PLAYER)
                         return;
@@ -1436,8 +1436,8 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     std::list<GameObject*> gobList;
                     {
-                        MaNGOS::AnyGameObjectInPointRangeCheck go_check(m_caster, m_targets.m_srcX, m_targets.m_srcY, m_targets.m_srcZ, 5.0f); // 5 yards check
-                        MaNGOS::GameObjectListSearcher<MaNGOS::AnyGameObjectInPointRangeCheck> go_search(gobList, go_check);
+                        MaNGOS::GameObjectInRangeCheck go_check(m_caster, m_targets.m_srcX, m_targets.m_srcY, m_targets.m_srcZ, 5.0f); // 5 yards check
+                        MaNGOS::GameObjectListSearcher<MaNGOS::GameObjectInRangeCheck> go_search(gobList, go_check);
                         Cell::VisitAllObjects(m_caster, go_search, 5.0f);
                     }
 
