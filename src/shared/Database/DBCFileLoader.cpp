@@ -21,6 +21,8 @@
 #include <string.h>
 
 #include "DBCFileLoader.h"
+#include "Database/SQLStorage.h"
+#include "Util.h"
 
 DBCFileLoader::DBCFileLoader()
 {
@@ -84,6 +86,65 @@ bool DBCFileLoader::Load(const char *filename, const char *fmt)
 
     if(fread(data,recordSize*recordCount+stringSize,1,f)!=1)
         return false;
+
+    //DBC Patch 
+    const char* dbc_name=strrchr(filename,'/')+1;
+    QueryResult *result = WorldDatabase.PQuery("SELECT entry, data FROM spell_patch WHERE DBC='%s' ORDER BY entry",dbc_name);
+    if(result)
+    {
+        sLog.outString("===============================================================================");
+        sLog.outString("Warlord123's DBC Patcher: Correcting DBC data in %s", dbc_name);
+        uint32 patch_count = 0;
+        uint32 applied_count = 0;
+        uint32 *patched_record=(uint32*)data;
+        do
+        {
+            ++patch_count;
+            Field *fields = result->Fetch();
+
+            uint32 entry = fields[0].GetUInt32();
+            std::string patch_data = fields[1].GetString();
+
+            Tokens tokens = StrSplit(patch_data, " ");
+            int32 m_valuesCount=tokens.size();
+            if(m_valuesCount & 1)
+                continue; //нечетное число - ошибка
+
+
+            //Пропускаем ненужные записи
+            while( *patched_record < entry)
+            {
+                patched_record+=recordSize / sizeof(uint32);
+            }
+            //Ошибка, больше не найдется записей для патчей
+            if (*patched_record > entry)
+                break;
+
+            sLog.outString ("Applying patch: entry=%u ,%s",entry,patch_data.c_str());
+            ++applied_count;
+            Tokens::iterator iter;
+            int index;
+            for (iter = tokens.begin(), index = 0; index < m_valuesCount; ++iter, index+=2)
+            {
+                uint32 addr = atol((*iter).c_str());
+                ++iter;
+                uint32 val = atol((*iter).c_str());
+                *(patched_record+addr)=val;
+            }
+        }
+        while (result->NextRow());
+        delete result;
+        if (applied_count)
+        {
+            if (applied_count == patch_count)
+                sLog.outString("%d/%d patch(es) applied successfully.", applied_count, patch_count);
+            else
+                sLog.outError("Only %d/%d patch(es) applied successfully.", applied_count, patch_count);
+        }
+        else
+            sLog.outError("No patches applied! Check `spell_patch` table!");
+        sLog.outString("===============================================================================");
+    }
 
     fclose(f);
     return true;
