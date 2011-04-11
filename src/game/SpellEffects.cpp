@@ -9291,6 +9291,20 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
     if(!unitTarget)
         return;
 
+    // Ruby Sanctum - Halion - Combustion Explode doesn't knockback player on normal difficulty
+    if (m_spellInfo->Id == 74607)
+    {
+        Map * map = m_caster->GetMap();
+        if (map && map->IsRaid()) 
+        {
+            Difficulty mapDifficulty = map->GetDifficulty();
+            if (mapDifficulty == RAID_DIFFICULTY_10MAN_NORMAL || mapDifficulty == RAID_DIFFICULTY_25MAN_NORMAL)
+            {
+                return;
+            }
+        }
+    }
+
     unitTarget->KnockBackFrom(m_caster,float(m_spellInfo->EffectMiscValue[eff_idx])/10,float(damage)/10);
 }
 
@@ -9306,6 +9320,20 @@ void Spell::EffectPlayerPull(SpellEffectIndex eff_idx)
 {
     if(!unitTarget)
         return;
+
+    // Ruby Sanctum - Halion - Consumption Explode doesn't knockback player on normal difficulty
+    if (m_spellInfo->Id == 74799)
+    {
+        Map * map = m_caster->GetMap();
+        if (map && map->IsRaid()) 
+        {
+            Difficulty mapDifficulty = map->GetDifficulty();
+            if (mapDifficulty == RAID_DIFFICULTY_10MAN_NORMAL || mapDifficulty == RAID_DIFFICULTY_25MAN_NORMAL)
+            {
+                return;
+            }
+        }
+    }
 
     float dist = unitTarget->GetDistance2d(m_caster);
     if (damage && dist > damage)
