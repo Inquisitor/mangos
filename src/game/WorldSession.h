@@ -348,8 +348,6 @@ class MANGOS_DLL_SPEC WorldSession
         uint32 getDialogStatus(Player *pPlayer, Object* questgiver, uint32 defstatus);
 
         // LFG
-        void SendLfgResult(uint32 type, uint32 entry, uint8 lfg_type);
-        void SendLfgUpdate(uint8 unk1, uint8 unk2, uint8 unk3);
         // TRUE values set by client sending CMSG_LFG_SET_AUTOJOIN and CMSG_LFM_CLEAR_AUTOFILL before player login
         bool LookingForGroup_auto_join;
         bool LookingForGroup_auto_add;
@@ -374,7 +372,6 @@ class MANGOS_DLL_SPEC WorldSession
         // new
         void HandleMoveUnRootAck(WorldPacket& recvPacket);
         void HandleMoveRootAck(WorldPacket& recvPacket);
-        void HandleLookingForGroup(WorldPacket& recvPacket);
 
         // new inspect
         void HandleInspectOpcode(WorldPacket& recvPacket);
@@ -492,6 +489,7 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleGroupSetLeaderOpcode(WorldPacket& recvPacket);
         void HandleGroupDisbandOpcode(WorldPacket& recvPacket);
         void HandleOptOutOfLootOpcode( WorldPacket &recv_data );
+        void HandleSetAllowLowLevelRaidOpcode( WorldPacket & recv_data );
         void HandleLootMethodOpcode(WorldPacket& recvPacket);
         void HandleLootRoll( WorldPacket &recv_data );
         void HandleRequestPartyMemberStatsOpcode( WorldPacket &recv_data );
@@ -825,14 +823,9 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleAcceptGrantLevel(WorldPacket& recv_data);
 
         // LFG
-        void HandleSetLfgOpcode(WorldPacket& recv_data);
         void HandleLfgJoinOpcode(WorldPacket& recv_data);
         void HandleLfgLeaveOpcode(WorldPacket& recv_data);
-        void HandleSearchLfgJoinOpcode(WorldPacket& recv_data);
-        void HandleSearchLfgLeaveOpcode(WorldPacket& recv_data);
         void HandleLfgClearOpcode(WorldPacket& recv_data);
-        void HandleLfmClearOpcode(WorldPacket& recv_data);
-        void HandleSetLfmOpcode(WorldPacket& recv_data);
         void HandleSetLfgCommentOpcode(WorldPacket& recv_data);
         void HandleLfgSetRolesOpcode(WorldPacket& recv_data);
         //
@@ -841,11 +834,19 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleLfgPlayerLockInfoRequestOpcode(WorldPacket &recv_data);
         void HandleLfgTeleportOpcode(WorldPacket &recv_data);
         void HandleLfgPartyLockInfoRequestOpcode(WorldPacket &recv_data);
-        // send date
-        void SendLfgUpdatePlayer(LFGUpdateType updateType);
-        void SendLfgUpdateParty(LFGUpdateType updateType);
+        // send data
+        void SendLfgUpdatePlayer(LFGUpdateType updateType, LFGType type);
+        void SendLfgUpdateParty(LFGUpdateType updateType, LFGType type);
         void SendLfgUpdateSearch(bool update);
-        void SendLfgJoinResult(LFGJoinResult checkResult, uint8 checkValue = 0);
+        void SendLfgJoinResult(LFGJoinResult checkResult, uint8 checkValue = 0, bool withLockMap = false);
+        // LFR
+        void HandleLfrSearchOpcode(WorldPacket& recv_data);
+        void HandleLfrLeaveOpcode(WorldPacket& recv_data);
+        // send data
+        void SendLfgUpdateList(uint32 dungeonEntry);
+        void SendLfgDisabled();
+        void SendLfgOfferContinue(uint32 dungeonEntry);
+        void SendLfgTeleportError(uint8 err);
 
     private:
         // private trade methods

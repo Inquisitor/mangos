@@ -22927,8 +22927,8 @@ void Player::_SaveEquipmentSets()
                     "item5=?, item6=?, item7=?, item8=?, item9=?, item10=?, item11=?, item12=?, item13=?, item14=?, "
                     "item15=?, item16=?, item17=?, item18=? WHERE guid=? AND setguid=? AND setindex=?");
 
-                stmt.addString(eqset.IconName);
                 stmt.addString(eqset.Name);
+                stmt.addString(eqset.IconName);
 
                 for (int i = 0; i < EQUIPMENT_SLOT_END; ++i)
                     stmt.addUInt32(eqset.Items[i]);
@@ -23616,17 +23616,29 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
     if (getLevel() < at->requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
         return AREA_LOCKSTATUS_TOO_LOW_LEVEL;
 
-        // must have one or the other, report the first one that's missing
-    if ((at->requiredItem && !HasItemCount(at->requiredItem, 1)) ||
-        (at->requiredItem2 && !HasItemCount(at->requiredItem2, 1)))
+    // must have one or the other, report the first one that's missing
+    if (at->requiredItem)
+    {
+        if (!HasItemCount(at->requiredItem, 1) &&
+            (!at->requiredItem2 || !HasItemCount(at->requiredItem2, 1)))
+            return AREA_LOCKSTATUS_MISSING_ITEM;
+    }
+    else if(at->requiredItem2 && !HasItemCount(at->requiredItem2, 1))
         return AREA_LOCKSTATUS_MISSING_ITEM;
 
     bool isRegularTargetMap = GetDifficulty(mapEntry->IsRaid()) == REGULAR_DIFFICULTY;
 
-    if (!isRegularTargetMap &&
-        ((at->heroicKey && !HasItemCount(at->heroicKey, 1)) || 
-        (at->heroicKey2 && !HasItemCount(at->heroicKey2, 1))))
-        return AREA_LOCKSTATUS_MISSING_ITEM;
+    if (!isRegularTargetMap)
+    {
+        if (at->heroicKey)
+        {
+            if(!HasItemCount(at->heroicKey, 1) &&
+                (!at->heroicKey2 || !HasItemCount(at->heroicKey2, 1)))
+                return AREA_LOCKSTATUS_MISSING_ITEM;
+        }
+        else if(at->heroicKey2 && !HasItemCount(at->heroicKey2, 1))
+            return AREA_LOCKSTATUS_MISSING_ITEM;
+    }
 
     if ((!isRegularTargetMap &&
         (at->requiredQuestHeroic && !GetQuestRewardStatus(at->requiredQuestHeroic))) ||
@@ -23641,3 +23653,163 @@ AreaLockStatus Player::GetAreaLockStatus(uint32 mapId, Difficulty difficulty)
 {
     return GetAreaTriggerLockStatus(sObjectMgr.GetMapEntranceTrigger(mapId), difficulty);
 };
+
+uint32 Player::GetEquipGearScore(bool withBags, bool withBank)
+{
+    GearScoreMap gearScore (MAX_INVTYPE);
+
+    for (uint8 i = INVTYPE_NON_EQUIP; i < MAX_INVTYPE; ++i)
+        gearScore[i] = 0;
+
+    for (uint8 i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+    {
+        if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            _fillGearScoreData(item, &gearScore);
+    }
+
+    if (withBags)
+    {
+        for (uint8 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END; ++i)
+        {
+            Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+            if (item->IsBag())
+            {
+                Bag* bag = (Bag*)item;
+                for (uint8 j = 0; j < bag->GetBagSize(); ++j)
+                {
+                    if (Item* item2 = bag->GetItemByPos(j))
+                        _fillGearScoreData(item2, &gearScore);
+                }
+            }
+        }
+    }
+
+    if (withBank)
+    {
+        for (uint8 i = BANK_SLOT_ITEM_START; i < BANK_SLOT_ITEM_START; ++i)
+        {
+            if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+                _fillGearScoreData(item, &gearScore);
+        }
+
+        for (uint8 i = BANK_SLOT_BAG_START; i < BANK_SLOT_BAG_END; ++i)
+        {
+            if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+            {
+                if (item->IsBag())
+                {
+                    Bag* bag = (Bag*)item;
+                    for (uint8 j = 0; j < bag->GetBagSize(); ++j)
+                    {
+                        if (Item* item2 = bag->GetItemByPos(j))
+                            _fillGearScoreData(item2, &gearScore);
+                    }
+                }
+            }
+        }
+    }
+
+    uint8 count = 0;
+    uint32 summ = 0;
+
+    for (uint8 i = INVTYPE_NON_EQUIP; i < MAX_INVTYPE; ++i)
+    {
+        if (gearScore[i] == 0)
+            continue;
+        ++count;
+        summ += gearScore[i];
+    }
+
+    if (count)
+    {
+        DEBUG_LOG("Player: calculating gear score for %u. Result is %u",GetObjectGuid().GetCounter(), uint32( summ / count ));
+        return uint32( summ / count );
+    }
+    else return 0;
+}
+
+void Player::_fillGearScoreData(Item* item, GearScoreMap* gearScore)
+{
+    if (!item)
+        return;
+
+    if (CanUseItem(item->GetProto()) != EQUIP_ERR_OK)
+        return;
+
+    uint8 type   = item->GetProto()->InventoryType;
+    uint32 level = item->GetProto()->ItemLevel;
+
+    switch (type)
+    {
+        case INVTYPE_2HWEAPON:
+            (*gearScore)[INVTYPE_WEAPON] = std::max((*gearScore)[INVTYPE_WEAPON], level);
+            (*gearScore)[INVTYPE_SHIELD] = std::max((*gearScore)[INVTYPE_SHIELD], level);
+            break;
+        case INVTYPE_WEAPON:
+        case INVTYPE_WEAPONMAINHAND:
+            (*gearScore)[INVTYPE_WEAPON] = std::max((*gearScore)[INVTYPE_WEAPON], level);
+            break;
+        case INVTYPE_SHIELD:
+        case INVTYPE_WEAPONOFFHAND:
+            (*gearScore)[INVTYPE_SHIELD] = std::max((*gearScore)[INVTYPE_SHIELD], level);
+            break;
+        case INVTYPE_THROWN:
+        case INVTYPE_RANGEDRIGHT:
+        case INVTYPE_QUIVER:
+        case INVTYPE_RELIC:
+            (*gearScore)[INVTYPE_THROWN] = std::max((*gearScore)[INVTYPE_THROWN], level);
+            break;
+        case INVTYPE_HEAD:
+        case INVTYPE_NECK:
+        case INVTYPE_SHOULDERS:
+        case INVTYPE_BODY:
+        case INVTYPE_CHEST:
+        case INVTYPE_WAIST:
+        case INVTYPE_LEGS:
+        case INVTYPE_FEET:
+        case INVTYPE_WRISTS:
+        case INVTYPE_HANDS:
+        case INVTYPE_FINGER:
+        case INVTYPE_TRINKET:
+        case INVTYPE_RANGED:
+        case INVTYPE_CLOAK:
+            (*gearScore)[type] = std::max((*gearScore)[type], level);
+            break;
+        case INVTYPE_NON_EQUIP:
+        case INVTYPE_BAG:
+        case INVTYPE_HOLDABLE:
+        case INVTYPE_AMMO:
+        case INVTYPE_TABARD:
+        case INVTYPE_ROBE:
+        default:
+            break;
+    }
+
+}
+
+uint8 Player::GetTalentsCount(uint8 tab)
+{
+    if (tab >2)
+        return 0;
+
+    uint8 talentCount = 0;
+
+    uint32 const* talentTabIds = GetTalentTabPages(getClass());
+
+    uint32 talentTabId = talentTabIds[tab];
+
+    for (PlayerTalentMap::iterator iter = m_talents[m_activeSpec].begin(); iter != m_talents[m_activeSpec].end(); ++iter)
+    {
+        PlayerTalent talent = (*iter).second;
+
+        if (talent.state == PLAYERSPELL_REMOVED)
+            continue;
+
+        // skip another tab talents
+        if(talent.m_talentEntry->TalentTab != talentTabId)
+            continue;
+
+        ++talentCount;
+    }
+    return talentCount;
+}
