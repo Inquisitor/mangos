@@ -108,15 +108,15 @@ bool DBCFileLoader::Load(const char *filename, const char *fmt)
             Tokens tokens = StrSplit(patch_data, " ");
             int32 m_valuesCount=tokens.size();
             if(m_valuesCount & 1)
-                continue; //нечетное число - ошибка
+                continue; // error when odd values count
 
 
-            //Пропускаем ненужные записи
+            // Skipping unneeded entries
             while( *patched_record < entry)
             {
                 patched_record+=recordSize / sizeof(uint32);
             }
-            //Ошибка, больше не найдется записей для патчей
+            // Error, no records to patch
             if (*patched_record > entry)
                 break;
 
