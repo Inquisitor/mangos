@@ -216,7 +216,7 @@ BattleGround::BattleGround()
     m_BracketId         = BG_BRACKET_ID_FIRST;
     m_InvitedAlliance   = 0;
     m_InvitedHorde      = 0;
-    m_ArenaType         = 0;
+    m_ArenaType         = ARENA_TYPE_NONE;
     m_IsArena           = false;
     m_Winner            = 2;
     m_StartTime         = 0;
@@ -1160,7 +1160,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
             if (SendPacket)
             {
                 WorldPacket data;
-                sBattleGroundMgr.BuildBattleGroundStatusPacket(&data, this, plr->GetBattleGroundQueueIndex(bgQueueTypeId), STATUS_NONE, 0, 0, 0);
+                sBattleGroundMgr.BuildBattleGroundStatusPacket(&data, this, plr->GetBattleGroundQueueIndex(bgQueueTypeId), STATUS_NONE, 0, 0, ARENA_TYPE_NONE);
                 plr->GetSession()->SendPacket(&data);
             }
 
@@ -1195,7 +1195,7 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
         {
             // a player has left the battleground, so there are free slots -> add to queue
             AddToBGFreeSlotQueue();
-            sBattleGroundMgr.ScheduleQueueUpdate(0, 0, bgQueueTypeId, bgTypeId, GetBracketId());
+            sBattleGroundMgr.ScheduleQueueUpdate(0, ARENA_TYPE_NONE, bgQueueTypeId, bgTypeId, GetBracketId());
         }
 
         // Let others know
@@ -1227,7 +1227,7 @@ void BattleGround::Reset()
     SetStatus(STATUS_WAIT_QUEUE);
     SetStartTime(0);
     SetEndTime(0);
-    SetArenaType(0);
+    SetArenaType(ARENA_TYPE_NONE);
     SetRated(false);
 
     m_Events = 0;

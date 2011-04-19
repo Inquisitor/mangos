@@ -822,12 +822,6 @@ void WorldSession::HandleSetFactionAtWarOpcode( WorldPacket & recv_data )
     GetPlayer()->GetReputationMgr().SetAtWar(repListID, flag);
 }
 
-void WorldSession::HandleMeetingStoneInfoOpcode( WorldPacket & /*recv_data*/ )
-{
-    DEBUG_LOG( "WORLD: Received CMSG_MEETING_STONE_INFO" );
-
-}
-
 void WorldSession::HandleTutorialFlagOpcode( WorldPacket & recv_data )
 {
     uint32 iFlag;
@@ -1329,7 +1323,7 @@ void WorldSession::HandleEquipmentSetUseOpcode(WorldPacket &recv_data)
         _player->SwapItem(item->GetPos(), dstpos);
     }
 
-    WorldPacket data(SMSG_EQUIPMENT_SET_USE_RESULT, 1);
+    WorldPacket data(SMSG_USE_EQUIPMENT_SET_RESULT, 1);
     data << uint8(0);                                       // 4 - equipment swap failed - inventory is full
     SendPacket(&data);
 }

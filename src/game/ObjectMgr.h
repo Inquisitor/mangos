@@ -83,8 +83,12 @@ struct AreaTrigger
     uint32 requiredItem2;
     uint32 heroicKey;
     uint32 heroicKey2;
-    uint32 requiredQuest;
-    uint32 requiredQuestHeroic;
+    uint32 requiredQuestA;
+    uint32 requiredQuestHeroicA;
+    uint32 requiredQuestH;
+    uint32 requiredQuestHeroicH;
+    uint32 minGS;
+    uint32 maxGS;
     std::string requiredFailedText;
     uint32 target_mapId;
     float  target_X;
@@ -441,9 +445,11 @@ enum ConditionType
     CONDITION_NOT_ACTIVE_GAME_EVENT = 25,                   // event_id     0
     CONDITION_ACTIVE_HOLIDAY        = 26,                   // holiday_id   0       preferred use instead CONDITION_ACTIVE_GAME_EVENT when possible
     CONDITION_NOT_ACTIVE_HOLIDAY    = 27,                   // holiday_id   0       preferred use instead CONDITION_NOT_ACTIVE_GAME_EVENT when possible
+    CONDITION_LEARNABLE_ABILITY     = 28,                   // spell_id     0 or item_id
+                                                            // True when player can learn ability (using min skill value from SkillLineAbility).
+                                                            // Item_id can be defined in addition, to check if player has one (1) item in inventory or bank.
+                                                            // When player has spell or has item (when defined), condition return false.
 };
-
-#define MAX_CONDITION                 28                    // maximum value in ConditionType enum
 
 struct PlayerCondition
 {

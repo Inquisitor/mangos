@@ -498,7 +498,7 @@ void Creature::Update(uint32 update_diff, uint32 diff)
                 CreatureInfo const *cinfo = GetCreatureInfo();
 
                 SelectLevel(cinfo);
-                SetUInt32Value(UNIT_DYNAMIC_FLAGS, 0);
+                SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_NONE);
                 if (m_isDeadByDefault)
                 {
                     SetDeathState(JUST_DIED);
@@ -599,22 +599,7 @@ void Creature::Update(uint32 update_diff, uint32 diff)
             if (IsPet())                           // Regenerated before
                 break;
 
-            if(m_regenTimer > 0)
-            {
-                if(update_diff >= m_regenTimer)
-                    m_regenTimer = 0;
-                else
-                    m_regenTimer -= update_diff;
-            }
-            if (m_regenTimer != 0)
-                break;
-
-            if (!isInCombat() || IsPolymorphed())
-                RegenerateHealth();
-
-            Regenerate(getPowerType());
-            m_regenTimer = REGEN_TIME_FULL;
-
+            RegenerateAll(update_diff);
             break;
         }
         case CORPSE_FALLING:
@@ -624,6 +609,26 @@ void Creature::Update(uint32 update_diff, uint32 diff)
         default:
             break;
     }
+}
+
+void Creature::RegenerateAll(uint32 update_diff)
+{
+    if(m_regenTimer > 0)
+    {
+        if(update_diff >= m_regenTimer)
+            m_regenTimer = 0;
+        else
+            m_regenTimer -= update_diff;
+    }
+    if (m_regenTimer != 0)
+        return;
+
+    if (!isInCombat() || IsPolymorphed())
+        RegenerateHealth();
+
+    Regenerate(getPowerType());
+
+    m_regenTimer = REGEN_TIME_FULL;
 }
 
 void Creature::Regenerate(Powers power)
@@ -1390,24 +1395,30 @@ struct CreatureRespawnDeleteWorker
 
 void Creature::DeleteFromDB()
 {
-    if (!HasStaticDBSpawnData())
+    CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow());
+    if (!data)
     {
         DEBUG_LOG("Trying to delete not saved creature!");
         return;
     }
 
-    CreatureRespawnDeleteWorker worker (GetGUIDLow());
-    sMapPersistentStateMgr.DoForAllStatesWithMapId(GetMapId(), worker);
+    DeleteFromDB(GetGUIDLow(), data);
+}
 
-    sObjectMgr.DeleteCreatureData(GetGUIDLow());
+void Creature::DeleteFromDB(uint32 lowguid, CreatureData const* data)
+{
+    CreatureRespawnDeleteWorker worker (lowguid);
+    sMapPersistentStateMgr.DoForAllStatesWithMapId(data->mapid, worker);
+
+    sObjectMgr.DeleteCreatureData(lowguid);
 
     WorldDatabase.BeginTransaction();
-    WorldDatabase.PExecuteLog("DELETE FROM creature WHERE guid=%u", GetGUIDLow());
-    WorldDatabase.PExecuteLog("DELETE FROM creature_addon WHERE guid=%u", GetGUIDLow());
-    WorldDatabase.PExecuteLog("DELETE FROM creature_movement WHERE id=%u", GetGUIDLow());
-    WorldDatabase.PExecuteLog("DELETE FROM game_event_creature WHERE guid=%u", GetGUIDLow());
-    WorldDatabase.PExecuteLog("DELETE FROM game_event_creature_data WHERE guid=%u", GetGUIDLow());
-    WorldDatabase.PExecuteLog("DELETE FROM creature_battleground WHERE guid=%u", GetGUIDLow());
+    WorldDatabase.PExecuteLog("DELETE FROM creature WHERE guid=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM creature_addon WHERE guid=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM creature_movement WHERE id=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM game_event_creature WHERE guid=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM game_event_creature_data WHERE guid=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM creature_battleground WHERE guid=%u", lowguid);
     WorldDatabase.CommitTransaction();
 }
 
@@ -1487,13 +1498,12 @@ void Creature::SetDeathState(DeathState s)
 
     if (s == JUST_ALIVED)
     {
+        CreatureInfo const *cinfo = GetCreatureInfo();
+
         SetHealth(GetMaxHealth());
         SetLootRecipient(NULL);
-        CreatureInfo const *cinfo = GetCreatureInfo();
-        SetUInt32Value(UNIT_DYNAMIC_FLAGS, 0);
-        RemoveFlag (UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
+
         AddSplineFlag(SPLINEFLAG_WALKMODE);
-        SetUInt32Value(UNIT_NPC_FLAGS, cinfo->npcflag);
 
         if (GetTemporaryFactionFlags() & TEMPFACTION_RESTORE_RESPAWN)
             ClearTemporaryFaction();
@@ -1502,8 +1512,18 @@ void Creature::SetDeathState(DeathState s)
 
         clearUnitState(UNIT_STAT_ALL_STATE);
         i_motionMaster.Clear();
+
         SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
+
+        // Dynamic flags may be adjusted by spells. Clear them
+        // first and let spell from *addon apply where needed.
+        SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_NONE);
         LoadCreatureAddon(true);
+
+        // Flags after LoadCreatureAddon. Any spell in *addon
+        // will not be able to adjust these.
+        SetUInt32Value(UNIT_NPC_FLAGS, cinfo->npcflag);
+        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
     }
 }
 
@@ -1906,11 +1926,12 @@ CreatureDataAddon const* Creature::GetCreatureAddon() const
     // dependent from difficulty mode entry
     if (GetEntry() != GetCreatureInfo()->Entry)
     {
+        // If CreatureTemplateAddon for difficulty_entry_N exist, it's there for a reason
         if (CreatureDataAddon const* addon =  ObjectMgr::GetCreatureTemplateAddon(GetCreatureInfo()->Entry))
             return addon;
     }
 
-    // fallback to entry of normal mode
+    // Return CreatureTemplateAddon when nothing else exist
     return ObjectMgr::GetCreatureTemplateAddon(GetEntry());
 }
 
@@ -1960,19 +1981,19 @@ bool Creature::LoadCreatureAddon(bool reload)
 
     if(cainfo->auras)
     {
-        for (CreatureDataAddonAura const* cAura = cainfo->auras; cAura->spell_id; ++cAura)
+        for (uint32 const* cAura = cainfo->auras; *cAura; ++cAura)
         {
-            SpellEntry const *AdditionalSpellInfo = sSpellStore.LookupEntry(cAura->spell_id);
+            SpellEntry const *AdditionalSpellInfo = sSpellStore.LookupEntry(*cAura);
             if (!AdditionalSpellInfo)
             {
-                sLog.outErrorDb("Creature (GUIDLow: %u Entry: %u ) has wrong spell %u defined in `auras` field.",GetGUIDLow(),GetEntry(),cAura->spell_id);
+                sLog.outErrorDb("Creature (GUIDLow: %u Entry: %u ) has wrong spell %u defined in `auras` field.",GetGUIDLow(),GetEntry(), *cAura);
                 continue;
             }
 
-            if (HasAura(cAura->spell_id))
+            if (HasAura(*cAura))
             {
-                if(!reload)
-                    sLog.outErrorDb("Creature (GUIDLow: %u Entry: %u) has duplicate spell %u in `auras` field.", GetGUIDLow(), GetEntry(), cAura->spell_id);
+                if (!reload)
+                    sLog.outErrorDb("Creature (GUIDLow: %u Entry: %u) has duplicate spell %u in `auras` field.", GetGUIDLow(), GetEntry(), *cAura);
 
                 continue;
             }
