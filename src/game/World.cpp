@@ -31,7 +31,6 @@
 #include "WorldPacket.h"
 #include "Weather.h"
 #include "Player.h"
-#include "Vehicle.h"
 #include "SkillExtraItems.h"
 #include "SkillDiscovery.h"
 #include "AccountMgr.h"
@@ -598,6 +597,12 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_FLOAT_RATE_RAF_XP, "Rate.RAF.XP", 3.0f);
     setConfig(CONFIG_FLOAT_RATE_RAF_LEVELPERLEVEL, "Rate.RAF.XP", 0.5f);
 
+    setConfig(CONFIG_BOOL_PLAYERBOT_DISABLE, "PlayerbotAI.DisableBots",true);
+    setConfig(CONFIG_BOOL_PLAYERBOT_DEBUGWHISPER, "PlayerbotAI.DebugWhisper",false);
+    setConfigMinMax(CONFIG_UINT32_PLAYERBOT_MAXBOTS, "PlayerbotAI.MaxNumBots", 3, 1, 9);
+    setConfigMinMax(CONFIG_UINT32_PLAYERBOT_RESTRICTLEVEL, "PlayerbotAI.RestrictBotLevel", getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL), 1, getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
+    setConfig(CONFIG_FLOAT_PLAYERBOT_MINDISTANCE, "PlayerbotAI.FollowDistanceMin", 0.5f);
+    setConfig(CONFIG_FLOAT_PLAYERBOT_MAXDISTANCE, "PlayerbotAI.FollowDistanceMax", 1.0f);
 
     setConfig(CONFIG_BOOL_LFG_ENABLE, "LFG.Enable",false);
     setConfig(CONFIG_BOOL_LFR_ENABLE, "LFR.Enable",false);
@@ -1357,8 +1362,6 @@ void World::SetInitialWorldSettings()
     static uint32 abtimer = 0;
     abtimer = sConfig.GetIntDefault("AutoBroadcast.Timer", 60000);
 
-    m_timers[WUPDATE_OBJECTS].SetInterval(0);
-    m_timers[WUPDATE_SESSIONS].SetInterval(0);
     m_timers[WUPDATE_WEATHERS].SetInterval(1*IN_MILLISECONDS);
     m_timers[WUPDATE_AUCTIONS].SetInterval(MINUTE*IN_MILLISECONDS);
     m_timers[WUPDATE_UPTIME].SetInterval(getConfig(CONFIG_UINT32_UPTIME_UPDATE)*MINUTE*IN_MILLISECONDS);
@@ -1521,13 +1524,8 @@ void World::Update(uint32 diff)
         sAuctionMgr.Update();
     }
 
-    /// <li> Handle session updates when the timer has passed
-    if (m_timers[WUPDATE_SESSIONS].Passed())
-    {
-        m_timers[WUPDATE_SESSIONS].Reset();
-
-        UpdateSessions(diff);
-    }
+    /// <li> Handle session updates
+    UpdateSessions(diff);
 
     /// <li> Handle weather updates when the timer has passed
     if (m_timers[WUPDATE_WEATHERS].Passed())
@@ -1559,14 +1557,9 @@ void World::Update(uint32 diff)
     }
 
     /// <li> Handle all other objects
-    if (m_timers[WUPDATE_OBJECTS].Passed())
-    {
-        m_timers[WUPDATE_OBJECTS].Reset();
-        ///- Update objects when the timer has passed (maps, transport, creatures,...)
-        sMapMgr.Update(diff);                // As interval = 0
-
-        sBattleGroundMgr.Update(diff);
-    }
+    ///- Update objects (maps, transport, creatures,...)
+    sMapMgr.Update(diff);
+    sBattleGroundMgr.Update(diff);
 
     ///- Delete all characters which have been deleted X days before
     if (m_timers[WUPDATE_DELETECHARS].Passed())
@@ -2015,7 +2008,7 @@ void World::UpdateSessions( uint32 diff )
         WorldSession * pSession = itr->second;
         WorldSessionFilter updater(pSession);
 
-        if(!pSession->Update(diff, updater))    // As interval = 0
+        if(!pSession->Update(updater))
         {
             RemoveQueuedSession(pSession);
             m_sessions.erase(itr);

@@ -122,7 +122,6 @@ struct CreatureInfo
     int32   resistance6;
     uint32  spells[CREATURE_MAX_SPELLS];
     uint32  PetSpellDataId;
-    uint32  VehicleId;
     uint32  mingold;
     uint32  maxgold;
     char const* AIName;
@@ -134,6 +133,7 @@ struct CreatureInfo
     uint32  questItems[6];
     uint32  movementId;
     bool    RegenHealth;
+    uint32  vehicleId;
     uint32  equipmentId;
     uint32  trainerId;
     uint32  vendorId;
@@ -142,10 +142,9 @@ struct CreatureInfo
     uint32  ScriptID;
 
     // helpers
-    // completed: return HIGHGUID_UNIT/HIGHGUID_VEHICLE base at currently missing creature template data
     HighGuid GetHighGuid() const
     {
-        return VehicleId ? HIGHGUID_VEHICLE : HIGHGUID_UNIT;
+        return vehicleId ? HIGHGUID_VEHICLE : HIGHGUID_UNIT;
     }
 
     SkillType GetRequiredLootSkill() const
@@ -468,6 +467,9 @@ class MANGOS_DLL_SPEC Creature : public Unit
         bool IsPet() const { return m_subtype == CREATURE_SUBTYPE_PET; }
         bool IsTotem() const { return m_subtype == CREATURE_SUBTYPE_TOTEM; }
         bool IsTemporarySummon() const { return m_subtype == CREATURE_SUBTYPE_TEMPORARY_SUMMON; }
+
+        // Playerbot mod - adds functionality to load/unload bots from NPC, also need to apply SQL scripts
+        void LoadBotMenu(Player *pPlayer);
 
         bool IsCorpse() const { return getDeathState() ==  CORPSE; }
         bool IsDespawned() const { return getDeathState() ==  DEAD; }
