@@ -2547,6 +2547,25 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 target->RemoveAurasDueToSpell(41105);
                 return;
             }
+            case 42454:                                     // Captured Totem
+            {
+                if (m_removeMode == AURA_REMOVE_BY_DEFAULT)
+                {
+                    if (target->getDeathState() != CORPSE)
+                        return;
+
+                    Unit* pCaster = GetCaster();
+
+                    if (!pCaster)
+                        return;
+
+                    // Captured Totem Test Credit
+                    if (Player* pPlayer = pCaster->GetCharmerOrOwnerPlayerOrPlayerItself())
+                        pPlayer->CastSpell(pPlayer, 42455, true);
+                }
+
+                return;
+            }
             case 42517:                                     // Beam to Zelfrax
             {
                 // expecting target to be a dummy creature
@@ -2826,7 +2845,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 case 29266:                                 // Permanent Feign Death
                 case 31261:                                 // Permanent Feign Death (Root)
                 case 37493:                                 // Feign Death
-                case 51329:                                 // Feign Death
                 case 52593:                                 // Bloated Abomination Feign Death
                 case 55795:                                 // Falling Dragon Feign Death
                 case 57626:                                 // Feign Death
@@ -2853,12 +2871,13 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 case 35356:                                 // Spawn Feign Death
                 case 35357:                                 // Spawn Feign Death
                 case 42557:                                 // Feign Death
+                case 51329:                                 // Feign Death
                 {
                     if (target->GetTypeId() == TYPEID_UNIT)
                     {
-                        // Flags not set like it's done in SetFeignDeath() and apparently always applied at spawn of creature
-                        // All three does however have SPELL_EFFECT_SPAWN(46) as effect1
-                        // It is possible this effect will remove some flags, and then the three here can be handled "normally"
+                        // Flags not set like it's done in SetFeignDeath()
+                        // UNIT_DYNFLAG_DEAD does not appear with these spells.
+                        // All of the spells appear to be present at spawn and not used to feign in combat or similar.
                         if (apply)
                         {
                             target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
@@ -5362,6 +5381,24 @@ void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
                 }
 
                 return;
+
+            case 63018: // Searing Light (Ulduar: XT-002)
+            case 65121: // Searing Light (h) (Ulduar: XT-002)
+                if (Unit *pCaster = pCaster = GetCaster())
+                {
+                    if (pCaster->HasAura(GetModifier()->m_amount))
+                        pCaster->CastSpell(target, 64210, true);
+                }
+
+                return;
+            case 63024: // Gravity Bomb (Ulduar: XT-002)
+            case 64234: // Gravity Bomb (h) (Ulduar: XT-002)
+                if (Unit *pCaster = pCaster = GetCaster())
+                {
+                    uint32 spellId = GetId() == 63024 ? 64203 : 64235;
+                    if (pCaster->HasAura(GetModifier()->m_amount))
+                        pCaster->CastSpell(target, spellId, true);
+                }
             default:
                 break;
         }
@@ -8191,6 +8228,47 @@ void Aura::PeriodicDummyTick()
                         case 2: target->CastSpell(target, 55739, true); break;
                     }
                     return;
+
+                case 54798: // FLAMING Arrow Triggered Effect
+                {
+                    Unit * caster = GetCaster();
+                    if (!caster)
+                        return;
+
+                    Player *rider = caster->GetCharmerOrOwnerPlayerOrPlayerItself();
+                    if (!rider)
+                        return;
+
+                    if (target->GetEntry() == 29358)
+                    {
+                        if (target->HasAura(54683, EFFECT_INDEX_0))
+                            return;
+                        else
+                        {
+                            // Credit Frostworgs
+                            rider->CastSpell(rider, 54896, true);
+                            // set ablaze
+                            target->CastSpell(target, 54683, true);
+                            ((Creature*)target)->ForcedDespawn(6000);
+                        }
+                    }
+                    else if (target->GetEntry() == 29351)
+                    {
+                        if (target->HasAura(54683, EFFECT_INDEX_0))
+                            return;
+                        else
+                        {
+                            // Credit Frost Giants
+                            rider->CastSpell(rider, 54893, true);
+                            // set ablaze
+                            target->CastSpell(target, 54683, true);
+                            ((Creature*)target)->ForcedDespawn(6000);
+                        }
+                    }
+
+                    break;
+                }
+
                 case 62717:                                 // Slag Pot (periodic dmg)
                 case 63477:
                 {
@@ -9446,6 +9524,9 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                     }
                     break;
                 }
+                case 73034:
+                case 73033:
+                case 71222:
                 case 69290:
                 {
                     if (!apply)
@@ -9454,12 +9535,6 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                         {
                              cast_at_remove = true;
                              spellId1 = 69291;
-                             // Cast unknown spell - spore explode (override)
-                             float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(GetSpellProto()->EffectRadiusIndex[EFFECT_INDEX_0]));
-                             Map::PlayerList const& pList = m_target->GetMap()->GetPlayers();
-                             for (Map::PlayerList::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
-                                 if (itr->getSource() && itr->getSource()->IsWithinDistInMap(m_target,radius))
-                                     itr->getSource()->CastSpell(itr->getSource(), spellId1, true);
                         }
                     }
                     break;
