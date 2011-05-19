@@ -7209,12 +7209,41 @@ bool Spell::CheckTarget( Unit* target, SpellEffectIndex eff )
         return false;
 
     // Sindragosa frost bomb hack
-    if ((m_spellInfo->Id == 69845
-        || m_spellInfo->Id == 71053
-        || m_spellInfo->Id == 71054
-        || m_spellInfo->Id == 71055)
-         && target->HasAura(70867))
-        return false;
+    if (m_spellInfo->Id == 69845 ||
+        m_spellInfo->Id == 71053 ||
+        m_spellInfo->Id == 71054 ||
+        m_spellInfo->Id == 71055 ||
+        // Explosion
+        m_spellInfo->Id == 64626 ||
+        // Mystic Buffet
+        m_spellInfo->Id == 70127)
+    {
+        if (target->HasAura(70157))
+            return false;
+        /*
+        Now calculating LOS.
+        We'll simplify the "LOS check" by measuring distances, and let the two simple rules:
+        1) distance between player and Frost Bomb must be more than distance between
+            Frost Bomb and Ice Tomb
+        2) player must be within 5 yds of Ice Tomb center
+        */
+        std::list<Unit*> unitList;
+        float radius = 10.0f;
+        MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck u_check(target, target, radius);
+        MaNGOS::UnitListSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck> searcher(unitList, u_check);
+        Cell::VisitAllObjects(target, searcher, radius);
+        for(std::list<Unit *>::iterator itr = unitList.begin(); itr != unitList.end();++itr)
+        {
+            if ((*itr)->GetEntry() == 36980)
+            {
+                float player_to_bomb = m_caster->GetDistance(target);
+                float tomb_to_bomb = m_caster->GetDistance(*itr);
+                float player_to_tomb = target->GetDistance(*itr);
+                if (player_to_bomb > tomb_to_bomb && player_to_tomb < 5.0f)
+                    return false;
+            }
+        }
+    }
 
     // Check targets for LOS visibility (except spells without range limitations )
     switch(m_spellInfo->Effect[eff])
