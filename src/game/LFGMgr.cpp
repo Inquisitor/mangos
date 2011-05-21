@@ -59,10 +59,13 @@ LFGMgr::~LFGMgr()
     m_dungeonMap.clear();
     m_proposalMap.clear();
     m_searchMatrix.clear();
+    m_eventList.clear();
 }
 
 void LFGMgr::Update(uint32 diff)
 {
+
+    SheduleEvent();
 
     if (m_queueInfoMap.empty())
         return;
@@ -146,7 +149,6 @@ void LFGMgr::Update(uint32 diff)
                 break;
         }
     }
-
 }
 
 void LFGMgr::LoadRewards()
@@ -1013,6 +1015,7 @@ void LFGMgr::SendLFGRewards(Group* group)
     group->GetLFGState()->SetStatus(LFG_STATUS_SAVED);
 
     LFGDungeonEntry const* dungeon = *group->GetLFGState()->GetDungeons()->begin();
+    LFGDungeonEntry const* realdungeon = group->GetLFGState()->GetDungeon();
 
     if (!dungeon)
     {
@@ -1029,7 +1032,11 @@ void LFGMgr::SendLFGRewards(Group* group)
     {
         if (Player* member = itr->getSource())
             if (member->IsInWorld())
+            {
+                member->GetLFGState()->GetDungeons()->clear();
+                member->GetLFGState()->GetDungeons()->insert(realdungeon);
                 SendLFGReward(member, dungeon);
+            }
     }
 }
 
@@ -1384,10 +1391,12 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
     group->SendUpdate();
 
     // Teleport group
-    Teleport(group, false);
+    //    Teleport(group, false);
+    AddEvent(group->GetObjectGuid(),LFG_EVENT_TELEPORT_GROUP);
+
     RemoveProposal(ID, true);
     group->GetLFGState()->SetState(LFG_STATE_DUNGEON);
-    Leave(group);
+    RemoveFromQueue(group->GetObjectGuid());
 }
 
 void LFGMgr::RemoveProposal(Player* decliner, uint32 ID)
@@ -1436,15 +1445,13 @@ void LFGMgr::RemoveProposal(Player* decliner, uint32 ID)
 
 void LFGMgr::RemoveProposal(uint32 ID, bool success)
 {
-    LFGProposalMap::iterator itr = m_proposalMap.find(ID);
-    if (itr == m_proposalMap.end())
-        return;
 
-    LFGProposal* pProposal = &((*itr).second);
+    LFGProposal* pProposal = GetProposal(ID);
+    if (!pProposal)
+        return;
 
     if (!success)
     {
-
         for (LFGQueueSet::const_iterator itr2 = pProposal->playerGuids.begin(); itr2 != pProposal->playerGuids.end(); ++itr2 )
         {
             if (Player* player = sObjectMgr.GetPlayer(*itr2))
@@ -1454,29 +1461,46 @@ void LFGMgr::RemoveProposal(uint32 ID, bool success)
 
                 // re-adding players to queue. decliner already removed
                 AddToQueue(player->GetObjectGuid(),LFGType(pProposal->GetDungeon()->type), true);
-//                player->GetSession()->SendLfgJoinResult(ERR_LFG_OK, 0);
-//                player->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_JOIN_PROPOSAL, LFGType(pProposal->GetDungeon()->type));
+                player->GetLFGState()->SetState(LFG_STATE_QUEUED);
+                player->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_ADDED_TO_QUEUE, LFGType(pProposal->GetDungeon()->type));
+                DEBUG_LOG("LFGMgr::RemoveProposal: %u re-adding to queue", player->GetObjectGuid().GetCounter());
             }
         }
 
         if (Group* group = pProposal->GetGroup())
         {
-            Player* leader = sObjectMgr.GetPlayer(pProposal->GetGroup()->GetLeaderGuid());
-            if (leader && leader->IsInWorld())
+            // re-adding to queue (only client! in server we are in queue)
+            group->GetLFGState()->SetProposal(NULL);
+            group->GetLFGState()->SetState(LFG_STATE_QUEUED);
+            if (GetQueueInfo(group->GetObjectGuid()))
             {
-                leader->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_PROPOSAL_FAILED, LFGType(pProposal->GetDungeon()->type));
-                group->GetLFGState()->SetProposal(NULL);
-                if (m_queueInfoMap.find(group->GetObjectGuid()) != m_queueInfoMap.end())
+                DEBUG_LOG("LFGMgr::RemoveProposal: standart way - group %u re-adding to queue.", group->GetObjectGuid().GetCounter());
+            }
+            else
+            {
+                // re-adding group to queue. dont must call, but who know...
+                AddToQueue(group->GetObjectGuid(),LFGType(pProposal->GetDungeon()->type), true);
+                DEBUG_LOG("LFGMgr::RemoveProposal: ERROR! group %u re-adding to queue not standart way.", group->GetObjectGuid().GetCounter());
+            }
+
+            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                if (Player* member = itr->getSource())
                 {
-                    // re-adding to queue (only client! in server we are in queue)
-//                    leader->GetSession()->SendLfgJoinResult(ERR_LFG_OK, 0);
-                    leader->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_JOIN_PROPOSAL, LFGType(pProposal->GetDungeon()->type));
+                    if (member->IsInWorld())
+                    {
+                        member->GetSession()->SendLfgUpdateParty(LFG_UPDATETYPE_PROPOSAL_FAILED, LFGType(pProposal->GetDungeon()->type));
+                        member->GetSession()->SendLfgUpdateParty(LFG_UPDATETYPE_ADDED_TO_QUEUE, LFGType(pProposal->GetDungeon()->type));
+                    }
                 }
             }
         }
     }
 
-    m_proposalMap.erase(itr);
+    WriteGuard Guard(GetLock());
+    LFGProposalMap::iterator itr = m_proposalMap.find(ID);
+    if (itr != m_proposalMap.end())
+        m_proposalMap.erase(itr);
 }
 
 void LFGMgr::CleanupProposals(LFGType type)
@@ -1492,7 +1516,6 @@ void LFGMgr::CleanupProposals(LFGType type)
     }
     if (!expiredProposals.empty())
     {
-        WriteGuard Guard(GetLock());
         for(std::set<uint32>::const_iterator itr = expiredProposals.begin(); itr != expiredProposals.end(); ++itr)
             RemoveProposal(*itr);
     }
@@ -1650,7 +1673,7 @@ void LFGMgr::Teleport(Group* group, bool out)
             if (member->IsInWorld())
             {
                 if (!member->GetLFGState()->IsTeleported() && !out)
-                    Teleport(member, out);
+                    AddEvent(member->GetObjectGuid(),LFG_EVENT_TELEPORT_PLAYER, LONG_LFG_DELAY, uint8(out));
                 else if (out)
                     Teleport(member, out);
             }
@@ -1680,7 +1703,7 @@ void LFGMgr::Teleport(Player* player, bool out, bool fromOpcode /*= false*/)
     Group* group = player->GetGroup();
 
     if (!group)
-        error = LFG_TELEPORTERROR_INVALID_LOCATION;
+        error = LFG_TELEPORTERROR_UNK4;
     else if (!player->isAlive())
         error = LFG_TELEPORTERROR_PLAYER_DEAD;
 //    else if (player->IsFalling())
@@ -1693,11 +1716,16 @@ void LFGMgr::Teleport(Player* player, bool out, bool fromOpcode /*= false*/)
     float orientation = 0;
     Difficulty difficulty;
 
-    LFGDungeonEntry const* dungeon = group->GetLFGState()->GetDungeon();
-    if (!dungeon)
+    LFGDungeonEntry const* dungeon = NULL; 
+
+    if (error == LFG_TELEPORTERROR_OK)
     {
-        error = LFG_TELEPORTERROR_INVALID_LOCATION;
-        DEBUG_LOG("LFGMgr::TeleportPlayer %u error %u, no dungeon!", player->GetObjectGuid().GetCounter(), error);
+        dungeon = group->GetLFGState()->GetDungeon();
+        if (!dungeon)
+        {
+            error = LFG_TELEPORTERROR_INVALID_LOCATION;
+            DEBUG_LOG("LFGMgr::TeleportPlayer %u error %u, no dungeon!", player->GetObjectGuid().GetCounter(), error);
+        }
     }
 
     if (error == LFG_TELEPORTERROR_OK)
@@ -2031,7 +2059,7 @@ Player* LFGMgr::LeaderElection(LFGQueueSet* playerGuids)
     for (LFGQueueSet::const_iterator itr = playerGuids->begin(); itr != playerGuids->end(); ++itr)
     {
         Player* member  = sObjectMgr.GetPlayer(*itr);
-        if (member->IsInWorld())
+        if (member && member->IsInWorld())
         {
             if (member->GetLFGState()->GetRoles() & LFG_ROLE_MASK_LEADER)
                 leaders.insert(member);
@@ -2922,4 +2950,51 @@ void LFGMgr::DungeonEncounterReached(Group* group)
                 member->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
         }
     }
+}
+
+void LFGMgr::SheduleEvent()
+{
+    if (m_eventList.empty())
+        return;
+
+    for (LFGEventList::iterator itr = m_eventList.begin(); itr != m_eventList.end(); ++itr)
+    {
+    // we run only one event for tick!!!
+        if (!itr->IsActive())
+            continue;
+        else
+        {
+            DEBUG_LOG("LFGMgr::SheduleEvent guid %u type %u",itr->guid.GetCounter(), itr->type);
+            switch (itr->type)
+            {
+                case LFG_EVENT_TELEPORT_PLAYER:
+                    {
+                        Player* player = sObjectMgr.GetPlayer(itr->guid);
+                        if (player)
+                            Teleport(player, bool(itr->eventParm));
+                    }
+                    break;
+                case LFG_EVENT_TELEPORT_GROUP:
+                    {
+                        Group* group = sObjectMgr.GetGroup(itr->guid);
+                        if (group)
+                            Teleport(group, bool(itr->eventParm));
+                    }
+                    break;
+                case LFG_EVENT_NONE:
+                default:
+                    break;
+            }
+            m_eventList.erase(itr);
+            break;
+        }
+    }
+}
+
+void LFGMgr::AddEvent(ObjectGuid guid, LFGEventType type, time_t delay, uint8 param)
+{
+    DEBUG_LOG("LFGMgr::AddEvent guid %u type %u",guid.GetCounter(), type);
+    LFGEvent event = LFGEvent(type,guid,param);
+    m_eventList.push_back(event);
+    m_eventList.rbegin()->Start(delay);
 }

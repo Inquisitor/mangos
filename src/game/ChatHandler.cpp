@@ -209,7 +209,6 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if (ChatHandler(this).ParseCommands(msg.c_str()))
                 break;
 
-
             if (!processChatmessageFurtherAfterSecurityChecks(msg, lang))
                 return;
 
