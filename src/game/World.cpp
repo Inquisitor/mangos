@@ -38,6 +38,7 @@
 #include "AuctionHouseMgr.h"
 #include "ObjectMgr.h"
 #include "CreatureEventAIMgr.h"
+#include "GuildMgr.h"
 #include "SpellMgr.h"
 #include "Chat.h"
 #include "DBCStores.h"
@@ -606,8 +607,9 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_LFG_ENABLE, "LFG.Enable",false);
     setConfig(CONFIG_BOOL_LFR_ENABLE, "LFR.Enable",false);
+    setConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE, "LFG.Debug",false);
+    setConfig(CONFIG_BOOL_LFR_EXTEND, "LFR.Extend",false);
     setConfigMinMax(CONFIG_UINT32_LFG_MAXKICKS, "LFG.MaxKicks", 5, 1, 10);
-    setConfigMinMax(CONFIG_UINT32_LFG_KICKVOTES, "LFG.KickVotes", 3, 1, 5);
 
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
 
@@ -771,6 +773,7 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS,       "Arena.AutoDistributeInterval", 7);
     setConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_JOIN,                  "Arena.QueueAnnouncer.Join", false);
     setConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_EXIT,                  "Arena.QueueAnnouncer.Exit", false);
+    setConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_START,                 "Arena.QueueAnnouncer.Start", false);
     setConfig(CONFIG_UINT32_ARENA_SEASON_ID,                           "Arena.ArenaSeason.ID", 1);
     setConfig(CONFIG_UINT32_ARENA_SEASON_PREVIOUS_ID,                  "Arena.ArenaSeasonPrevious.ID", 0);
     setConfigMin(CONFIG_INT32_ARENA_STARTRATING,                       "Arena.StartRating", -1, -1);
@@ -1155,7 +1158,7 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading Graveyard-zone links...");
     sObjectMgr.LoadGraveyardZones();
 
-    sLog.outString( "Loading Spell target coordinates..." );
+    sLog.outString( "Loading spell target destination coordinates..." );
     sSpellMgr.LoadSpellTargetPositions();
 
     sLog.outString( "Loading spell pet auras..." );
@@ -1271,7 +1274,7 @@ void World::SetInitialWorldSettings()
     sLog.outString();
 
     sLog.outString( "Loading Guilds..." );
-    sObjectMgr.LoadGuilds();
+    sGuildMgr.LoadGuilds();
 
     sLog.outString( "Loading ArenaTeams..." );
     sObjectMgr.LoadArenaTeams();
@@ -1438,7 +1441,8 @@ void World::DetectDBCLang()
         m_lang_confid = LOCALE_enUS;
     }
 
-    ChrRacesEntry const* race = sChrRacesStore.LookupEntry(1);
+    ChrRacesEntry const* race = sChrRacesStore.LookupEntry(RACE_HUMAN);
+    MANGOS_ASSERT(race);
 
     std::string availableLocalsStr;
 
@@ -1740,7 +1744,7 @@ void World::SendGlobalText(const char* text, WorldSession *self)
 
     while(char* line = ChatHandler::LineFromMessage(pos))
     {
-        ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, NULL, 0, line, NULL);
+        ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, line);
         SendGlobalMessage(&data, self);
     }
 
@@ -1769,7 +1773,7 @@ void World::SendZoneMessage(uint32 zone, WorldPacket *packet, WorldSession *self
 void World::SendZoneText(uint32 zone, const char* text, WorldSession *self, uint32 team)
 {
     WorldPacket data;
-    ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, NULL, 0, text, NULL);
+    ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, text);
     SendZoneMessage(zone, &data, self,team);
 }
 

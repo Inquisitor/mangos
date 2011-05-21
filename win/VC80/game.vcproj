@@ -538,6 +538,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\AntiCheat.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\AntiCheat.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\AuctionHouseHandler.cpp"
 				>
 			</File>
@@ -721,6 +729,22 @@
 				RelativePath="..\..\src\game\ChatHandler.cpp"
 				>
 			</File>
+            <File
+                RelativePath="..\..\src\game\ChatLexicsCutter.cpp"
+                >
+            </File>
+            <File
+                RelativePath="..\..\src\game\ChatLexicsCutter.h"
+                >
+            </File>
+            <File
+                RelativePath="..\..\src\game\ChatLog.cpp"
+                >
+            </File>
+            <File
+                RelativePath="..\..\src\game\ChatLog.h"
+                >
+            </File>
 			<File
 				RelativePath="..\..\src\game\CombatHandler.cpp"
 				>
@@ -798,6 +822,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\GuildMgr.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\GuildMgr.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\InstanceData.cpp"
 				>
 			</File>
@@ -814,11 +846,31 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\LFGMgr.cpp"
+			    >
+			</File>
+			<File
+				RelativePath="..\..\src\game\LFGMgr.h"
+			    >
+			</File>
+			<File
+				RelativePath="..\..\src\game\LFG.cpp"
+			    >
+			</File>
+			<File
+				RelativePath="..\..\src\game\LFG.h"
+			    >
+			</File>
+			<File
 				RelativePath="..\..\src\game\LootHandler.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\src\game\Mail.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\MailHandler.cpp"
 				>
 			</File>
 			<File
@@ -847,6 +899,14 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\MapPersistentStateMgr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\MapUpdater.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\MapUpdater.cpp"
 				>
 			</File>
 			<File
@@ -1002,6 +1062,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\VehicleHandler.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\VoiceChatHandler.cpp"
 				>
 			</File>
@@ -1148,6 +1212,12 @@
 			<File
 				RelativePath="..\..\src\game\ArenaTeam.h"
 				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\AuctionHouseBot.cpp">
+			</File>
+			<File
+				RelativePath="..\..\src\game\AuctionHouseBot.h">
 			</File>
 			<File
 				RelativePath="..\..\src\game\AuctionHouseMgr.cpp"
@@ -1703,6 +1773,114 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\vmap\WorldModel.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="PlayerBot"
+			>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotClassAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotClassAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotDeathKnightAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotDeathKnightAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotDruidAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotDruidAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotHunterAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotHunterAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotMageAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotMageAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotMgr.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotMgr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotPaladinAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotPaladinAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotPriestAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotPriestAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotRogueAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotRogueAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotShamanAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotShamanAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotWarlockAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotWarlockAI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotWarriorAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\playerbot\PlayerbotWarriorAI.h"
 				>
 			</File>
 		</Filter>

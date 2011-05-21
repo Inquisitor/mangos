@@ -86,9 +86,6 @@ struct AuctionEntry
     void DeleteFromDB() const;
     void SaveToDB() const;
 
-    bool IsDeleted() const { return m_deleted; };
-    void SetDeleted() { m_deleted = true; };
-
     // -1,0,+1 order result
     int CompareAuctionEntry(uint32 column, const AuctionEntry *auc, Player* viewPlayer) const;
 };
@@ -176,18 +173,6 @@ class AuctionHouseMgr
             return NULL;
         }
 
-        ItemPrototype const* GetAItemProto(uint32 id)
-        {
-            ReadGuard guard(i_lock);
-            ItemMap::const_iterator itr = mAitems.find(id);
-            if (itr != mAitems.end())
-            {
-                if (itr->second)
-                    return itr->second->GetProto();
-            }
-            return NULL;
-        }
-
         //auction messages
         void SendAuctionWonMail( AuctionEntry * auction );
         void SendAuctionSalePendingMail( AuctionEntry * auction );
@@ -208,9 +193,6 @@ class AuctionHouseMgr
         void AddAItem(Item* it);
         bool RemoveAItem(uint32 id);
 
-        void AddAItemToRemoveList(Item* item);
-        void ClearRemovedAItems();
-
         void Update();
 
     private:
@@ -221,7 +203,6 @@ class AuctionHouseMgr
         ItemMap             mAitems;
 
         LockType            i_lock;
-        std::queue<Item*>   m_deletedItems;
 };
 
 #define sAuctionMgr MaNGOS::Singleton<AuctionHouseMgr>::Instance()

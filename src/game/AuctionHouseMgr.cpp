@@ -155,8 +155,8 @@ void AuctionHouseMgr::SendAuctionWonMail(AuctionEntry *auction)
             // FIXME: for offline player need also
             bidder->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WON_AUCTIONS, 1);
         }
-        else
-            RemoveAItem(pItem->GetGUIDLow());               // we have to remove the item, before we delete it !!
+
+        RemoveAItem(pItem->GetGUIDLow());               // we have to remove the item from auction, before we delete it !!
 
         // will delete item or place to receiver mail list
         MailDraft(msgAuctionWonSubject.str(), msgAuctionWonBody.str())
@@ -168,7 +168,7 @@ void AuctionHouseMgr::SendAuctionWonMail(AuctionEntry *auction)
     {
         CharacterDatabase.PExecute("DELETE FROM item_instance WHERE guid='%u'", pItem->GetGUIDLow());
         RemoveAItem(pItem->GetGUIDLow());                   // we have to remove the item, before we delete it !!
-        AddAItemToRemoveList(pItem);
+        delete pItem;
     }
 }
 
@@ -280,7 +280,7 @@ void AuctionHouseMgr::SendAuctionExpiredMail(AuctionEntry * auction)
     {
         CharacterDatabase.PExecute("DELETE FROM item_instance WHERE guid='%u'",pItem->GetGUIDLow());
         RemoveAItem(pItem->GetGUIDLow());                   // we have to remove the item, before we delete it !!
-        AddAItemToRemoveList(pItem);
+        delete pItem;
     }
 }
 
@@ -374,8 +374,6 @@ void AuctionHouseMgr::LoadAuctions()
 
     barGoLink bar(AuctionCount);
 
-    AuctionEntry *auction;
-
     typedef std::map<uint32, std::wstring> PlayerNames;
     PlayerNames playerNames;                                // caching for load time
 
@@ -385,7 +383,7 @@ void AuctionHouseMgr::LoadAuctions()
 
         bar.step();
 
-        auction = new AuctionEntry;
+        AuctionEntry *auction = new AuctionEntry;
         auction->Id = fields[0].GetUInt32();
         uint32 houseid  = fields[1].GetUInt32();
         auction->itemGuidLow = fields[2].GetUInt32();
@@ -475,31 +473,11 @@ bool AuctionHouseMgr::RemoveAItem(uint32 id)
     return true;
 }
 
-void AuctionHouseMgr::AddAItemToRemoveList(Item* item)
-{
-    if (!item)
-        return;
-    WriteGuard guard(i_lock);
-    m_deletedItems.push(item);
-}
-
-void AuctionHouseMgr::ClearRemovedAItems()
-{
-    WriteGuard guard(i_lock);
-    while(!m_deletedItems.empty())
-    {
-        delete m_deletedItems.front();
-//        m_deletedItems.pop();
-    }
-}
-
 void AuctionHouseMgr::Update()
 {
     mHordeAuctions.Update();
     mAllianceAuctions.Update();
     mNeutralAuctions.Update();
-
-    ClearRemovedAItems();
 }
 
 uint32 AuctionHouseMgr::GetAuctionHouseTeam(AuctionHouseEntry const* house)
@@ -593,7 +571,6 @@ void AuctionHouseObject::Update()
         {
             if (curTime > itr->second->moneyDeliveryTime)
             {
-                itr->second->SetDeleted();
                 sAuctionMgr.SendAuctionSuccessfulMail(itr->second);
 
                 itr->second->DeleteFromDB();
@@ -606,7 +583,6 @@ void AuctionHouseObject::Update()
         {
             if (curTime > itr->second->expireTime)
             {
-                itr->second->SetDeleted();
                 ///- Either cancel the auction if there was no bidder
                 if (itr->second->bidder == 0)
                 {
@@ -634,11 +610,9 @@ void AuctionHouseObject::BuildListBidderItems(WorldPacket& data, Player* player,
 {
     for (AuctionEntryMap::const_iterator itr = AuctionsMap.begin();itr != AuctionsMap.end();++itr)
     {
-        AuctionHouseMgr::ReadGuard Guard(sAuctionMgr.GetLock());
-
         AuctionEntry *Aentry = itr->second;
 
-        if (!Aentry || Aentry->IsDeleted() || Aentry->moneyDeliveryTime)
+        if (!Aentry || Aentry->moneyDeliveryTime)
             continue;
 
         if (Aentry && Aentry->bidder == player->GetGUIDLow())
@@ -668,9 +642,6 @@ void AuctionHouseObject::BuildListOwnerItems(WorldPacket& data, Player* player, 
 
 int AuctionEntry::CompareAuctionEntry(uint32 column, const AuctionEntry *auc, Player* viewPlayer) const
 {
-    if (IsDeleted() || auc->IsDeleted())
-        return 0;
-
     switch (column)
     {
         case 0:                                             // level = 0
@@ -826,8 +797,6 @@ bool AuctionSorter::operator()(const AuctionEntry *auc1, const AuctionEntry *auc
         if (m_sort[i] == MAX_AUCTION_SORT)                  // end of sort
             return false;
 
-        AuctionHouseMgr::ReadGuard Guard(sAuctionMgr.GetLock());
-
         int res = auc1->CompareAuctionEntry(m_sort[i] & ~AUCTION_SORT_REVERSED, auc2, m_viewPlayer);
         // "equal" by used column
         if (res == 0)
@@ -846,11 +815,9 @@ void WorldSession::BuildListAuctionItems(std::list<AuctionEntry*> &auctions, Wor
 
     for (std::list<AuctionEntry*>::const_iterator itr = auctions.begin(); itr != auctions.end();++itr)
     {
-        AuctionHouseMgr::ReadGuard Guard(sAuctionMgr.GetLock());
-
         AuctionEntry *Aentry = *itr;
 
-        if (!Aentry || Aentry->IsDeleted() || Aentry->moneyDeliveryTime)
+        if (!Aentry || Aentry->moneyDeliveryTime)
             continue;
 
         Item *item = sAuctionMgr.GetAItem(Aentry->itemGuidLow);
@@ -915,17 +882,13 @@ void WorldSession::BuildListAuctionItems(std::list<AuctionEntry*> &auctions, Wor
 
 void AuctionHouseObject::BuildListPendingSales(WorldPacket& data, Player* player, uint32& count)
 {
-    AuctionHouseMgr::ReadGuard Guard(sAuctionMgr.GetLock());
     for (AuctionEntryMap::const_iterator itr = AuctionsMap.begin(); itr != AuctionsMap.end(); ++itr)
     {
-        AuctionHouseMgr::ReadGuard Guard(sAuctionMgr.GetLock());
         AuctionEntry *Aentry = itr->second;
 
-        if (Aentry->IsDeleted())
+        if (!Aentry || !Aentry->moneyDeliveryTime)
             continue;
 
-        if (!Aentry->moneyDeliveryTime)
-            continue;
         if (Aentry && Aentry->owner == player->GetGUIDLow())
         {
             Item *pItem = sAuctionMgr.GetAItem(Aentry->itemGuidLow);
@@ -957,11 +920,6 @@ void AuctionHouseObject::BuildListPendingSales(WorldPacket& data, Player* player
 // this function inserts to WorldPacket auction's data
 bool AuctionEntry::BuildAuctionInfo(WorldPacket & data) const
 {
-    if (IsDeleted())
-        return false;
-
-    AuctionHouseMgr::ReadGuard Guard(sAuctionMgr.GetLock());
-
     Item *pItem = sAuctionMgr.GetAItem(itemGuidLow);
     if (!pItem)
     {
