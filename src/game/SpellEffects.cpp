@@ -674,6 +674,12 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         }
                     }
                 }
+                // Improved Devouring Plague health leech
+                else if (m_spellInfo->Id == 63675)
+                {
+                    int32 heal = damage * 15 / 100;
+                    m_caster->CastCustomSpell(m_caster, 75999, &heal, NULL, NULL, true);
+                }
                 break;
             }
             case SPELLFAMILY_DRUID:
