@@ -3944,7 +3944,8 @@ void Spell::finish(bool ok)
         ((Player*)m_caster)->RemoveSpellMods(this);
 
     // handle SPELL_AURA_ADD_TARGET_TRIGGER auras
-    Unit::AuraList const& targetTriggers = m_caster->GetAurasByType(SPELL_AURA_ADD_TARGET_TRIGGER);
+    Unit * targetTriggerCaster = m_originalCaster?m_originalCaster:m_caster;
+    Unit::AuraList const& targetTriggers = targetTriggerCaster->GetAurasByType(SPELL_AURA_ADD_TARGET_TRIGGER);
     for(Unit::AuraList::const_iterator i = targetTriggers.begin(); i != targetTriggers.end(); ++i)
     {
         if (!(*i)->isAffectedOnSpell(m_spellInfo))
@@ -3954,16 +3955,16 @@ void Spell::finish(bool ok)
             if (ihit->missCondition == SPELL_MISS_NONE)
             {
                 // check m_caster->GetObjectGuid() let load auras at login and speedup most often case
-                Unit *unit = m_caster->GetObjectGuid() == ihit->targetGUID ? m_caster : ObjectAccessor::GetUnit(*m_caster, ihit->targetGUID);
+                Unit *unit = targetTriggerCaster->GetObjectGuid() == ihit->targetGUID ? targetTriggerCaster : ObjectAccessor::GetUnit(*targetTriggerCaster, ihit->targetGUID);
                 if (unit && unit->isAlive())
                 {
                     SpellEntry const *auraSpellInfo = (*i)->GetSpellProto();
                     SpellEffectIndex auraSpellIdx = (*i)->GetEffIndex();
                     // Calculate chance at that moment (can be depend for example from combo points)
                     int32 auraBasePoints = (*i)->GetBasePoints();
-                    int32 chance = m_caster->CalculateSpellDamage(unit, auraSpellInfo, auraSpellIdx, &auraBasePoints);
+                    int32 chance = targetTriggerCaster->CalculateSpellDamage(unit, auraSpellInfo, auraSpellIdx, &auraBasePoints);
                     if(roll_chance_i(chance))
-                        m_caster->CastSpell(unit, auraSpellInfo->EffectTriggerSpell[auraSpellIdx], true, NULL, (*i));
+                        targetTriggerCaster->CastSpell(unit, auraSpellInfo->EffectTriggerSpell[auraSpellIdx], true, NULL, (*i));
                 }
             }
         }
