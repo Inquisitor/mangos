@@ -3501,6 +3501,18 @@ void Spell::cast(bool skipCheck)
                 case 25331: AddTriggeredSpell(25329); break;// Holy Nova, rank 7
                 case 48077: AddTriggeredSpell(48075); break;// Holy Nova, rank 8
                 case 48078: AddTriggeredSpell(48076); break;// Holy Nova, rank 9
+                case 47757:
+                case 52986:
+                case 52987:
+                case 52988:
+                {
+                    unitTarget = m_targets.getUnitTarget();
+                    if (m_caster && unitTarget)
+                    {
+                        m_caster->SetChannelObjectGuid(unitTarget->GetObjectGuid()); 
+                    }
+                    break;
+                }
                 default:break;
             }
             break;

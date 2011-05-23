@@ -1919,6 +1919,28 @@ void Aura::TriggerSpell()
                     caster->CastSpell(triggerTarget, trigger_spell_id, true, NULL, this);
                 return;
             }
+            case 47757:
+            case 52986:
+            case 52987:
+            case 52988:
+            {
+                if (Unit* caster = GetCaster())
+                {
+                    ObjectGuid triggerTargetGuid = caster->GetChannelObjectGuid();
+                    if (triggerTargetGuid.IsUnit())
+                    {
+                        if (Map * casterMap = caster->GetMap())
+                        {
+                            if (Unit * newTriggerTarget = casterMap->GetUnit(triggerTargetGuid))
+                            {
+                                triggerTarget = newTriggerTarget;
+                            }
+                        }
+                        else return;
+                    }
+                }
+                break;
+            }
             case 48094:                                      // Intense Cold
                 triggerTarget->CastSpell(triggerTarget, trigger_spell_id, true, NULL, this);
                 return;
