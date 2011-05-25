@@ -36,6 +36,7 @@
 #include "MapPersistentStateMgr.h"
 #include "VMapFactory.h"
 #include "BattleGroundMgr.h"
+#include "CreatureEventAI.h"
 
 Map::~Map()
 {
@@ -1744,6 +1745,67 @@ void Map::ScriptsProcess()
 
         if (target && !target->IsInWorld())
             target = NULL;
+
+        bool requirement_passed = true;
+
+        if( source && (source->GetTypeId() == TYPEID_UNIT || source->GetTypeId() == TYPEID_PLAYER) )
+        {
+            Unit * uSource = static_cast<Unit*>(source);
+
+            switch(step.script->reqtype)
+            {
+                case REQUIREMENT_T_INVOKER_AURA:
+                    if( !uSource->HasAura( step.script->reqvalue ) )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_QUEST:
+                    if( uSource->GetTypeId() != TYPEID_PLAYER || ((Player*)uSource)->GetQuestStatus(step.script->reqvalue) != QUEST_STATUS_INCOMPLETE )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_INVOKER_HAS_NO_AURA:
+                    if( uSource->HasAura( step.script->reqvalue ) )
+                        requirement_passed = false;
+                    break;
+            }
+        }
+
+        if( target && (target->GetTypeId() == TYPEID_UNIT || target->GetTypeId() == TYPEID_PLAYER) )
+        {
+            Unit * uTarget = static_cast<Unit*>(target);
+
+            switch( step.script->reqtype )
+            {
+                case REQUIREMENT_T_HP_PERCENT:
+                    if( uTarget->GetHealth() * 100 / uTarget->GetMaxHealth() > step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_MANA_PERCENT:
+                    if( uTarget->GetPower(POWER_MANA) * 100 / uTarget->GetMaxPower(POWER_MANA) > step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_AURA:
+                    if( !uTarget->HasAura( step.script->reqvalue ) )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_ZONE:
+                    if( uTarget->GetZoneId() != step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_ENTRY:
+                    if( uTarget->GetTypeId() != TYPEID_UNIT || uTarget->GetEntry() != step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+            }
+        }
+
+        if( !requirement_passed )
+        {
+            m_scriptSchedule.erase(iter);
+            sScriptMgr.DecreaseScheduledScriptCount();
+
+            iter = m_scriptSchedule.begin();
+            return;
+        }
 
         switch(step.script->command)
         {
