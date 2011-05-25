@@ -671,6 +671,36 @@ void BattleGround::RewardReputationToTeam(uint32 faction_id, uint32 Reputation, 
     }
 }
 
+void BattleGround::RewardXpToTeam(uint32 Xp, float percentOfLevel, Team team)
+{
+    for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+    {
+        if (itr->second.OfflineRemoveTime)
+            continue;
+        Player *plr = sObjectMgr.GetPlayer(itr->first);
+
+        if (!plr)
+        {
+            sLog.outError("BattleGround:RewardXpToTeam: Player (GUID: %s) not found!", itr->first.GetString().c_str());
+            continue;
+        }
+
+        uint32 bgTeam = itr->second.PlayerTeam;
+        if(!team) bgTeam = plr->GetTeam();
+
+        if (bgTeam == team)
+        {
+            uint32 gain = Xp;
+            if(gain == 0 && percentOfLevel != 0)
+            {
+                percentOfLevel = percentOfLevel / 100;
+                gain = uint32(float(plr->GetUInt32Value(PLAYER_NEXT_LEVEL_XP))*percentOfLevel);
+            }
+            plr->GiveXP(gain, NULL);
+        }
+    }
+}
+
 void BattleGround::UpdateWorldState(uint32 Field, uint32 Value)
 {
     WorldPacket data;
@@ -2047,4 +2077,12 @@ void BattleGround::SetBracket( PvPDifficultyEntry const* bracketEntry )
 {
     m_BracketId  = bracketEntry->GetBracketId();
     SetLevelRange(bracketEntry->minLevel,bracketEntry->maxLevel);
+}
+
+GameObject* BattleGround::GetBGObject(uint32 type)
+{
+    GameObject *obj = GetBgMap()->GetGameObject(m_BgObjects[type]);
+    if (!obj)
+        sLog.outError("couldn't get gameobject %i",type);
+    return obj;
 }

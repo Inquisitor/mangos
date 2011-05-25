@@ -137,6 +137,10 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMa
     SetObjectScale(goinfo->size);
 
     SetRotationQuat(rotation0,rotation1,rotation2,rotation3);
+    SetFloatValue(GAMEOBJECT_PARENTROTATION+0, rotation0);
+    SetFloatValue(GAMEOBJECT_PARENTROTATION+1, rotation1);
+
+    UpdateRotationFields(rotation2,rotation3);              // GAMEOBJECT_FACING, GAMEOBJECT_ROTATION, GAMEOBJECT_PARENTROTATION+2/3
 
     SetUInt32Value(GAMEOBJECT_FACTION, goinfo->faction);
     SetUInt32Value(GAMEOBJECT_FLAGS, goinfo->flags);
@@ -1250,6 +1254,11 @@ void GameObject::Use(Unit* user)
 
                     if (!sScriptMgr.OnProcessEvent(info->goober.eventId, player, this, true))
                         GetMap()->ScriptsStart(sEventScripts, info->goober.eventId, player, this);
+
+                    if (player->CanUseBattleGroundObject())
+                        if (BattleGround *bg = player->GetBattleGround())
+                            if (bg->GetTypeID(true) == BATTLEGROUND_SA)
+                                bg->EventPlayerDamageGO(player, this, info->goober.eventId);
                 }
 
                 // possible quest objective for active quests
@@ -1917,10 +1926,23 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
     if (GetGoType() != GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING || !m_health)
         return;
 
+    Player* pWho = NULL;
+    if (pDoneBy && pDoneBy->GetTypeId() == TYPEID_PLAYER)
+        pWho = (Player*)pDoneBy;
+
+    if(pDoneBy && ((Creature*)pDoneBy)->GetVehicleKit())
+        pWho = (Player*)pDoneBy->GetCharmerOrOwner();
+
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "GO damage taken: %u to health %u", damage, m_health);
 
     if (m_health > damage)
-        m_health -= damage;
+    {
+         m_health -= damage;
+         // For Strand of the Ancients and probably Isle of Conquest
+         if (pWho)
+             if (BattleGround *bg = pWho->GetBattleGround())
+                 bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damageEvent);
+    }
     else
         m_health = 0;
 
@@ -1932,6 +1954,14 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
             SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_DESTROYED);
             SetDisplayId(m_goInfo->destructibleBuilding.destroyedDisplayId);
             GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.destroyedEvent, pDoneBy, this);
+
+            if (pWho)
+            {
+                //sScriptMgr.OnGameObjectDestroyed(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+
+                if (BattleGround *bg = pWho->GetBattleGround())
+                    bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+            }
         }
     }
     else                                            // from intact to damaged
@@ -1951,6 +1981,10 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
             // otherwise we just handle it as "destroyed"
             else
                 m_health = 0;
+
+            if (pWho)
+                if (BattleGround *bg = pWho->GetBattleGround())
+                    bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damagedEvent);
          }
     }
     SetGoAnimProgress(m_health * 255 / GetMaxHealth());
@@ -2040,6 +2074,36 @@ void GameObject::SetRotationAngles(float z_rot, float y_rot, float x_rot)
 {
     Quat quat( G3D::Matrix3::fromEulerAnglesZYX(z_rot, y_rot, x_rot) );
     SetRotationQuat(quat.x, quat.y, quat.z, quat.w);
+}
+
+void GameObject::UpdateRotationFields(float rotation2 /*=0.0f*/, float rotation3 /*=0.0f*/)
+{
+    static double const atan_pow = atan(pow(2.0f, -20.0f));
+
+    double f_rot1 = sin(GetOrientation() / 2.0f);
+    double f_rot2 = cos(GetOrientation() / 2.0f);
+
+    int64 i_rot1 = int64(f_rot1 / atan_pow *(f_rot2 >= 0 ? 1.0f : -1.0f));
+    int64 rotation = (i_rot1 << 43 >> 43) & 0x00000000001FFFFF;
+
+    //float f_rot2 = sin(0.0f / 2.0f);
+    //int64 i_rot2 = f_rot2 / atan(pow(2.0f, -20.0f));
+    //rotation |= (((i_rot2 << 22) >> 32) >> 11) & 0x000003FFFFE00000;
+
+    //float f_rot3 = sin(0.0f / 2.0f);
+    //int64 i_rot3 = f_rot3 / atan(pow(2.0f, -21.0f));
+    //rotation |= (i_rot3 >> 42) & 0x7FFFFC0000000000;
+
+    m_rotation = rotation;
+
+    if(rotation2==0.0f && rotation3==0.0f)
+    {
+        rotation2 = (float)f_rot1;
+        rotation3 = (float)f_rot2;
+    }
+
+    SetFloatValue(GAMEOBJECT_PARENTROTATION+2, rotation2);
+    SetFloatValue(GAMEOBJECT_PARENTROTATION+3, rotation3);
 }
 
 bool GameObject::IsHostileTo(Unit const* unit) const

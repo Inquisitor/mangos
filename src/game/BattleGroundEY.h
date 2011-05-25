@@ -263,6 +263,7 @@ class BattleGroundEY : public BattleGround
         void RespawnFlagAfterDrop();
 
         void RemovePlayer(Player *plr, ObjectGuid guid);
+        void HandleBuffUse(uint64 const& buff_guid);
         void HandleAreaTrigger(Player *Source, uint32 Trigger);
         void HandleKillPlayer(Player *player, Player *killer);
         virtual WorldSafeLocsEntry const* GetClosestGraveYard(Player* player);
@@ -303,6 +304,7 @@ class BattleGroundEY : public BattleGround
         void SetTeamPoint(Team team, uint32 Points = 0) { m_TeamScores[GetTeamIndexByTeamId(team)] = Points; }
 
         uint32 m_HonorScoreTics[2];
+        uint32 m_ExperienceTics[2];
         uint32 m_TeamPointsCount[BG_TEAMS_COUNT];
 
         uint32 m_Points_Trigger[BG_EY_NODES_MAX];
