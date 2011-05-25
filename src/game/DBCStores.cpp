@@ -22,6 +22,7 @@
 #include "ProgressBar.h"
 #include "SharedDefines.h"
 #include "ObjectGuid.h"
+#include "SpellMgr.h"
 
 #include "DBCfmt.h"
 
@@ -530,6 +531,81 @@ void LoadDBCStores(const std::string& dataPath)
         std::swap(*((uint32*)(&spell->SpellFamilyFlags)),*(((uint32*)(&spell->SpellFamilyFlags))+1));
         #endif
     }
+
+    // DBC Hacks
+
+    // Gather Lumber
+    SpellEntry *sfix1 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(47939));
+    sfix1->EffectImplicitTargetA[EFFECT_INDEX_1] = TARGET_SELF;
+
+    //Lifebloom final heal
+    SpellEntry *sfix2 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(33778));
+    sfix2->DmgClass = SPELL_DAMAGE_CLASS_MAGIC;
+
+    //Throw Passanger
+    SpellEntry *sfix3 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(62324));
+    sfix3->Targets |= TARGET_FLAG_UNIT_UNK;
+
+    //Twilight Torment - relly dunno what blizzard intended to do
+    SpellEntry *sfix4 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(57935));
+    sfix4->AttributesEx = 0;
+    sfix4->AttributesEx4 = SPELL_ATTR_EX4_NOT_STEALABLE;
+    sfix4->CastingTimeIndex = 1;
+    sfix4->RecoveryTime = 0;
+    sfix4->procFlags = (PROC_FLAG_TAKEN_MELEE_HIT | PROC_FLAG_TAKEN_MELEE_SPELL_HIT | PROC_FLAG_TAKEN_RANGED_HIT | PROC_FLAG_TAKEN_RANGED_SPELL_HIT | PROC_FLAG_TAKEN_NEGATIVE_SPELL_HIT);
+    sfix4->procChance = 100;
+    sfix4->procCharges = 0;
+    sfix4->rangeIndex = 1;
+    sfix4->StackAmount = 0;
+    sfix4->Effect[EFFECT_INDEX_1] = 0;
+    sfix4->EffectDieSides[EFFECT_INDEX_1] = 0;
+    sfix4->EffectBasePoints[EFFECT_INDEX_0] = -1;
+    sfix4->EffectImplicitTargetA[EFFECT_INDEX_0] = 6;
+    sfix4->EffectImplicitTargetA[EFFECT_INDEX_1] = 0;
+    sfix4->EffectImplicitTargetB[EFFECT_INDEX_0] = 0;
+    sfix4->EffectImplicitTargetB[EFFECT_INDEX_1] = 0;
+    sfix4->EffectRadiusIndex[EFFECT_INDEX_0] = 0;
+    sfix4->EffectRadiusIndex[EFFECT_INDEX_1] = 0;
+    sfix4->EffectApplyAuraName[EFFECT_INDEX_0] = SPELL_AURA_PROC_TRIGGER_SPELL;
+    sfix4->EffectApplyAuraName[EFFECT_INDEX_1] = 0;
+    sfix4->EffectAmplitude[EFFECT_INDEX_0] = 0;
+    sfix4->EffectAmplitude[EFFECT_INDEX_1] = 0;
+    sfix4->EffectMiscValue[EFFECT_INDEX_0] = 0;
+    sfix4->EffectMiscValue[EFFECT_INDEX_1] = 0;
+    sfix4->EffectMiscValueB[EFFECT_INDEX_0] = 0;
+    sfix4->EffectMiscValueB[EFFECT_INDEX_1] = 0;
+    sfix4->EffectTriggerSpell[EFFECT_INDEX_0] = 57988;
+    sfix4->EffectTriggerSpell[EFFECT_INDEX_1] = 0;
+
+    SpellEntry *sfix5 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(48610));
+    sfix5->EffectImplicitTargetA[EFFECT_INDEX_1] = TARGET_SELF;
+    sfix5->Effect[EFFECT_INDEX_1] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+
+    // Rescue Injured Soldier
+    SpellEntry *sfix6 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(47962));
+    sfix6->SpellFamilyName = SPELLFAMILY_GENERIC;
+    sfix6->EffectImplicitTargetA[EFFECT_INDEX_0] = TARGET_SELF;
+    sfix6->EffectImplicitTargetA[EFFECT_INDEX_1] = TARGET_SCRIPT;
+
+    // Deliver Kodo
+    SpellEntry *sfix7 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(45877));
+    sfix7->Effect[EFFECT_INDEX_2] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+    for(int i = 0; i < 3; ++i)
+         sfix7->EffectImplicitTargetA[i] = TARGET_SELF;
+
+    // Hand Over Reins
+    SpellEntry *sfix8 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49285));
+    sfix8->Effect[EFFECT_INDEX_0] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+    sfix8->Effect[EFFECT_INDEX_1] = SPELL_EFFECT_DUMMY;
+    for(int i = 0; i < 2; ++i)
+         sfix8->EffectImplicitTargetA[i] = TARGET_SELF;
+
+    // Hand Over Reins
+    SpellEntry *sfix9 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(48297));
+    sfix9->Effect[EFFECT_INDEX_0] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+    sfix9->Effect[EFFECT_INDEX_1] = SPELL_EFFECT_DUMMY;
+    for(int i = 0; i < 2; ++i)
+         sfix9->EffectImplicitTargetA[i] = TARGET_SELF;
 
     for (uint32 j = 0; j < sSkillLineAbilityStore.GetNumRows(); ++j)
     {
