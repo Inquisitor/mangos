@@ -19,6 +19,7 @@
 #include "Map.h"
 #include "MapManager.h"
 #include "Player.h"
+#include "Vehicle.h"
 #include "GridNotifiers.h"
 #include "Log.h"
 #include "GridStates.h"
@@ -2818,6 +2819,37 @@ void Map::ScriptsProcess()
 
                     pOwner->Mount(display_id);
                 }
+
+                break;
+            }
+            case SCRIPT_COMMAND_SET_ENTRY:
+            {
+                if(!target || target->GetTypeId() != TYPEID_UNIT)
+                {
+                    sLog.outError("SCRIPT_COMMAND_SET_ENTRY (script id %u) call for NULL target or non-creature type.", step.script->id);
+                    break;
+                }
+
+                Creature *pCreature = (Creature*)target;
+                pCreature->UpdateEntry(step.script->set_entry.entry, ALLIANCE, 0, 0, step.script->set_entry.keep_stat ? true : false);
+
+                break;
+            }
+            case SCRIPT_COMMAND_ENTER_VEHICLE:
+            {
+                if (!target || target->GetTypeId() != TYPEID_PLAYER)
+                {
+                    sLog.outError("SCRIPT_COMMAND_ENTER_VEHICLE (script id %u) call for NULL source or non-player type.", step.script->id);
+                    break;
+                }
+
+                if (!source || !source->GetObjectGuid().IsVehicle())
+                {
+                    sLog.outError("SCRIPT_COMMAND_ENTER_VEHICLE (script id %u) call for NULL target or non-vehicle type.", step.script->id);
+                    break;
+                }
+
+                ((Unit*)target)->EnterVehicle(((Unit*)source)->GetVehicleKit());
 
                 break;
             }
