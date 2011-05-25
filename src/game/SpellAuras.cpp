@@ -2058,6 +2058,15 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             {
                 switch(GetId())
                 {
+                    case 52607: //Enraged Mammoth: Trample Aura for On Death Kill Credit
+                    {
+                        if(target->GetEntry() == 28861 && target->GetHealth() < 4300)
+                            if(Unit * caster = GetCaster())
+                                if(Player * player = caster->GetCharmerOrOwnerPlayerOrPlayerItself())
+                                    player->KilledMonsterCredit(28876);
+
+                        return;
+                    }
                     case 1515:                              // Tame beast
                         // FIX_ME: this is 2.0.12 threat effect replaced in 2.1.x by dummy aura, must be checked for correctness
                         if (target->CanHaveThreatList())
@@ -2215,6 +2224,24 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             // Reindeer Transformation
                             target->CastSpell(target, 25860, true, NULL, this);
                         return;
+                    case 39246:                             // Q: The Big Bone Worm
+                        {
+                        if (!target)
+                            return;
+
+                        if (Unit* caster = GetCaster())
+                        {
+                            if (urand(0,10) > 2)
+                            {
+                                int32 count  = urand(0,1) ? 2 : 4;
+                                for(int i = 0; i < count; ++i)
+                                    caster->SummonCreature(urand(0,1) ? 22482 : 22483, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 60000 );
+                            }
+                            else
+                                caster->SummonCreature(22038, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 60000 );
+                        }
+                        return;
+                        }
                     case 62109:                             // Tails Up: Aura
                         target->setFaction(1990);           // Ambient (hostile)
                         target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
@@ -2226,6 +2253,17 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             target->CastCustomSpell(target, 63338, &damage, 0, 0, true, 0, 0, caster->GetObjectGuid()); // damage spell
                             damage = damage >> 1;
                             target->CastCustomSpell(target, 63337, &damage, 0, 0, true, 0, 0, caster->GetObjectGuid()); // manareg spell
+                        }
+                        return;
+                    case 45611:                             // Q: Abduction
+                        if (Unit* caster = GetCaster())
+                        {
+                            if (caster->GetTypeId() == TYPEID_PLAYER && target->GetEntry() == 25316 && target->GetHealthPercent() < 35)
+                            {
+                                target->SetVisibility(VISIBILITY_OFF);
+                                target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                                caster->CastSpell(caster, 45626, true);
+                            }
                         }
                         return;
                     case 63624:                             // Learn a Second Talent Specialization
@@ -3049,6 +3087,47 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             target->PlayDirectSound(14972, (Player *)target);
                     }
                     return;
+                case 43354:                                 // Q: Seeds of the Blacksouled Keepers
+                    if (apply)
+                    {
+                        if (Unit* caster = GetCaster())
+                            if (caster->GetTypeId() == TYPEID_PLAYER)
+                                ((Player*)caster)->KilledMonsterCredit(24235);
+                    }
+                    else
+                    {
+                        if (target->GetTypeId() != TYPEID_PLAYER && target->GetEntry() == 23876)
+                            ((Creature*)target)->ForcedDespawn();
+                    }
+                    return;
+                case 57806:                                 // Q: The Restless Dead
+                    if (apply)
+                    {
+                        if (Unit* caster = GetCaster())
+                            if (caster->GetTypeId() == TYPEID_PLAYER)
+                                ((Player*)caster)->KilledMonsterCredit(30546);
+                    }
+                    else
+                    {
+                        if (target->GetTypeId() != TYPEID_PLAYER && target->GetEntry() == 31043)
+                            ((Creature*)target)->ForcedDespawn();
+                    }
+                    return;
+                case 43115:                                 // Q: Test at Sea
+                    if (apply && target->GetEntry() == 24120)
+                    {
+                        switch(urand(0, 3))
+                        {
+                            case 0: target->MonsterYell("I don't feel so good...", LANG_UNIVERSAL, 0); break;
+                            case 1: target->MonsterYell("That liquid... it reeks!", LANG_UNIVERSAL, 0); break;
+                            case 2: target->MonsterYell("Someone shoot that bat down!", LANG_UNIVERSAL, 0); break;
+                        }
+                        if (Unit* caster = GetCaster())
+                            if (caster->GetTypeId() == TYPEID_PLAYER)
+                                caster->CastSpell(caster, 43138, true);
+                    }
+                    return;
+                case 10848:
                 case 40131:
                 case 27978:
                     if (apply)
@@ -3077,6 +3156,82 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastCustomSpell(caster, 48210, &bp0, NULL, NULL, true, NULL, this);
                 }
             }
+            // Eye of Kilrogg
+            else if(GetId() == 126)
+            {
+                if(!GetCaster() || GetCaster()->GetTypeId() != TYPEID_PLAYER)
+                    return;
+                Player* caster = (Player*)GetCaster();
+                if(apply)
+                {
+                    if(Pet *eye = caster->FindGuardianWithEntry(GetSpellProto()->EffectMiscValue[EFFECT_INDEX_0]))
+                    {
+                        eye->addUnitState(UNIT_STAT_CONTROLLED);
+
+                        eye->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+
+                        eye->SetCharmerGuid(caster->GetObjectGuid());
+                        eye->setFaction(caster->getFaction());
+
+                        caster->SetCharm(eye);
+
+                        caster->GetCamera().SetView(eye);
+                        caster->SetClientControl(eye, 1);
+                        caster->SetMover(eye);
+
+                        eye->CombatStop(true);
+                        eye->DeleteThreatList();
+                        eye->getHostileRefManager().deleteReferences();
+
+                        if(CharmInfo *charmInfo = eye->InitCharmInfo(target))
+                        {
+                            charmInfo->InitPossessCreateSpells();
+                            charmInfo->SetReactState(REACT_PASSIVE);
+                            charmInfo->SetCommandState(COMMAND_STAY);
+                        }
+
+                        caster->PossessSpellInitialize();
+                        eye->AIM_Initialize();
+                        eye->SetSpeedRate(MOVE_RUN, 2.0f, true);
+                        //Glyph of kilrogg
+                        if(caster->HasAura(58081))
+                        {
+                            eye->SetSpeedRate(MOVE_RUN, 2.5f, true);
+                            uint32 zone, area;
+                            caster->GetZoneAndAreaId(zone, area);
+                            if(caster->GetMapId() == 530 || caster->GetMapId() == 571)
+                            {
+                                eye->SetSpeedRate(MOVE_FLIGHT, 2.5f, true);
+                                WorldPacket data(SMSG_MOVE_SET_CAN_FLY, 12);
+                                data << eye->GetPackGUID();
+                                data << uint32(1);
+                                caster->SendMessageToSet(&data,true);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if(Pet *eye = caster->FindGuardianWithEntry(GetSpellProto()->EffectMiscValue[EFFECT_INDEX_0]))
+                    {
+                        caster->RemoveGuardian(eye);
+                        eye->CombatStop();
+                        eye->AddObjectToRemoveList();
+                    }
+                    caster->InterruptSpell(CURRENT_CHANNELED_SPELL);  // the spell is not automatically canceled when interrupted, do it now
+                    caster->SetCharm(NULL);
+
+                    caster->GetCamera().ResetView();
+                    caster->SetClientControl(caster, 1);
+                    caster->SetMover(NULL);
+
+                    caster->RemovePetActionBar();
+
+                    // on delete only do caster related effects
+                    if(m_removeMode == AURA_REMOVE_BY_DELETE)
+                        return;
+                 }
+             }
             break;
         }
         case SPELLFAMILY_PRIEST:
