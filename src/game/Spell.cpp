@@ -1203,10 +1203,40 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         // mark effects that were already handled in Spell::HandleDelayedSpellLaunch on spell launch as processed
         for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
             if (IsEffectHandledOnDelayedSpellLaunch(m_spellInfo, SpellEffectIndex(i)))
-                mask &= ~(1<<i);
+                {
+                if(missInfo == SPELL_MISS_REFLECT)
+                {
+                    // Fill base damage struct (unitTarget - is real spell target)
+                    SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
+                    caster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, m_attackType);
+                    unitTarget->CalculateAbsorbResistBlock(caster, &damageInfo, m_spellInfo);
+                    caster->DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb);
+                    m_damage += damageInfo.damage;
+                }
+                else
+                 mask &= ~(1<<i);
+            }
 
         // maybe used in effects that are handled on hit
         m_damage += target->damage;
+    }
+
+    // Recheck immune (only for delayed spells)
+    if (m_spellInfo->speed && (
+        unit->IsImmunedToDamage(GetSpellSchoolMask(m_spellInfo)) ||
+        unit->IsImmuneToSpell(m_spellInfo)))
+    {
+        caster->SendSpellMiss(unit, m_spellInfo->Id, SPELL_MISS_IMMUNE);
+        missInfo = SPELL_MISS_IMMUNE;
+        return;
+    }
+
+    // recheck deflect for delayed spells on target with Deterrence,
+    if (m_spellInfo->speed && unit->HasAura(19263))
+    {
+        caster->SendSpellMiss(unit, m_spellInfo->Id, SPELL_MISS_DEFLECT);
+        missInfo = SPELL_MISS_DEFLECT;
+        return;
     }
 
     // recheck for visibility of target
@@ -1375,6 +1405,14 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
         return;
 
     Unit* realCaster = GetAffectiveCaster();
+
+    // Cyclone cast on immune targets -- TODO: check to see why below wont work
+    if (m_spellInfo->Id == 33786 && unit->IsImmunedToDamage(GetSpellSchoolMask(m_spellInfo)))
+    {
+        if (realCaster)
+            realCaster->SendSpellMiss(unit, m_spellInfo->Id, SPELL_MISS_IMMUNE);
+        return;
+    }
 
     // Recheck immune (only for delayed spells)
     if (m_spellInfo->speed && (
@@ -1793,6 +1831,10 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 38794:                                 // Murmur's Touch (h)
                 case 50988:                                 // Glare of the Tribunal (Halls of Stone)
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
+                case 63018:                                 // Searing Light (10 man)
+                case 65121:                                 // Searing Light (25 man)
+                case 63024:                                 // Gravity Bomb (10 man)
+                case 64234:                                 // Gravity Bomb (25 man)
                 case 63387:                                 // Rapid Burst
                 case 64531:                                 // Rapid Burst (h)
                 case 61916:                                 // Lightning Whirl (10 man)
@@ -1800,6 +1842,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 66336:                                 // Mistress' Kiss (Trial of the Crusader, ->
                 case 67077:                                 // -> Lord Jaraxxus encounter, 10 and 10 heroic)
                 case 66001:                                 // Touch of Darkness
+                case 60936:                                 // Surge of Power (25 man)
                 case 67281:
                 case 67282:
                 case 67283:
@@ -2364,6 +2407,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     break;
                 default:
                     FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+                    if(m_spellInfo->Id == 49821) // Mind Sear damage shouldn't apply to aura target
+                            targetUnitMap.remove(m_targets.getUnitTarget());
                     break;
             }
             break;
@@ -2467,7 +2512,12 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         {
             // Check original caster is GO - set its coordinates as dst cast
             if (WorldObject *caster = GetCastingObject())
+                {
+                if(m_spellInfo->Id == 61079 || m_spellInfo->Id == 56279)
+                    FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER,SPELL_TARGETS_HOSTILE);
+                else
                 m_targets.setDestination(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ());
+            }
             break;
         }
         case TARGET_ALL_HOSTILE_UNITS_AROUND_CASTER:
@@ -2552,7 +2602,11 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 FillRaidOrPartyHealthPriorityTargets(targetUnitMap, m_caster, m_caster, radius, 1, true, false, false);
             }
             else
+            {
                 FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_FRIENDLY);
+                if( m_spellInfo->Id == 27820) // Exclude caster from targets
+                    targetUnitMap.remove(m_caster);
+            }
             break;
         // TARGET_SINGLE_PARTY means that the spells can only be casted on a party member and not on the caster (some seals, fire shield from imp, etc..)
         case TARGET_SINGLE_PARTY:
@@ -2631,6 +2685,12 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             break;
         case TARGET_DUELVSPLAYER:
         {
+            if (m_spellInfo->SpellFamilyName == SPELLFAMILY_SHAMAN && m_spellInfo->SpellIconID == 276) // Stoneclaw Totem absorb has wrong target
+            {
+                targetUnitMap.push_back(m_caster);
+                break;
+            }
+
             Unit *target = m_targets.getUnitTarget();
             if(target)
             {
@@ -3242,6 +3302,16 @@ void Spell::prepare(SpellCastTargets const* targets, Aura* triggeredByAura)
         return;
     }
 
+    // Master of Ghouls DBC hack (It should cost nothing to be applied)
+    if (m_spellInfo->Id == 52143)
+    {
+        if(const SpellEntry* spellInfo = sSpellStore.LookupEntry(m_spellInfo->Id))
+        {
+            const_cast<SpellEntry*>(spellInfo)->powerType = 0;
+            const_cast<SpellEntry*>(spellInfo)->manaCost = 0;
+        }
+    }
+
     // Fill cost data
     m_powerCost = CalculatePowerCost(m_spellInfo, m_caster, this, m_CastItem);
 
@@ -3346,6 +3416,10 @@ void Spell::cancel()
 
 void Spell::cast(bool skipCheck)
 {
+    SpellEntry const* spellInfo = sSpellStore.LookupEntry(m_spellInfo->Id);
+    if (!spellInfo)
+        return;
+
     SetExecutedCurrently(true);
 
     if (!m_caster->CheckAndIncreaseCastCounter())
@@ -3417,6 +3491,12 @@ void Spell::cast(bool skipCheck)
         if(const SpellEntry* spellInfo = sSpellStore.LookupEntry(m_spellInfo->Id))
             const_cast<SpellEntry*>(spellInfo)->Attributes |= SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY;
 
+    // Improved Icy Talons
+    if (m_spellInfo->Id == 55610)
+        if(const SpellEntry* spellInfo = sSpellStore.LookupEntry(m_spellInfo->Id))
+            const_cast<SpellEntry*>(spellInfo)->AttributesEx6 |= SPELL_ATTR_EX6_UNK26;
+
+
     // different triggred (for caster) and precast (casted before apply effect to target) cases
     switch(m_spellInfo->SpellFamilyName)
     {
@@ -3425,16 +3505,35 @@ void Spell::cast(bool skipCheck)
             // Bandages
             if (m_spellInfo->Mechanic == MECHANIC_BANDAGE)
                 AddPrecastSpell(11196);                     // Recently Bandaged
+            else if (m_spellInfo->Id == 7744)                // Will of the Forsaken
+                AddTriggeredSpell(72757);                   // PvP trinket Cooldown
             // Stoneskin
             else if (m_spellInfo->Id == 20594)
                 AddTriggeredSpell(65116);                   // Stoneskin - armor 10% for 8 sec
             // Chaos Bane strength buff
             else if (m_spellInfo->Id == 71904)
                 AddTriggeredSpell(73422);
+            else if (m_spellInfo->Id == 42292)               // PvP trinket
+                AddTriggeredSpell(72752);                   // Will of the Forsaken Cooldown
             else if (m_spellInfo->Id == 74607)
                 AddTriggeredSpell(74610);                  // Fiery combustion
             else if (m_spellInfo->Id == 74799)
                 AddTriggeredSpell(74800);                  // Soul consumption
+
+            switch(m_spellInfo->Id)
+            {
+                case 5728: AddTriggeredSpell(55328); break;// Stoneclaw Totem, rank 1
+                case 6397: AddTriggeredSpell(55329); break;// Stoneclaw Totem, rank 2
+                case 6398: AddTriggeredSpell(55330); break;// Stoneclaw Totem, rank 3
+                case 6399: AddTriggeredSpell(55332); break;// Stoneclaw Totem, rank 4
+                case 10425: AddTriggeredSpell(55333); break;// Stoneclaw Totem, rank 5
+                case 10426: AddTriggeredSpell(55335); break;// Stoneclaw Totem, rank 6
+                case 25513: AddTriggeredSpell(55278); break;// Stoneclaw Totem, rank 7
+                case 58583: AddTriggeredSpell(58589); break;// Stoneclaw Totem, rank 8
+                case 58584: AddTriggeredSpell(58590); break;// Stoneclaw Totem, rank 9
+                case 58585: AddTriggeredSpell(58591); break;// Stoneclaw Totem, rank 10
+                default:break;
+            }
             break;
         }
         case SPELLFAMILY_MAGE:
@@ -3459,6 +3558,21 @@ void Spell::cast(bool skipCheck)
         }
         case SPELLFAMILY_WARRIOR:
         {
+           //Warrior T10 Protection 4P Bonus trigger from Bloodrage.
+           if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x00000100) && m_caster->HasAura(70844))
+               AddTriggeredSpell(70845); //Stoicism
+            // Item - Warrior T10 Melee 4P Bonus
+           if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0300000000000000)) //Slam! & Sudden Death
+           {
+               Aura* A=m_caster->GetAura(70847,EFFECT_INDEX_0);
+               if (A && roll_chance_i(A->GetModifier()->m_amount) )
+               {
+                   AddPrecastSpell(70849); //Extra Charge!
+                   // Slam! trigger Slam GCD Reduced . Sudden Death trigger Execute GCD Reduced
+                   int32 gcd_spell=m_spellInfo->Id==46916  ? 71072 : 71069 ;
+                   AddPrecastSpell(gcd_spell);
+               }
+           }
             // Shattering Throw
             if (m_spellInfo->Id == 64382)
                 AddTriggeredSpell(64380);                    // Shattering Throw
@@ -3531,6 +3645,9 @@ void Spell::cast(bool skipCheck)
             // Berserk (Bear Mangle part)
             else if (m_spellInfo->Id == 50334)
                 AddTriggeredSpell(58923);
+            // Item - Druid T10 Balance 2P Bonus
+            else if (m_spellInfo->Id == 16870 && m_caster->HasAura(70718))
+                AddTriggeredSpell(70721);
             break;
         }
         case SPELLFAMILY_ROGUE:
@@ -3672,6 +3789,10 @@ void Spell::cast(bool skipCheck)
 
 void Spell::handle_immediate()
 {
+    SpellEntry const* spellInfo = sSpellStore.LookupEntry(m_spellInfo->Id);
+    if (!spellInfo)
+        return;
+
     // process immediate effects (items, ground, etc.) also initialize some variables
     _handle_immediate_phase();
 
@@ -5122,6 +5243,23 @@ SpellCastResult Spell::CheckCast(bool strict)
                 return SPELL_FAILED_CASTER_AURASTATE;
         }
 
+        if(IsDispelSpell(m_spellInfo) && target->IsFriendlyTo(m_caster))
+        {
+            bool foundNeg = false;
+            Unit::SpellAuraHolderMap const& auras = target->GetSpellAuraHolderMap();
+            for(Unit::SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
+            {
+                SpellAuraHolder *holder = itr->second;
+                if (!holder->IsPositive())
+                {
+                    foundNeg = true;
+                    break;
+                }
+            }
+            if (!foundNeg)
+                return SPELL_FAILED_NOTHING_TO_DISPEL;
+        }
+
         bool non_caster_target = target != m_caster && !IsSpellWithCasterSourceTargetsOnly(m_spellInfo);
 
         if(non_caster_target)
@@ -5945,6 +6083,11 @@ SpellCastResult Spell::CheckCast(bool strict)
                 }
                 break;
             }
+            case SPELL_EFFECT_RESURRECT:
+            case SPELL_EFFECT_RESURRECT_NEW:
+                if(m_caster->GetTypeId() == TYPEID_PLAYER && ((Player*)m_caster)->isTotalImmune())
+                    return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                break;
             case SPELL_EFFECT_FRIEND_SUMMON:
             {
                 if(m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -6000,6 +6143,25 @@ SpellCastResult Spell::CheckCast(bool strict)
                     if(!m_caster->isInCombat()) 
                         return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW; 
                 break;
+            }
+            case SPELL_EFFECT_TRANS_DOOR:
+            {
+                if(m_caster->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if(m_spellInfo->Id == 698)
+                        if(((Player*)m_caster)->GetMap()->IsBattleGround())
+                            return SPELL_FAILED_NOT_HERE;
+                }
+                break;
+            }
+            case SPELL_EFFECT_TALENT_SPEC_SELECT:
+            {
+                // can't change during already started arena/battleground
+                if (m_caster->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if (((Player*)m_caster)->GetBattleGround() && ((Player*)m_caster)->GetBattleGround()->GetStatus() == STATUS_IN_PROGRESS)
+                        return SPELL_FAILED_NOT_IN_BATTLEGROUND;
+                }
             }
             default:break;
         }
@@ -6200,6 +6362,9 @@ SpellCastResult Spell::CheckCast(bool strict)
         }
     }
 
+    if (m_spellInfo->Id == 781 && !m_caster->isInCombat()) //Disengage
+         return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+
     // all ok
     return SPELL_CAST_OK;
 }
@@ -6210,7 +6375,12 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
         return SPELL_FAILED_CASTER_DEAD;
 
     if(m_caster->IsNonMeleeSpellCasted(false))              //prevent spellcast interruption by another spellcast
+    {
+        if(this->m_spellInfo->Id == 33395) // Water Elemental's Freeze should overcast Waterbolt
+            m_caster->InterruptNonMeleeSpells(false);
+        else
         return SPELL_FAILED_SPELL_IN_PROGRESS;
+    }
     if(m_caster->isInCombat() && IsNonCombatSpell(m_spellInfo))
         return SPELL_FAILED_AFFECTING_COMBAT;
 
@@ -6249,6 +6419,9 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
 
         if(_target)                                         //for target dead/target not valid
         {
+            if(!_target->isAlive())
+                return SPELL_FAILED_BAD_TARGETS;
+
             if(IsPositiveSpell(m_spellInfo->Id) && !IsDispelSpell(m_spellInfo))
             {
                 if(m_caster->IsHostileTo(_target))
@@ -6292,6 +6465,20 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
                                                             //cooldown
         if(((Creature*)m_caster)->HasSpellCooldown(m_spellInfo->Id))
             return SPELL_FAILED_NOT_READY;
+    }
+
+    // check spell focus object
+    if(m_spellInfo->RequiresSpellFocus)
+    {
+        GameObject* ok = NULL;
+        MaNGOS::GameObjectFocusCheck go_check(m_caster,m_spellInfo->RequiresSpellFocus);
+        MaNGOS::GameObjectSearcher<MaNGOS::GameObjectFocusCheck> checker(ok, go_check);
+        Cell::VisitGridObjects(m_caster, checker, m_caster->GetMap()->GetVisibilityDistance());
+
+        if(!ok)
+            return SPELL_FAILED_REQUIRES_SPELL_FOCUS;
+
+        focusObject = ok;                                   // game object found in range
     }
 
     return CheckCast(true);
@@ -7280,6 +7467,11 @@ bool Spell::CheckTarget( Unit* target, SpellEffectIndex eff )
         if (!CheckTargetCreatureType(target))
             return false;
     }
+
+    // Bloodlust / Heroism - Sated & Exhaustion debuffs
+    if(m_spellInfo->SpellFamilyName==SPELLFAMILY_SHAMAN && m_spellInfo->SpellFamilyFlags == UI64LIT(0x4000000000)
+        && (target->HasAura(57724) || target->HasAura(57723)) )
+        return false;
 
     // Check Aura spell req (need for AoE spells)
     if(m_spellInfo->targetAuraSpell && !target->HasAura(m_spellInfo->targetAuraSpell))
