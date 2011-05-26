@@ -1181,6 +1181,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     triggered_spell_id = 71879;
                     break;
                 }
+                //Glyph of Scourge Strike
+                case 58642:
+                {
+                        triggered_spell_id = 69961;
+                        break;
+                }
             }
             break;
         }
@@ -1742,8 +1748,15 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 // Priest T10 Healer 2P Bonus
                 case 70770:
                 {
-                    basepoints[0] = triggerAmount*damage/100/3;
-                    triggered_spell_id = 70772;
+                    // Flash Heal
+                    if (procSpell->SpellFamilyFlags & 0x800)
+                    {
+                        triggered_spell_id = 70772;
+                        SpellEntry const* blessHealing = sSpellStore.LookupEntry(triggered_spell_id);
+                        if (!blessHealing)
+                            return SPELL_AURA_PROC_FAILED;
+                        basepoints[0] = int32(triggerAmount * damage / 100 / (GetSpellMaxDuration(blessHealing) / blessHealing->EffectAmplitude[0]));
+                    }
                     break;
                 }
             }
