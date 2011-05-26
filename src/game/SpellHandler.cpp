@@ -632,8 +632,19 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
             Unit *caster = (itr->second.castFlags & 0x1) ? (Unit*)_player : (Unit*)unit;
             Unit *target = (itr->second.castFlags & 0x2) ? (Unit*)_player : (Unit*)unit;
 
+            if(itr->second.castFlags & 0x4)
+            {
+                unit->SetDeathState(JUST_DIED);
+                unit->RemoveCorpse();
+                unit->SetHealth(0);
+            }
+
             caster->CastSpell(target, itr->second.spellId, true);
         }
+    }
+    if (unit->GetObjectGuid().IsVehicle())
+    {
+        _player->EnterVehicle(unit->GetVehicleKit());
     }
 }
 
