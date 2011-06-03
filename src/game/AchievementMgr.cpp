@@ -487,6 +487,8 @@ void AchievementMgr::ResetAchievementCriteria(AchievementCriteriaTypes type, uin
                             }
                     }
         }
+        else
+            continue;
 
         switch (type)
         {

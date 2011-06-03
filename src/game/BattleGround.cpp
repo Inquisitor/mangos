@@ -82,6 +82,51 @@ namespace MaNGOS
             va_list* i_args;
     };
 
+    class BattleGroundWarningBuilder
+    {
+        public:
+            BattleGroundWarningBuilder(int32 textId, va_list* args = NULL)
+                : i_textId(textId), i_args(args) {}
+            void operator()(WorldPacket& data, int32 loc_idx)
+            {
+                char const* text = sObjectMgr.GetMangosString(i_textId,loc_idx);
+
+                if (i_args)
+                {
+                    // we need copy va_list before use or original va_list will corrupted
+                    va_list ap;
+                    va_copy(ap,*i_args);
+
+                    char str [2048];
+                    vsnprintf(str,2048,text, ap );
+                    va_end(ap);
+
+                    WorldPacket data(SMSG_MESSAGECHAT, 200);
+
+                    do_helper(data,&str[0]);
+                }
+                else
+                    do_helper(data,text);
+            }
+        private:
+            void do_helper(WorldPacket& data, char const* text)
+            {
+                data << uint8(CHAT_MSG_RAID_BOSS_EMOTE);
+                data << uint32(LANG_UNIVERSAL);
+                data << uint64(0);             // there 0 for BG messages
+                data << uint32(0);             // can be chat msg group or something
+                data << uint32(1);
+                data << uint8(0);
+                data << uint64(0);
+                data << uint32(strlen(text)+1);
+                data << text;
+                data << uint8(0);
+            }
+
+            int32 i_textId;
+            va_list* i_args;
+    };
+
     class BattleGroundYellBuilder
     {
         public:
@@ -764,7 +809,8 @@ void BattleGround::EndBattleGround(Team winner)
     }
     else
     {
-        SetWinner(3);
+        SetWinner(WINNER_NONE);
+        winmsg_id = LANG_BG_WIN_NONE;
     }
 
     SetStatus(STATUS_WAIT_LEAVE);
@@ -1881,38 +1927,9 @@ void BattleGround::SendYell2ToAll(int32 entry, uint32 language, ObjectGuid guid,
 
 void BattleGround::SendWarningToAll(int32 entry, ...)
 {
-    const char *format = sObjectMgr.GetMangosStringForDBCLocale(entry);
-    va_list ap;
-    char str [1024];
-    va_start(ap, entry);
-    vsnprintf(str,1024,format, ap);
-    va_end(ap);
-    std::string msg = (std::string)str;
-
-    WorldPacket data(SMSG_MESSAGECHAT, 200);
-
-    data << (uint8)CHAT_MSG_RAID_BOSS_EMOTE;
-    data << (uint32)LANG_UNIVERSAL;
-    data << (uint64)0;
-    data << (uint32)0;                                     // 2.1.0
-    data << (uint32)1;
-    data << (uint8)0;
-    data << (uint64)0;
-    data << (uint32)(strlen(msg.c_str())+1);
-    data << msg.c_str();
-    data << (uint8)0;
-    uint8 control = 0;
-    for (BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
-    {
-        if (control == 40)  // More than 40 iterations? This is imposible, so, break me!
-            break;
-
-        if (Player *plr = ObjectAccessor::FindPlayer(ObjectGuid(itr->first)))
-            if (plr->GetSession())
-                plr->GetSession()->SendPacket(&data);
-
-        ++control;
-    }
+    MaNGOS::BattleGroundWarningBuilder bg_builder(entry);
+    MaNGOS::LocalizedPacketDo<MaNGOS::BattleGroundWarningBuilder> bg_do(bg_builder);
+    BroadcastWorker(bg_do);
 }
 
 void BattleGround::EndNow()

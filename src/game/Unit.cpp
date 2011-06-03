@@ -9365,8 +9365,8 @@ void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false
 
             threat*=bonus;
 
-        m_ThreatManager.addThreat(pVictim, threat, crit, schoolMask, threatSpell);
         }
+        m_ThreatManager.addThreat(pVictim, threat, crit, schoolMask, threatSpell);
     }
 }
 
