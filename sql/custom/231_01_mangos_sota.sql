@@ -12,14 +12,9 @@ UPDATE `gameobject_template` SET `faction` = 14 WHERE `entry` in (192549,190727,
 DELETE FROM `gameobject_template` WHERE `entry` in (190753,194086);
 INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `faction`, `flags`, `size`, `questItem1`, `questItem2`, `questItem3`, `questItem4`, `questItem5`, `questItem6`, `data0`, `data1`, `data2`, `data3`, `data4`, `data5`, `data6`, `data7`, `data8`, `data9`, `data10`, `data11`, `data12`, `data13`, `data14`, `data15`, `data16`, `data17`, `data18`, `data19`, `data20`, `data21`, `data22`, `data23`, `ScriptName`) VALUES
 (190753, 22, 8582, 'Seaforium Barrel', '', '', '', 12, 0, 2, 0, 0, 0, 0, 0, 0, 52415, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ''),
-(194086, 22, 8582, 'Seaforium Barrel', '', '', '', 29, 0, 2, 0, 0, 0, 0, 0, 0, 52415, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ''),
-(402000, 22, 8582, 'Seaforium Barrel', '', '', '', 12, 0, 2, 0, 0, 0, 0, 0, 0, 52415, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'go_sa_bomb'),
-(402001, 22, 8582, 'Seaforium Barrel', '', '', '', 29, 0, 2, 0, 0, 0, 0, 0, 0, 52415, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'go_sa_bomb');
+(194086, 22, 8582, 'Seaforium Barrel', '', '', '', 29, 0, 2, 0, 0, 0, 0, 0, 0, 52415, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '');
 UPDATE `locales_gameobject` SET name_loc3 = 'Zephyriumbombe' WHERE entry = '190753';
 UPDATE `locales_gameobject` SET name_loc3 = 'Zephyriumbombe' WHERE entry = '194086';
-DELETE FROM `locales_gameobject` WHERE `entry` in (402000, 402001);
-INSERT INTO `locales_gameobject` VALUES (402000, '', '', 'Zephyriumbombe', '', '', '', '', 'Сефориевая Бомба', '', '', '', '', '', '', '', '' );
-INSERT INTO `locales_gameobject` VALUES (402001, '', '', 'Zephyriumbombe', '', '', '', '', 'Сефориевая Бомба', '', '', '', '', '', '', '', '' );
 
 -- Demolisher
 UPDATE creature_template SET npcflag = 1, minlevel = 70, maxlevel = 70, minhealth = 89820, maxhealth = 89820, spell1 = 52338, spell2 = 60206, `ScriptName` = 'npc_sa_demolisher', RegenHealth=0 WHERE entry = 28781;
@@ -437,4 +432,4 @@ INSERT INTO `gameobject_battleground` (`guid` ,`event1` ,`event2`) VALUES
 ('300091', '13', '1'),
 ('300092', '13', '1'),
 ('300093', '13', '1'),
-('300094', '13', '1'),
+('300094', '13', '1');

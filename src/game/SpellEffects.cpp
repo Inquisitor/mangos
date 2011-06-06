@@ -7356,7 +7356,18 @@ void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
 
 void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
 {
-    uint32 gameobject_id = m_spellInfo->EffectMiscValue[eff_idx];
+    uint32 gameobject_id;
+
+    if(m_spellInfo->Id == 52417)
+    {
+        Player *pl = (Player*)m_caster;
+        if(pl->GetTeam() == ALLIANCE)
+            gameobject_id = m_spellInfo->EffectMiscValue[eff_idx];
+        else
+            gameobject_id = 194086;
+    }
+    else
+        gameobject_id = m_spellInfo->EffectMiscValue[eff_idx];
 
     GameObject* pGameObj = new GameObject;
 

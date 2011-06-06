@@ -383,8 +383,13 @@ void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
 
     for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
     {
-        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+        Player *plr = sObjectMgr.GetPlayer(itr->first);
+
+        if (plr)
             TeleportPlayerToCorrectLoc(plr, true);
+
+        if (plr->GetBGTeam() == defender && plr->GetItemByEntry(39213) != NULL)
+            plr->DestroyItemCount(39213, 1, true);
     }
 
     UpdatePhase();
@@ -881,11 +886,8 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
 
 void BattleGroundSA::HandleKillPlayer(Player* player, Player* killer)
 {
-    if (player->GetItemByEntry(39213) != NULL)
-    {
-        player->DestroyItemCount(39213, 1, true);
-        player->SummonGameobject(GetDefender() == ALLIANCE ? 402001 : 402000, player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetOrientation(), 600000);
-    }
+
+    player->CastSpell(player, 52417, false);
 
     BattleGround::HandleKillPlayer(player, killer);
 }
