@@ -611,6 +611,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_BOOL_LFR_EXTEND, "LFR.Extend",false);
     setConfigMinMax(CONFIG_UINT32_LFG_MAXKICKS, "LFG.MaxKicks", 5, 1, 10);
 
+    setConfig(CONFIG_BOOL_CHECK_GO_IN_PATH, "CheckGOInPath",false);
+
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
 
     setConfigPos(CONFIG_UINT32_MAX_HONOR_POINTS, "MaxHonorPoints", 75000);
@@ -988,8 +990,11 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading InstanceTemplate..." );
     sObjectMgr.LoadInstanceTemplate();
 
-    sLog.outString( "Loading SkillLineAbilityMultiMap Data..." );
+    sLog.outString("Loading SkillLineAbilityMultiMap Data...");
     sSpellMgr.LoadSkillLineAbilityMap();
+
+    sLog.outString("Loading SkillRaceClassInfoMultiMap Data...");
+    sSpellMgr.LoadSkillRaceClassInfoMap();
 
     ///- Clean up and pack instances
     sLog.outString( "Cleaning up instances..." );
@@ -1055,6 +1060,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString( "Loading Creature templates..." );
     sObjectMgr.LoadCreatureTemplates();
+
+    sLog.outString( "Loading Creature spells..." );
+    sObjectMgr.LoadCreatureSpells();
 
     sLog.outString( "Loading Creature Model for race..." ); // must be after creature templates
     sObjectMgr.LoadCreatureModelRace();
@@ -1419,6 +1427,9 @@ void World::SetInitialWorldSettings()
     sLog.outString("Starting Game Event system..." );
     uint32 nextGameEvent = sGameEventMgr.Initialize();
     m_timers[WUPDATE_EVENTS].SetInterval(nextGameEvent);    //depend on next event
+
+    sLog.outString("Loading Warden Modules..." );
+    WardenModuleStorage.Init();
 
     // Delete all characters which have been deleted X days before
     Player::DeleteOldCharacters();

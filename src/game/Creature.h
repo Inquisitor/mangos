@@ -148,6 +148,8 @@ struct CreatureInfo
         return vehicleId ? HIGHGUID_VEHICLE : HIGHGUID_UNIT;
     }
 
+    ObjectGuid GetObjectGuid(uint32 lowguid) const { return ObjectGuid(GetHighGuid(), Entry, lowguid); }
+
     SkillType GetRequiredLootSkill() const
     {
         if(type_flags & CREATURE_TYPEFLAGS_HERBLOOT)
@@ -203,8 +205,7 @@ struct CreatureData
     uint8 spawnMask;
 
     // helper function
-    HighGuid GetHighGuid() const;
-    ObjectGuid GetObjectGuid(uint32 lowguid) const { return ObjectGuid(GetHighGuid(), id, lowguid); }
+    ObjectGuid GetObjectGuid(uint32 lowguid) const;
 };
 
 // from `creature_addon` and `creature_template_addon`tables
@@ -237,6 +238,19 @@ struct CreatureModelRace
     uint32 creature_entry;                                  // Modelid from creature_template.entry will be selected
     uint32 modelid_racial;                                  // Explicit modelid. Used if creature_template entry is not defined
 };
+
+struct CreatureSpellEntry
+{
+    CreatureSpellEntry() : spell(0), activeState(0), disabled(0), flags(0) {};
+
+    uint32 spell;
+    uint8  activeState;
+    int32  flags;
+    bool   disabled;
+};
+
+typedef std::map<uint8 /* index */,     CreatureSpellEntry> CreatureSpellsList;
+typedef std::map<uint32 /*creature_id*/,CreatureSpellsList> CreatureSpellStorage;
 
 // GCC have alternative #pragma pack() syntax and old gcc version not support pack(pop), also any gcc version not support it at some platform
 #if defined( __GNUC__ )
@@ -458,7 +472,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         char const* GetSubName() const { return GetCreatureInfo()->SubName; }
 
-        void Update(uint32 update_diff, uint32 time);       // overwrite Unit::Update
+        void Update(uint32 update_diff, uint32 time) override;  // overwrite Unit::Update
 
         virtual void RegenerateAll(uint32 update_diff);
         void GetRespawnCoord(float &x, float &y, float &z, float* ori = NULL, float* dist =NULL) const;
@@ -556,7 +570,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         bool HasSpellCooldown(uint32 spell_id) const;
         bool HasCategoryCooldown(uint32 spell_id) const;
 
-        bool HasSpell(uint32 spellID) const;
+        bool HasSpell(uint32 spellID);
 
         bool UpdateEntry(uint32 entry, Team team = ALLIANCE, const CreatureData* data = NULL, GameEventCreatureData const* eventData = NULL, bool preserveHPAndPower = true);
 
@@ -614,7 +628,9 @@ class MANGOS_DLL_SPEC Creature : public Unit
         SpellEntry const *ReachWithSpellAttack(Unit *pVictim);
         SpellEntry const *ReachWithSpellCure(Unit *pVictim);
 
-        uint32 m_spells[CREATURE_MAX_SPELLS];
+        uint32 GetSpell(uint8 index);
+        uint8  GetSpellMaxIndex();
+
         CreatureSpellCooldowns m_CreatureSpellCooldowns;
         CreatureSpellCooldowns m_CreatureCategoryCooldowns;
 
@@ -750,6 +766,8 @@ class MANGOS_DLL_SPEC Creature : public Unit
         float m_combatStartZ;
 
         Position m_summonPos;
+
+        CreatureSpellsList m_spellOverride;
 
     private:
         GridReference<Creature> m_gridRef;

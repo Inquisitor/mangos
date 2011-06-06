@@ -1261,7 +1261,7 @@ struct MapEntry
     uint32  MapID;                                          // 0        m_ID
     //char*       internalname;                             // 1        m_Directory
     uint32  map_type;                                       // 2        m_InstanceType
-    //uint32 mapFlags;                                      // 3        m_Flags (0x100 - CAN_CHANGE_PLAYER_DIFFICULTY)
+    uint32 mapFlags;                                        // 3        m_Flags (0x100 - CAN_CHANGE_PLAYER_DIFFICULTY)
     //uint32 isPvP;                                         // 4        m_PVP 0 or 1 for battlegrounds (not arenas)
     char*   name[16];                                       // 5-20     m_MapName_lang
                                                             // 21 string flags
@@ -1303,6 +1303,11 @@ struct MapEntry
     bool IsContinent() const
     {
         return MapID == 0 || MapID == 1 || MapID == 530 || MapID == 571;
+    }
+
+    bool IsTransport() const
+    {
+        return map_type == MAP_COMMON &&  mapFlags == 1;
     }
 };
 
@@ -1491,17 +1496,17 @@ struct ScalingStatValuesEntry
     uint32    displayOrder;                                 // 19       m_sortIndex
 };*/
 
-/*struct SkillRaceClassInfoEntry
+struct SkillRaceClassInfoEntry
 {
-    uint32    id;                                           // 0        m_ID
+    //uint32    id;                                         // 0        m_ID
     uint32    skillId;                                      // 1        m_skillID
     uint32    raceMask;                                     // 2        m_raceMask
     uint32    classMask;                                    // 3        m_classMask
     uint32    flags;                                        // 4        m_flags
     uint32    reqLevel;                                     // 5        m_minLevel
-    uint32    skillTierId;                                  // 6        m_skillTierID
-    uint32    skillCostID;                                  // 7        m_skillCostIndex
-};*/
+    //uint32    skillTierId;                                // 6        m_skillTierID
+    //uint32    skillCostID;                                // 7        m_skillCostIndex
+};
 
 /*struct SkillTiersEntry{
     uint32    id;                                           // 0        m_ID

@@ -37,7 +37,7 @@ void MapManager::LoadTransports()
 
     if( !result )
     {
-        barGoLink bar( 1 );
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -45,7 +45,7 @@ void MapManager::LoadTransports()
         return;
     }
 
-    barGoLink bar( (int)result->GetRowCount() );
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -73,6 +73,13 @@ void MapManager::LoadTransports()
             sLog.outErrorDb("Transport ID:%u, Name: %s, will not be loaded, gameobject_template type wrong", entry, name.c_str());
             delete t;
             continue;
+        }
+
+        // setting mapID's, binded to transport GO
+        if (goinfo->moTransport.mapID)
+        {
+            m_mapOnTransportGO.insert(std::make_pair(goinfo->moTransport.mapID,t));
+            DEBUG_LOG("Loading transport %u between %s, %s map id %u", entry, name.c_str(), goinfo->name, goinfo->moTransport.mapID);
         }
 
         // sLog.outString("Loading transport %d between %s, %s", entry, name.c_str(), goinfo->name);
@@ -121,6 +128,7 @@ void MapManager::LoadTransports()
 
     sLog.outString();
     sLog.outString( ">> Loaded %u transports", count );
+    sLog.outString( ">> Loaded %u transports with mapID's", m_mapOnTransportGO.size() );
 
     // check transport data DB integrity
     result = WorldDatabase.Query("SELECT gameobject.guid,gameobject.id,transports.name FROM gameobject,transports WHERE gameobject.id = transports.entry");
@@ -139,6 +147,22 @@ void MapManager::LoadTransports()
 
         delete result;
     }
+}
+
+bool MapManager::IsTransportMap(uint32 mapid)
+{
+    TransportGOMap::const_iterator itr = m_mapOnTransportGO.find(mapid);
+    if (itr != m_mapOnTransportGO.end())
+        return true;
+    return false;
+}
+
+Transport* MapManager::GetTransportByGOMapId(uint32 mapid)
+{
+    TransportGOMap::const_iterator itr = m_mapOnTransportGO.find(mapid);
+    if (itr != m_mapOnTransportGO.end())
+        return itr->second;
+    return NULL;
 }
 
 Transport::Transport() : GameObject()

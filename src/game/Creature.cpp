@@ -50,10 +50,10 @@
 #include "Policies/SingletonImp.h"
 
 
-HighGuid CreatureData::GetHighGuid() const
+ObjectGuid CreatureData::GetObjectGuid(uint32 lowguid) const
 {
     // info existence checked at loading
-    return ObjectMgr::GetCreatureTemplate(id)->GetHighGuid();
+    return ObjectMgr::GetCreatureTemplate(id)->GetObjectGuid(lowguid);
 }
 
 TrainerSpell const* TrainerSpellData::Find(uint32 spell_id) const
@@ -167,9 +167,6 @@ m_creatureInfo(NULL), m_splineFlags(SPLINEFLAG_WALKMODE)
     m_regenTimer = 200;
     m_valuesCount = UNIT_END;
 
-    for(int i = 0; i < CREATURE_MAX_SPELLS; ++i)
-        m_spells[i] = 0;
-
     m_CreatureSpellCooldowns.clear();
     m_CreatureCategoryCooldowns.clear();
 
@@ -250,13 +247,8 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=NULL*/, GameE
         return false;
     }
 
-    // difficulties for dungeons/battleground ordered in normal way
-    // and if more high version not exist must be used lesser version
-    // for raid order different:
-    // 10 man normal version must be used instead nonexistent 10 man heroic version
-    // 25 man normal version must be used instead nonexistent 25 man heroic version
     CreatureInfo const *cinfo = normalInfo;
-    for (uint8 diff = uint8(GetMap()->GetDifficulty()); diff > 0;)
+    for (Difficulty diff = GetMap()->GetDifficulty(); diff > REGULAR_DIFFICULTY; diff = GetPrevDifficulty(diff, GetMap()->IsRaid()))
     {
         // we already have valid Map pointer for current creature!
         if (normalInfo->DifficultyEntry[diff - 1])
@@ -268,13 +260,6 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=NULL*/, GameE
             // check and reported at startup, so just ignore (restore normalInfo)
             cinfo = normalInfo;
         }
-
-        // for raid heroic to normal, for other to prev in normal order
-        if ((diff == int(RAID_DIFFICULTY_10MAN_HEROIC) || diff == int(RAID_DIFFICULTY_25MAN_HEROIC)) &&
-            GetMap()->IsRaid())
-            diff -= 2;                                      // to normal raid difficulty cases
-        else
-            --diff;
     }
 
     SetEntry(Entry);                                        // normal entry always
@@ -397,9 +382,6 @@ bool Creature::UpdateEntry(uint32 Entry, Team team, const CreatureData *data /*=
         else
             SetPvP(false);
     }
-
-    for(int i = 0; i < CREATURE_MAX_SPELLS; ++i)
-        m_spells[i] = GetCreatureInfo()->spells[i];
 
     SetVehicleId(GetCreatureInfo()->vehicleId);
 
@@ -1289,7 +1271,7 @@ bool Creature::LoadFromDB(uint32 guidlow, Map *map)
     GameEventCreatureData const* eventData = sGameEventMgr.GetCreatureUpdateDataForActiveEvent(guidlow);
 
     // Creature can be loaded already in map if grid has been unloaded while creature walk to another grid
-    if (map->GetCreature(data->GetObjectGuid(guidlow)))
+    if (map->GetCreature(cinfo->GetObjectGuid(guidlow)))
         return false;
 
     CreatureCreatePos pos(map, data->posX, data->posY, data->posZ, data->orientation, data->phaseMask);
@@ -1651,14 +1633,16 @@ SpellEntry const *Creature::ReachWithSpellAttack(Unit *pVictim)
     if(!pVictim)
         return NULL;
 
-    for(uint32 i = 0; i < CREATURE_MAX_SPELLS; ++i)
+    for(uint32 i = 0; i <= GetSpellMaxIndex(); ++i)
     {
-        if(!m_spells[i])
+        uint32 spellID = GetSpell(i);
+        if(!spellID)
             continue;
-        SpellEntry const *spellInfo = sSpellStore.LookupEntry(m_spells[i] );
+
+        SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellID);
         if(!spellInfo)
         {
-            sLog.outError("WORLD: unknown spell id %i", m_spells[i]);
+            sLog.outError("WORLD: unknown spell id %i", spellID);
             continue;
         }
 
@@ -1703,14 +1687,16 @@ SpellEntry const *Creature::ReachWithSpellCure(Unit *pVictim)
     if(!pVictim)
         return NULL;
 
-    for(uint32 i = 0; i < CREATURE_MAX_SPELLS; ++i)
+    for(uint32 i = 0; i <= GetSpellMaxIndex(); ++i)
     {
-        if(!m_spells[i])
+        uint32 spellID = GetSpell(i);
+        if (spellID)
             continue;
-        SpellEntry const *spellInfo = sSpellStore.LookupEntry(m_spells[i] );
+
+        SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellID);
         if(!spellInfo)
         {
-            sLog.outError("WORLD: unknown spell id %i", m_spells[i]);
+            sLog.outError("WORLD: unknown spell id %i", spellID);
             continue;
         }
 
@@ -2140,13 +2126,12 @@ bool Creature::IsInEvadeMode() const
     return !i_motionMaster.empty() && i_motionMaster.GetCurrentMovementGeneratorType() == HOME_MOTION_TYPE;
 }
 
-bool Creature::HasSpell(uint32 spellID) const
+bool Creature::HasSpell(uint32 spellID)
 {
-    uint8 i;
-    for(i = 0; i < CREATURE_MAX_SPELLS; ++i)
-        if(spellID == m_spells[i])
-            break;
-    return i < CREATURE_MAX_SPELLS;                         // break before end of iteration of known spells
+    for(uint8 i = 0; i <= GetSpellMaxIndex(); ++i)
+        if (spellID == GetSpell(i))
+            return true;
+    return false;
 }
 
 time_t Creature::GetRespawnTimeEx() const
@@ -2515,4 +2500,41 @@ void Creature::SpawnInMaps(uint32 db_guid, CreatureData const* data)
 bool Creature::HasStaticDBSpawnData() const
 {
     return sObjectMgr.GetCreatureData(GetGUIDLow()) != NULL;
+}
+
+uint32 Creature::GetSpell(uint8 index)
+{
+    if (index > GetSpellMaxIndex())
+        return 0;
+
+    CreatureSpellsList const* spellList = sObjectMgr.GetCreatureSpells(GetEntry());
+    if (!spellList)
+        return 0;
+
+    CreatureSpellsList::const_iterator itr = spellList->find(index);
+
+    if (itr == spellList->end())
+        return 0;
+
+    CreatureSpellEntry const* spellEntry = &itr->second;
+
+    if (!spellEntry)
+        return 0;
+
+    if (spellEntry->disabled)
+        return 0;
+
+    // other checks there
+
+    return spellEntry->spell;
+}
+
+uint8 Creature::GetSpellMaxIndex()
+{
+    CreatureSpellsList const* spellList = sObjectMgr.GetCreatureSpells(GetEntry());
+    if (!spellList)
+        return 0;
+
+    return (spellList ? spellList->rbegin()->first : 0);
+
 }

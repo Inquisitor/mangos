@@ -218,16 +218,25 @@ bool Pet::LoadPetFromDB( Player* owner, uint32 petentry, uint32 petnumber, bool 
     {
         case SUMMON_PET:
             petlevel=owner->getLevel();
+            LoadCreatureAddon(true);
+            RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP | UNIT_BYTE2_FLAG_SANCTUARY | UNIT_BYTE2_FLAG_PVP);
             break;
         case HUNTER_PET:
             SetByteFlag(UNIT_FIELD_BYTES_2, 2, fields[9].GetBool() ? UNIT_CAN_BE_ABANDONED : UNIT_CAN_BE_RENAMED | UNIT_CAN_BE_ABANDONED);
+            RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP | UNIT_BYTE2_FLAG_SANCTUARY | UNIT_BYTE2_FLAG_PVP);
             SetMaxPower(POWER_HAPPINESS, GetCreatePowers(POWER_HAPPINESS));
             SetPower(POWER_HAPPINESS, fields[12].GetUInt32());
             setPowerType(POWER_FOCUS);
             break;
         default:
+            LoadCreatureAddon(true);
+            RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP | UNIT_BYTE2_FLAG_SANCTUARY | UNIT_BYTE2_FLAG_PVP);
             sLog.outError("Pet have incorrect type (%u) for pet loading.", getPetType());
+            break;
     }
+
+    if (getFaction() != owner->getFaction())
+        setFaction(owner->getFaction());
 
     if(owner->IsPvP())
         SetPvP(true);
@@ -270,8 +279,8 @@ bool Pet::LoadPetFromDB( Player* owner, uint32 petentry, uint32 petnumber, bool 
     // since last save (in seconds)
     uint32 timediff = uint32(time(NULL) - fields[14].GetUInt64());
 
-    m_resetTalentsCost = fields[15].GetUInt32();
-    m_resetTalentsTime = fields[16].GetUInt64();
+    m_resetTalentsCost = fields[15].GetUInt32();  // deprecated
+    m_resetTalentsTime = fields[16].GetUInt64();  // deprecated
 
     delete result;
 
@@ -297,7 +306,6 @@ bool Pet::LoadPetFromDB( Player* owner, uint32 petentry, uint32 petnumber, bool 
     {
         SetHealth(GetMaxHealth());
         SetPower(getPowerType(), GetMaxPower(getPowerType()));
-        LoadCreatureAddon(true);
     }
 
     UpdateWalkMode(owner);
@@ -954,10 +962,6 @@ bool Pet::InitStatsForLevel(uint32 petlevel, Unit* owner)
         case SUMMON_PET:
         {
             SetByteValue(UNIT_FIELD_BYTES_0, 1, CLASS_MAGE);
-
-            // this enables popup window (pet dismiss, cancel)
-            SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
-
             if (cinfo->family == CREATURE_FAMILY_GHOUL)
                 setPowerType(POWER_ENERGY);
             break;
@@ -970,9 +974,6 @@ bool Pet::InitStatsForLevel(uint32 petlevel, Unit* owner)
             SetByteValue(UNIT_FIELD_BYTES_0, 1, CLASS_WARRIOR);
             SetByteValue(UNIT_FIELD_BYTES_0, 2, GENDER_NONE);
             SetSheath(SHEATH_STATE_MELEE);
-
-            // this enables popup window (pet abandon, cancel)
-            SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
 
             CreatureFamilyEntry const* cFamily = sCreatureFamilyStore.LookupEntry(cinfo->family);
             if(cFamily && cFamily->minScale > 0.0f && getPetType()==HUNTER_PET)
@@ -1726,7 +1727,7 @@ void Pet::InitPetCreateSpells()
     CastPetAuras(false);
 }
 
-bool Pet::resetTalents(bool no_cost)
+bool Pet::resetTalents()
 {
     Unit *owner = GetOwner();
     if (!owner || owner->GetTypeId()!=TYPEID_PLAYER)
@@ -1754,17 +1755,6 @@ bool Pet::resetTalents(bool no_cost)
 
     uint32 cost = 0;
 
-    if(!no_cost)
-    {
-        cost = resetTalentsCost();
-
-        if (player->GetMoney() < cost)
-        {
-            player->SendBuyError( BUY_ERR_NOT_ENOUGHT_MONEY, 0, 0, 0);
-            return false;
-        }
-    }
-
     for (unsigned int i = 0; i < sTalentStore.GetNumRows(); ++i)
     {
         TalentEntry const *talentInfo = sTalentStore.LookupEntry(i);
@@ -1787,13 +1777,6 @@ bool Pet::resetTalents(bool no_cost)
 
     UpdateFreeTalentPoints(false);
 
-    if(!no_cost)
-    {
-        player->ModifyMoney(-(int32)cost);
-
-        m_resetTalentsCost = cost;
-        m_resetTalentsTime = time(NULL);
-    }
     player->PetSpellInitialize();
     return true;
 }
@@ -1806,7 +1789,7 @@ void Pet::resetTalentsForAllPetsOf(Player* owner, Pet* online_pet /*= NULL*/)
 
     // reset for online
     if(online_pet)
-        online_pet->resetTalents(true);
+        online_pet->resetTalents();
 
     // now need only reset for offline pets (all pets except online case)
     uint32 except_petnumber = online_pet ? online_pet->GetCharmInfo()->GetPetNumber() : 0;
@@ -1894,7 +1877,7 @@ void Pet::UpdateFreeTalentPoints(bool resetIfNeed)
         {
             Unit *owner = GetOwner();
             if (!owner || owner->GetTypeId() != TYPEID_PLAYER || ((Player*)owner)->GetSession()->GetSecurity() < SEC_ADMINISTRATOR)
-                resetTalents(true);
+                resetTalents();
             else
                 SetFreeTalentPoints(0);
         }
@@ -1916,24 +1899,6 @@ void Pet::InitTalentForLevel()
 
     if(!m_loading)
         ((Player*)owner)->SendTalentsInfoData(true);
-}
-
-uint32 Pet::resetTalentsCost() const
-{
-    uint32 days = uint32(sWorld.GetGameTime() - m_resetTalentsTime)/DAY;
-
-    // The first time reset costs 10 silver; after 1 day cost is reset to 10 silver
-    if(m_resetTalentsCost < 10*SILVER || days > 0)
-        return 10*SILVER;
-    // then 50 silver
-    else if(m_resetTalentsCost < 50*SILVER)
-        return 50*SILVER;
-    // then 1 gold
-    else if(m_resetTalentsCost < 1*GOLD)
-        return 1*GOLD;
-    // then increasing at a rate of 1 gold; cap 10 gold
-    else
-        return (m_resetTalentsCost + 1*GOLD > 10*GOLD ? 10*GOLD : m_resetTalentsCost + 1*GOLD);
 }
 
 uint8 Pet::GetMaxTalentPointsForLevel(uint32 level)
@@ -2055,7 +2020,7 @@ bool Pet::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* ci
         m_charmInfo->SetPetNumber(pet_number, false);
 
     setFaction(owner->getFaction());
-                                   // Faction be owerwritten later, if ForceFaction present
+                                           // Faction be owerwritten later, if ForceFaction present
 
     SetOwnerGuid(owner->GetObjectGuid());
     SetCreatorGuid(owner->GetObjectGuid());
@@ -2065,7 +2030,8 @@ bool Pet::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* ci
 
     if (getPetType() == MINI_PET)                           // always non-attackable
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-
+    else
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
     return true;
 }
 
@@ -2893,18 +2859,16 @@ bool Pet::Summon()
     else
         GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
 
-    SetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP, uint32(time(NULL)));
-
     switch (getPetType())
     {
         case GUARDIAN_PET:
         case PROTECTOR_PET:
         {
+            LoadCreatureAddon(true);
+            RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP | UNIT_BYTE2_FLAG_SANCTUARY | UNIT_BYTE2_FLAG_PVP);
             SetUInt32Value(UNIT_NPC_FLAGS, GetCreatureInfo()->npcflag);
-            SetUInt32Value(UNIT_FIELD_FLAGS, 0);
             SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
-            SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
-//            SetName("");
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
             SetNeedSave(false);
             owner->AddGuardian(this);
             break;
@@ -2912,14 +2876,16 @@ bool Pet::Summon()
         case SUMMON_PET:
         {
             level = owner->getLevel();
+            LoadCreatureAddon(true);
             SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
             SetUInt32Value(UNIT_FIELD_BYTES_0, 2048);
-            SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
             SetUInt32Value(UNIT_FIELD_PETEXPERIENCE, 0);
             SetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP, 1000);
-//            SetName("");
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
+            RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP | UNIT_BYTE2_FLAG_SANCTUARY | UNIT_BYTE2_FLAG_PVP);
             SetNeedSave(true);
             owner->SetPet(this);
+            setFaction(owner->getFaction());
             break;
         }
         case HUNTER_PET:  // Called only if new tamed pet created
@@ -2927,15 +2893,17 @@ bool Pet::Summon()
             SetSheath(SHEATH_STATE_MELEE);
             SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
             SetUInt32Value(UNIT_FIELD_BYTES_0, 0x02020100);
+            RemoveByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP | UNIT_BYTE2_FLAG_SANCTUARY | UNIT_BYTE2_FLAG_PVP);
             SetByteFlag(UNIT_FIELD_BYTES_2, 2, UNIT_CAN_BE_RENAMED | UNIT_CAN_BE_ABANDONED);
-            SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
             SetUInt32Value(UNIT_FIELD_PETEXPERIENCE, 0);
             SetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP, sObjectMgr.GetXPForPetLevel(getLevel()));
             SetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP, time(NULL));
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
             SetMaxPower(POWER_HAPPINESS, GetCreatePowers(POWER_HAPPINESS));
             SetPower(POWER_HAPPINESS, HAPPINESS_LEVEL_SIZE);
             SetNeedSave(true);
             owner->SetPet(this);
+            setFaction(owner->getFaction());
             break;
         }
         case MINI_PET:
@@ -2945,6 +2913,8 @@ bool Pet::Summon()
             SetName("");
             owner->SetMiniPet((Unit*)this);
             InitPetCreateSpells();
+            LoadCreatureAddon(true);
+            SetByteValue(UNIT_FIELD_BYTES_2, 1, 0);
             AIM_Initialize();
             SetNeedSave(false);
             map->Add((Creature*)this);
@@ -2973,8 +2943,6 @@ bool Pet::Summon()
     InitLevelupSpellsForLevel();
     LearnPetPassives();
     CastPetAuras(true);
-    if (getPetType() != HUNTER_PET)
-        LoadCreatureAddon(true);
 
     if (owner->GetTypeId() == TYPEID_PLAYER)
     {
