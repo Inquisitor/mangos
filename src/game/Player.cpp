@@ -2359,8 +2359,9 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
         return NULL;
 
     // not allow interaction under control, but allow with own pets
-    if (unit->GetCharmerGuid())
-        return NULL;
+    if (!unit->GetCharmerGuid().IsEmpty())
+        if(unit->GetEntry() != 28781)
+            return NULL;
 
     // not enemy
     if (unit->IsHostileTo(this))
