@@ -746,9 +746,6 @@ void Spell::prepareDataForTriggerSystem()
                     m_canTrigger = true;
                 break;
             case SPELLFAMILY_WARRIOR:
-                //For Whirlwind triggers need do it
-                if (m_spellInfo->Id== 50622)
-                    m_canTrigger = true;
                 break;
             default:
                 break;
@@ -5553,7 +5550,7 @@ SpellCastResult Spell::CheckCast(bool strict)
             case SPELL_EFFECT_SCHOOL_DAMAGE:
             {
                 // Hammer of Wrath
-                if(m_spellInfo->SpellVisual[0] == 7250)
+                if (m_spellInfo->IsFitToFamily(SPELLFAMILY_PALADIN, UI64LIT(0x000000000000008000000000)))
                 {
                     if (!m_targets.getUnitTarget())
                         return SPELL_FAILED_BAD_IMPLICIT_TARGETS;
