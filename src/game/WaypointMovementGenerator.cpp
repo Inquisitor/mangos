@@ -331,12 +331,23 @@ void FlightPathMovementGenerator::Initialize(Player &player)
 
 void FlightPathMovementGenerator::Finalize(Player & player)
 {
+    if (GetPathId() == 632) // Vision Guide quest
+    {
+        if( player.GetQuestStatus(10525) == QUEST_STATUS_INCOMPLETE )
+            player.CompleteQuest(10525);
+
+        player.SetDisplayId(player.GetNativeDisplayId());
+    }
+
     // remove flag to prevent send object build movement packets for flight state and crash (movement generator already not at top of stack)
     player.clearUnitState(UNIT_STAT_TAXI_FLIGHT);
 
     float x, y, z;
     i_destinationHolder.GetLocationNow(player.GetMap(), x, y, z);
     player.SetPosition(x, y, z, player.GetOrientation());
+
+    if (GetPathId() == 632) // Vision Guide
+        player.TeleportTo(player.GetMapId(), GetPath()[0].x, GetPath()[0].y, GetPath()[0].z, player.GetOrientation());
 
     player.Unmount();
     player.RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_TAXI_FLIGHT);
@@ -361,6 +372,9 @@ void FlightPathMovementGenerator::Interrupt(Player & player)
 
 void FlightPathMovementGenerator::Reset(Player & player)
 {
+    if (player.m_taxi.GetTaxiDestination() == 158)
+        player.SetDisplayId(16587); // Vision Guide transformation
+
     player.getHostileRefManager().setOnlineOfflineState(false);
     player.addUnitState(UNIT_STAT_TAXI_FLIGHT);
     player.SetFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_TAXI_FLIGHT);

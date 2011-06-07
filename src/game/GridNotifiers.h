@@ -1207,6 +1207,100 @@ namespace MaNGOS
             GameObjectInRangeCheck(GameObjectInRangeCheck const&);
     };
 
+    class AnyGameObjectInPointRangeCheck
+    {
+        public:
+            AnyGameObjectInPointRangeCheck(WorldObject const* obj, float posX, float posY, float posZ, float range)
+                : i_obj(obj), x(posX), y(posY), z(posZ), i_range(range) {}
+            WorldObject const& GetFocusObject() const { return *i_obj; }
+            bool operator()(GameObject* g)
+            {
+                if(g && g->GetDistance(x, y, z) < i_range)
+                    return true;
+
+                return false;
+            }
+        private:
+            WorldObject const* i_obj;
+            float x, y, z;
+            float i_range;
+    };
+
+    class AnyWithAuraInRange
+    {
+        public:
+            AnyWithAuraInRange(Unit const* obj, float range, uint32 spellid)
+                : i_obj(obj), i_range(range), i_spell(spellid) {}
+            WorldObject const& GetFocusObject() const { return *i_obj; }
+            bool operator()(Unit* u)
+            {
+                if(u->isAlive() && i_obj->IsWithinDistInMap(u, i_range) && u->HasAura(i_spell))
+                    return true;
+
+                return false;
+            }
+        private:
+            Unit const* i_obj;
+            float i_range;
+            uint32 i_spell;
+    };
+
+    class AnyUnitInPointRangeCheck
+    {
+        public:
+            AnyUnitInPointRangeCheck(WorldObject const* obj, float posX, float posY, float posZ, float range)
+                : i_obj(obj), x(posX), y(posY), z(posZ), i_range(range) {}
+            WorldObject const& GetFocusObject() const { return *i_obj; }
+            bool operator()(Unit* u)
+            {
+                if(u->isAlive() && u->GetDistance(x, y, z) < i_range)
+                    return true;
+
+                return false;
+            }
+        private:
+            WorldObject const* i_obj;
+            float x, y, z;
+            float i_range;
+    };
+
+    class AllGameObjectsWithEntryInRange
+    {
+    public:
+        AllGameObjectsWithEntryInRange(const WorldObject* pObject, uint32 uiEntry, float fMaxRange) : m_pObject(pObject), m_uiEntry(uiEntry), m_fRange(fMaxRange) {}
+        WorldObject const& GetFocusObject() const { return *m_pObject; }
+        bool operator() (GameObject* pGo)
+        {
+            if (pGo->GetEntry() == m_uiEntry && m_pObject->IsWithinDist(pGo,m_fRange,false))
+                return true;
+
+            return false;
+        }
+    private:
+        const WorldObject* m_pObject;
+        uint32 m_uiEntry;
+        float m_fRange;
+    };
+
+    class AllCreaturesOfEntryInRange
+    {
+        public:
+            AllCreaturesOfEntryInRange(const WorldObject* pObject, uint32 uiEntry, float fMaxRange) : m_pObject(pObject), m_uiEntry(uiEntry), m_fRange(fMaxRange) {}
+            WorldObject const& GetFocusObject() const { return *m_pObject; }
+            bool operator() (Unit* pUnit)
+            {
+                if (pUnit->GetEntry() == m_uiEntry && m_pObject->IsWithinDist(pUnit,m_fRange,false))
+                    return true;
+
+                return false;
+            }
+
+        private:
+            const WorldObject* m_pObject;
+            uint32 m_uiEntry;
+            float m_fRange;
+    };
+
     // Player checks and do
 
     class AnyPlayerInObjectRangeCheck

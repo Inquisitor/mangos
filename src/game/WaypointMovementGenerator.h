@@ -125,6 +125,7 @@ public PathMovementBase<Player,TaxiPathNodeList const*>
         MovementGeneratorType GetMovementGeneratorType() const { return FLIGHT_MOTION_TYPE; }
 
         TaxiPathNodeList const& GetPath() { return *i_path; }
+        uint32 GetPathId() { return (*i_path)[0].path; }
         uint32 GetPathAtMapEnd() const;
         bool HasArrived() const { return (i_currentNode >= i_path->size()); }
         void SetCurrentNodeAfterTeleport();

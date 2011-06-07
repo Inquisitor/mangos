@@ -91,6 +91,12 @@ void BattleGroundEY::Update(uint32 diff)
             UpdatePointStatuses();
             m_TowerCapCheckTimer = BG_EY_FPOINTS_TICK_TIME;
         }
+        // areatrigger for Fel Reaver was removed? so:
+        if (m_FlagState)
+            if (Player* plr = sObjectMgr.GetPlayer(GetFlagPickerGuid()))
+                if (plr->GetDistance2d(2043.99f, 1729.91f) < 2)
+                    if (m_PointState[BG_EY_NODE_FEL_REAVER] == EY_POINT_UNDER_CONTROL && m_PointOwnedByTeam[BG_EY_NODE_FEL_REAVER] == plr->GetTeam())
+                        EventPlayerCapturedFlag(plr, BG_EY_NODE_FEL_REAVER);
     }
 }
 
@@ -260,6 +266,8 @@ void BattleGroundEY::UpdateTeamScore(Team team)
 void BattleGroundEY::EndBattleGround(Team winner)
 {
     //win reward
+    if(winner)
+        RewardXpToTeam(0, 0.8f, winner);
     if (winner == ALLIANCE)
         RewardHonorToTeam(GetBonusHonorFromKill(1), ALLIANCE);
     if (winner == HORDE)
@@ -267,6 +275,8 @@ void BattleGroundEY::EndBattleGround(Team winner)
     //complete map reward
     RewardHonorToTeam(GetBonusHonorFromKill(1), ALLIANCE);
     RewardHonorToTeam(GetBonusHonorFromKill(1), HORDE);
+    RewardXpToTeam(0, 0.8f, ALLIANCE);
+    RewardXpToTeam(0, 0.8f, HORDE);
 
     BattleGround::EndBattleGround(winner);
 }
@@ -640,7 +650,10 @@ void BattleGroundEY::EventPlayerCapturedFlag(Player *Source, BG_EY_Nodes node)
     if (m_TeamPointsCount[team_id] > 0)
         AddPoints(Source->GetTeam(), BG_EY_FlagPoints[m_TeamPointsCount[team_id] - 1]);
 
+    RewardXpToTeam(0, 0.6f, Source->GetTeam());
+
     UpdatePlayerScore(Source, SCORE_FLAG_CAPTURES, 1);
+    Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,183);
 }
 
 void BattleGroundEY::UpdatePlayerScore(Player *Source, uint32 type, uint32 value)

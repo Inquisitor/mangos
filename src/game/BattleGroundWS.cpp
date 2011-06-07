@@ -248,6 +248,11 @@ void BattleGroundWS::EventPlayerCapturedFlag(Player *Source)
     }
     //for flag capture is reward 2 honorable kills
     RewardHonorToTeam(GetBonusHonorFromKill(2), Source->GetTeam());
+    RewardXpToTeam(0, 0.6f, Source->GetTeam());
+
+    //flag carrier gets another 2 honorable kills
+    Source->RewardHonor(NULL, 0, GetBonusHonorFromKill(2));
+
 
     // despawn flags
     SpawnEvent(WS_EVENT_FLAG_A, 0, false);
@@ -262,6 +267,7 @@ void BattleGroundWS::EventPlayerCapturedFlag(Player *Source)
     UpdateTeamScore(Source->GetTeam());
     // only flag capture should be updated
     UpdatePlayerScore(Source, SCORE_FLAG_CAPTURES, 1);      // +1 flag captures
+    Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,42);
 
     if (GetTeamScore(ALLIANCE) == BG_WS_MAX_TEAM_SCORE)
         winner = ALLIANCE;
@@ -415,6 +421,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
             RespawnFlag(ALLIANCE, false);
             PlaySoundToAll(BG_WS_SOUND_FLAG_RETURNED);
             UpdatePlayerScore(Source, SCORE_FLAG_RETURNS, 1);
+            Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,44);
         }
         else
         {
@@ -443,6 +450,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
             RespawnFlag(HORDE, false);
             PlaySoundToAll(BG_WS_SOUND_FLAG_RETURNED);
             UpdatePlayerScore(Source, SCORE_FLAG_RETURNS, 1);
+            Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,44);
         }
         else
         {
@@ -586,6 +594,8 @@ void BattleGroundWS::Reset()
 void BattleGroundWS::EndBattleGround(Team winner)
 {
     //win reward
+    if (winner)
+        RewardXpToTeam(0, 0.8f, winner);
     if (winner == ALLIANCE)
         RewardHonorToTeam(GetBonusHonorFromKill(m_HonorWinKills), ALLIANCE);
     if (winner == HORDE)
@@ -593,6 +603,8 @@ void BattleGroundWS::EndBattleGround(Team winner)
     //complete map_end rewards (even if no team wins)
     RewardHonorToTeam(GetBonusHonorFromKill(m_HonorEndKills), ALLIANCE);
     RewardHonorToTeam(GetBonusHonorFromKill(m_HonorEndKills), HORDE);
+    RewardXpToTeam(0, 0.8f, ALLIANCE);
+    RewardXpToTeam(0, 0.8f, HORDE);
 
     BattleGround::EndBattleGround(winner);
 }

@@ -647,6 +647,15 @@ uint32 GameEventMgr::Update(ActiveEvents const* activeAtShutdown /*= NULL*/)
 
 void GameEventMgr::UnApplyEvent(uint16 event_id)
 {
+    // check event_id validity
+    int32 internal_event_id = mGameEvent.size() + event_id - 1;
+
+    if (internal_event_id < 0 || (size_t)internal_event_id >= mGameEventCreatureGuids.size())
+    {
+        sLog.outError("GameEventMgr::UnApplyEvent: invalid event ID: %u", event_id);
+        return;
+    }
+
     m_ActiveEvents.erase(event_id);
     CharacterDatabase.PExecute("DELETE FROM game_event_status WHERE event = %u", event_id);
 
@@ -666,6 +675,15 @@ void GameEventMgr::UnApplyEvent(uint16 event_id)
 
 void GameEventMgr::ApplyNewEvent(uint16 event_id, bool resume)
 {
+    // check event_id validity
+    int32 internal_event_id = mGameEvent.size() + event_id - 1;
+
+    if (internal_event_id < 0 || (size_t)internal_event_id >= mGameEventCreatureGuids.size())
+    {
+        sLog.outError("GameEventMgr::ApplyNewEvent: invalid event ID: %u", event_id);
+        return;
+    }
+
     m_ActiveEvents.insert(event_id);
     CharacterDatabase.PExecute("INSERT INTO game_event_status (event) VALUES (%u)", event_id);
 

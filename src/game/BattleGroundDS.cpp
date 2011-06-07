@@ -47,21 +47,80 @@ void BattleGroundDS::Update(uint32 diff)
     BattleGround::Update(diff);
     if (GetStatus() == STATUS_IN_PROGRESS)
     {
+        // push people from the tubes
+        if(pushbackCheck)
         // knockback
         if(m_uiKnockback < diff)
         {
             for(BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
             {
+                if(Player *plr = sObjectMgr.GetPlayer(itr->first))
+                    {
+                        if(plr->GetPositionZ() < 11.0f)
+                            continue;
+
+                        // Remove Demonic Circle
+                        for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+                            if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+                                if(GameObject* obj = plr->GetGameObject(48018))
+                                    obj->Delete();
+
+                        float angle = (plr->GetBGTeam() == ALLIANCE /* gold */) ? plr->GetAngle(1259.58f, 764.43f) : plr->GetAngle(1325.84f, 817.304f);
+
+                        WorldPacket data(SMSG_MOVE_KNOCK_BACK, 8+4+4+4+4+4);
+                        data << plr->GetPackGUID();
+                        data << uint32(0);                                  // Sequence
+                        data << float(cos(angle));                          // x direction
+                        data << float(sin(angle));                          // y direction
+                        data << float(55);                                  // Horizontal speed
+                        data << float(-7);                                  // Z Movement speed (vertical)
+                        plr->GetSession()->SendPacket(&data);
+                    }
                 Player * plr = sObjectMgr.GetPlayer(itr->first);
                 if (plr && plr->IsWithinLOS(1214,765,14) && plr->GetDistance2d(1214,765) <= 50)
                     plr->KnockBackPlayerWithAngle(6.40f,55,7);
                 if (plr && plr->IsWithinLOS(1369,817,14) && plr->GetDistance2d(1369,817) <= 50)
                     plr->KnockBackPlayerWithAngle(3.03f,55,7);
             }
+            pushbackCheck = false;
             m_uiKnockback = 1000;
         }
         else
             m_uiKnockback -= diff;
+        // in case pushback failed
+        if(teleportCheck)
+            if(m_uiTeleport < diff)
+            {
+                for(BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+                {
+                    if(Player *plr = sObjectMgr.GetPlayer(itr->first))
+                    {
+                        if(plr->GetPositionZ() < 11.0f)
+                            continue;
+
+                        float x, y;
+                        if (plr->GetBGTeam() == ALLIANCE)
+                        {
+                            x = 1259.58f;
+                            y = 764.43f;
+                        }
+                        else
+                        {
+                            x = 1325.84f;
+                            y = 817.304f;
+                        }
+
+                        plr->TeleportTo(GetMapId(), x + urand(0,2), y + urand(0,2), 3.15f, plr->GetOrientation());
+                    }
+                }
+
+                teleportCheck = false;
+
+                // close the gate
+                OpenDoorEvent(BG_EVENT_DOOR);
+            }
+            else
+                m_uiTeleport -= diff;
     }
 }
 
@@ -129,6 +188,9 @@ void BattleGroundDS::HandleAreaTrigger(Player *Source, uint32 Trigger)
 
     switch(Trigger)
     {
+        case 5326:
+            Source->TeleportTo(GetMapId(),1299.046f, 784.825f, 9.338f, Source->GetOrientation(),false);
+            break;
         case 5347:
         case 5348:
             break;
@@ -150,6 +212,11 @@ void BattleGroundDS::Reset()
 {
     //call parent's class reset
     BattleGround::Reset();
+    m_uiTeleport = 20000;
+    teleportCheck = true;
+
+    m_uiKnockback = 15000;
+    pushbackCheck = true;
     m_uiKnockback = 5000;
 }
 

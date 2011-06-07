@@ -623,12 +623,14 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         bool IsTransport() const;
         bool IsDynTransport() const;
+        void SetActiveObjectState(bool on);
 
         bool HasStaticDBSpawnData() const;                  // listed in `gameobject` table and have fixed in DB guid
 
         // z_rot, y_rot, x_rot - rotation angles around z, y and x axes
         void SetRotationAngles(float z_rot, float y_rot, float x_rot);
         int64 GetRotation() const { return m_rotation; }
+        void UpdateRotationFields(float rotation2 = 0.0f, float rotation3 = 0.0f);
 
         // overwrite WorldObject function for proper name localization
         const char* GetNameForLocaleIdx(int32 locale_idx) const;

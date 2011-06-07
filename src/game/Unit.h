@@ -1448,6 +1448,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         bool isFrozen() const;
         bool IsIgnoreUnitState(SpellEntry const *spell, IgnoreUnitState ignoreState);
 
+        void RemoveSpellbyDamageTaken(AuraType auraType, uint32 damage);
+
         bool isTargetableForAttack(bool inversAlive = false) const;
         virtual bool isPassiveToHostile() { return HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE); }
 

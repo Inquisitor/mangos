@@ -504,6 +504,41 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
 
                 break;
             }
+            case SCRIPT_COMMAND_ADD_QUEST_COUNT:
+            {
+                Quest const* quest = sObjectMgr.GetQuestTemplate(tmp.add_quest_count.quest_id);
+                if (tmp.add_quest_count.quest_field > 4)
+                {
+                    sLog.outErrorDb("Table `%s` has x for requirement [] (x: %u) in SCRIPT_COMMAND_ADD_QUEST_COUNT in `datalong2` for script id %u",tablename,tmp.add_quest_count.quest_field,tmp.id);
+                    continue;
+                }
+                if (tmp.add_quest_count.inc_value < 1)
+                {
+                    sLog.outErrorDb("Table `%s` has increment value (Value: %u) in SCRIPT_COMMAND_ADD_QUEST_COUNT in `dataint` for script id %u",tablename,tmp.add_quest_count.inc_value,tmp.id);
+                    continue;
+                }
+                if (!quest)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid quest (ID: %u) in SCRIPT_COMMAND_ADD_QUEST_COUNT in `datalong` for script id %u",tablename,tmp.add_quest_count.quest_id,tmp.id);
+                    continue;
+                }
+                break;
+            }
+            case SCRIPT_COMMAND_TEMP_SUMMON_OBJECT:
+            {
+                if (!MaNGOS::IsValidMapCoord(tmp.x,tmp.y,tmp.z,tmp.o))
+                {
+                    sLog.outErrorDb("Table `%s` has invalid coordinates (X: %f Y: %f) in SCRIPT_COMMAND_TEMP_SUMMON_OBJECT for script id %u",tablename,tmp.x,tmp.y,tmp.id);
+                    continue;
+                }
+
+                if (!ObjectMgr::GetGameObjectInfo(tmp.go_summon.go_entry))
+                {
+                    sLog.outErrorDb("Table `%s` has invalid gameobject (Entry: %u) in SCRIPT_COMMAND_TEMP_SUMMON_OBJECT for script id %u",tablename,tmp.go_summon.go_entry,tmp.id);
+                    continue;
+                }
+                break;
+            }
             case SCRIPT_COMMAND_SET_RUN:
             {
                 if (tmp.run.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.run.creatureEntry))

@@ -121,6 +121,9 @@ void BattleGroundNA::HandleAreaTrigger(Player *Source, uint32 Trigger)
         case 4536:                                          // buff trigger?
         case 4537:                                          // buff trigger?
             break;
+        case 5006:                                          // Falling down
+            Source->TeleportTo(GetMapId(), Source->GetPositionX(), Source->GetPositionY(), (Source->GetTerrain()->GetHeight(Source->GetPositionX(), Source->GetPositionY(), MAX_HEIGHT) + 3), Source->GetOrientation());
+            break;
         default:
             sLog.outError("WARNING: Unhandled AreaTrigger in Battleground: %u", Trigger);
             Source->GetSession()->SendAreaTriggerMessage("Warning: Unhandled AreaTrigger in Battleground: %u", Trigger);

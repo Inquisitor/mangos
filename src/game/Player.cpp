@@ -1595,6 +1595,8 @@ void Player::SetDeathState(DeathState s)
         if(getClass()== CLASS_WARRIOR)
             CastSpell(this,SPELL_ID_PASSIVE_BATTLE_STANCE,true);
     }
+    if(s != JUST_DIED)
+        this->RemoveAurasDueToSpell(46619);
 }
 
 bool Player::BuildEnumData( QueryResult * result, WorldPacket * p_data )
@@ -2143,6 +2145,9 @@ void Player::RewardRage( uint32 damage, uint32 weaponSpeedHitFactor, bool attack
 
 void Player::RegenerateAll(uint32 diff)
 {
+    if (!isAlive())
+        return;
+
     // Not in combat or they have regeneration
     if (!isInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT) ||
         HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT) || IsPolymorphed() )
@@ -2353,8 +2358,9 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
         return NULL;
 
     // not allow interaction under control, but allow with own pets
-    if (unit->GetCharmerGuid())
-        return NULL;
+    if (!unit->GetCharmerGuid().IsEmpty())
+        if(unit->GetEntry() != 28781)
+            return NULL;
 
     // not enemy
     if (unit->IsHostileTo(this))
@@ -7986,7 +7992,7 @@ void Player::CastItemUseSpell(Item *item,SpellCastTargets const& targets,uint8 c
             continue;
 
         // wrong triggering type
-        if( spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE && spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_NO_DELAY_USE)
+        if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE)
             continue;
 
         SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellData.SpellId);
@@ -9012,6 +9018,41 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
             }
             break;
         case 3703:                                          // Shattrath City
+            break;
+        case 4384:                                          // SA
+            if (bg && bg->GetTypeID(true) == BATTLEGROUND_SA)
+                bg->FillInitialWorldStates(data, count);
+            else
+            {
+                // 1-3 A defend, 4-6 H defend, 7-9 unk defend, 1 - ok, 2 - half destroyed, 3 - destroyed
+                data << uint32(0xf09) << uint32(0x4);       // 7  3849 Gate of Temple
+                data << uint32(0xe36) << uint32(0x4);       // 8  3638 Gate of Yellow Moon
+                data << uint32(0xe27) << uint32(0x4);       // 9  3623 Gate of Green Emerald
+                data << uint32(0xe24) << uint32(0x4);       // 10 3620 Gate of Blue Sapphire
+                data << uint32(0xe21) << uint32(0x4);       // 11 3617 Gate of Red Sun
+                data << uint32(0xe1e) << uint32(0x4);       // 12 3614 Gate of Purple Ametyst
+
+                data << uint32(0xdf3) << uint32(0x0);       // 13 3571 bonus timer (1 - on, 0 - off)
+                data << uint32(0xded) << uint32(0x0);       // 14 3565 Horde Attacker
+                data << uint32(0xdec) << uint32(0x1);       // 15 3564 Alliance Attacker
+                // End Round (timer), better explain this by example, eg. ends in 19:59 -> A:BC
+                data << uint32(0xde9) << uint32(0x9);       // 16 3561 C
+                data << uint32(0xde8) << uint32(0x5);       // 17 3560 B
+                data << uint32(0xde7) << uint32(0x19);      // 18 3559 A
+                data << uint32(0xe35) << uint32(0x1);       // 19 3637 East g - Horde control
+                data << uint32(0xe34) << uint32(0x1);       // 20 3636 West g - Horde control
+                data << uint32(0xe33) << uint32(0x1);       // 21 3635 South g - Horde control
+                data << uint32(0xe32) << uint32(0x0);       // 22 3634 East g - Alliance control
+                data << uint32(0xe31) << uint32(0x0);       // 23 3633 West g - Alliance control
+                data << uint32(0xe30) << uint32(0x0);       // 24 3632 South g - Alliance control
+                data << uint32(0xe2f) << uint32(0x1);       // 25 3631 Chamber of Ancients - Horde control
+                data << uint32(0xe2e) << uint32(0x0);       // 26 3630 Chamber of Ancients - Alliance control
+                data << uint32(0xe2d) << uint32(0x0);       // 27 3629 Beach1 - Horde control
+                data << uint32(0xe2c) << uint32(0x0);       // 28 3628 Beach2 - Horde control
+                data << uint32(0xe2b) << uint32(0x1);       // 29 3627 Beach1 - Alliance control
+                data << uint32(0xe2a) << uint32(0x1);       // 30 3626 Beach2 - Alliance control
+                // and many unks...
+            }
             break;
         default:
             FillInitialWorldState(data,count, 0x914, 0x0);  // 2324 7
@@ -11414,6 +11455,11 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
             pItem->SetItemRandomProperties(randomPropertyId);
         pItem = StoreItem( dest, pItem, update );
 
+        const ItemPrototype *proto = pItem->GetProto();
+        for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+            if (proto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_NO_DELAY_USE && proto->Spells[i].SpellId > 0) // On obtain trigger
+                CastSpell(this, proto->Spells[i].SpellId, true, pItem);
+
         if (allowedLooters && pItem->GetProto()->GetMaxStackSize() == 1 && pItem->IsSoulBound())
         {
             pItem->SetSoulboundTradeable(allowedLooters, this, true);
@@ -11903,6 +11949,11 @@ void Player::DestroyItem( uint8 bag, uint8 slot, bool update )
 
         pItem->SetSoulboundTradeable(NULL, this, false);
         RemoveTradeableItem(pItem);
+
+        const ItemPrototype *proto = pItem->GetProto();
+        for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+            if (proto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_NO_DELAY_USE && proto->Spells[i].SpellId > 0) // On obtain trigger
+                RemoveAurasDueToSpell(proto->Spells[i].SpellId);
 
         ItemRemovedQuestCheck( pItem->GetEntry(), pItem->GetCount() );
 
@@ -13453,6 +13504,10 @@ void Player::PrepareGossipMenu(WorldObject *pSource, uint32 menuId)
                     if (!pCreature->IsTrainerOf(this, false))
                         hasMenuItem = false;
                     break;
+                case GOSSIP_OPTION_LEARNDUALSPEC:
+                    if(!(GetSpecsCount() == 1 && pCreature->CanTrainAndResetTalentsOf(this) && !(getLevel() < MIN_DUALSPEC_LEVEL)))
+                        hasMenuItem = false;
+                    break;
                 case GOSSIP_OPTION_UNLEARNTALENTS:
                     if (!pCreature->CanTrainAndResetTalentsOf(this))
                         hasMenuItem = false;
@@ -13682,6 +13737,28 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             break;
         case GOSSIP_OPTION_TRAINER:
             GetSession()->SendTrainerList(guid);
+            break;
+        case GOSSIP_OPTION_LEARNDUALSPEC:
+            if(GetSpecsCount() == 1 && !(getLevel() < MIN_DUALSPEC_LEVEL))
+            {
+                if (GetMoney() < 10000000)
+                {
+                    SendBuyError( BUY_ERR_NOT_ENOUGHT_MONEY, 0, 0, 0);
+                    PlayerTalkClass->CloseGossip();
+                    break;
+                }
+                else
+                {
+                    ModifyMoney(-10000000);
+
+                    // Cast spells that teach dual spec
+                    // Both are also ImplicitTarget self and must be cast by player
+                    this->CastSpell(this,63624,true); // This will also learn 63680 in its dummy effect
+
+                    // Should show another Gossip text with "Congratulations..."
+                    PlayerTalkClass->CloseGossip();
+                }
+            }
             break;
         case GOSSIP_OPTION_UNLEARNTALENTS:
             PlayerTalkClass->CloseGossip();
@@ -16046,8 +16123,12 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
+
             // remove outdated DB data in DB
             _SaveBGData();
+
+            if(!isAlive() && IsInWorld())      // resurrect on exit
+                ResurrectPlayer(1.0f);
         }
     }
     else
@@ -16065,6 +16146,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
             // remove outdated DB data in DB
             _SaveBGData();
+            if(!isAlive() && IsInWorld())      // resurrect on exit
+                ResurrectPlayer(1.0f);
         }
     }
 

@@ -412,6 +412,9 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
                 // SpellIcon 2560 is Spell 46687, does not have this flag
                 if ((spellInfo->AttributesEx2 & SPELL_ATTR_EX2_FOOD_BUFF) || spellInfo->SpellIconID == 2560)
                     return SPELL_WELL_FED;
+                else if (spellInfo->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_STAT &&  spellInfo->Attributes & SPELL_ATTR_NOT_SHAPESHIFT &&
+                     spellInfo->SchoolMask & SPELL_SCHOOL_MASK_NATURE && spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE)
+                     return SPELL_SCROLL;
             }
             break;
         }
@@ -665,11 +668,15 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
 
     switch(spellproto->Id)
     {
+        case 37675:                                         // Chaos Blast
+        case 56266:                                         // Vortex
+        case 74505:                                         // Enervating Brand
         case 72219:                                         // Gastric Bloat 10 N
         case 72551:                                         // Gastric Bloat 10 H
         case 72552:                                         // Gastric Bloat 25 N
         case 72553:                                         // Gastric Bloat 25 H
             return false;
+        case 36032:                                         // Arcane Blast
         case 47540:                                         // Penance start dummy aura - Rank 1
         case 53005:                                         // Penance start dummy aura - Rank 2
         case 53006:                                         // Penance start dummy aura - Rank 3
@@ -679,6 +686,13 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 52987:                                         // Penance heal effect trigger - Rank 3
         case 52988:                                         // Penance heal effect trigger - Rank 4
         case 64844:                                         // Divine Hymn
+        case 642:                                           // Divine Shield
+        case 64843:                                         // Divine Hymn
+        case 64901:                                         // Hymn of Hope
+        case 552:                                           // Abolish Disease
+        case 59286:                                         // Opening
+        case 64343:                                         // Impact
+        case 12042:                                         // Arcane Power
         case 64904:                                         // Hymn of Hope
         return true;
         default:
@@ -884,6 +898,16 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
                 case SPELL_AURA_ADD_FLAT_MODIFIER:          // mods
                 case SPELL_AURA_ADD_PCT_MODIFIER:
                 {
+                    switch(spellproto->Id)
+                    {
+                        case 48489: // Improved Mangle
+                        case 48491:
+                        case 48532:
+                            return true;
+                            break;
+                        default:
+                            break;
+                    }
                     // non-positive mods
                     switch(spellproto->EffectMiscValue[effIndex])
                     {
@@ -1468,6 +1492,72 @@ struct DoSpellBonuses
 void SpellMgr::LoadSpellBonuses()
 {
     mSpellBonusMap.clear();                             // need for reload case
+    // load DBC data EffectCoeffs[] fields
+    // NOTE : only direct_damage/dot_damage data, there's no ap_bonus
+    for(uint32 entry = 1; entry < sSpellStore.GetNumRows(); ++entry)
+    {
+        SpellEntry const* spell = sSpellStore.LookupEntry(entry);
+        if (spell)
+        {
+             // skip NPC spells?
+            if(spell->SpellFamilyName == SPELLFAMILY_GENERIC)
+                continue;
+
+            SpellBonusEntry sbe;
+            bool dataAdded = false;
+
+            for(uint8 i = 0; i < MAX_EFFECT_INDEX; ++i)
+            {
+                if(spell->Effect[i] && spell->EffectCoeffs[i])
+                {
+                    bool isDotEffect = false;
+                    switch(spell->EffectApplyAuraName[i])
+                    {
+                        case SPELL_AURA_PERIODIC_DAMAGE:
+                        case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
+                        case SPELL_AURA_PERIODIC_LEECH:
+                        case SPELL_AURA_PERIODIC_HEAL:
+                        case SPELL_AURA_OBS_MOD_HEALTH:
+                        case SPELL_AURA_PERIODIC_MANA_LEECH:
+                        case SPELL_AURA_OBS_MOD_MANA:
+                        case SPELL_AURA_POWER_BURN_MANA:
+                            isDotEffect = true;
+                            break;
+                        default:
+                            break;
+
+                    }
+                    // both spells that should take 100% bonus and melee spells have EffectCoeffs set to 100%
+                    // we don't want to load the later
+                    // sometimes indexes with no effect set to 100% too
+                    if(spell->EffectCoeffs[i] == 1.0f)
+                    {
+                        // is it the proper check?
+                        if((spell->SchoolMask & SPELL_SCHOOL_MASK_MAGIC) == 0)
+                            continue;
+                        if(spell->Effect[i] != SPELL_EFFECT_SCHOOL_DAMAGE &&
+                            spell->Effect[i] != SPELL_EFFECT_HEALTH_LEECH &&
+                            (spell->Effect[i] != SPELL_EFFECT_APPLY_AURA || !isDotEffect) &&
+                            spell->Effect[i] != SPELL_EFFECT_PERSISTENT_AREA_AURA &&
+                            spell->Effect[i] != SPELL_EFFECT_HEAL)
+                            continue;
+                    }
+                    if(!isDotEffect)
+                        sbe.direct_damage = spell->EffectCoeffs[i];
+                    else
+                        sbe.dot_damage = spell->EffectCoeffs[i];
+
+                    dataAdded = true;
+                }
+            }
+
+            if(dataAdded)
+                mSpellBonusMap[entry] = sbe;
+
+            // DO not add to other ranks! data vary per rank on some spells
+        }
+    }
+    // Load data from database
     uint32 count = 0;
     //                                                0      1             2          3
     QueryResult *result = WorldDatabase.Query("SELECT entry, direct_bonus, dot_bonus, ap_bonus, ap_dot_bonus FROM spell_bonus_data");
@@ -1605,6 +1695,14 @@ void SpellMgr::LoadSpellBonuses()
             sLog.outErrorDb("`spell_bonus_data` entry for spell %u `ap_bonus` not used (spell not have non-periodic affects)", entry);
         else if (!need_dot && sbe.ap_dot_bonus)
             sLog.outErrorDb("`spell_bonus_data` entry for spell %u `ap_dot_bonus` not used (spell not have periodic affects)", entry);
+
+        // check if we already loaded bonus data from DBC
+        if(SpellBonusEntry const* dbcLoadedData = GetSpellBonusData(entry))
+        {
+            sLog.outErrorDb("`spell_bonus_data` entry for spell %u already loaded from DBC (data from table: %f : %f : %f  DBC data:  %f : %f : %f)"
+                            , entry, sbe.direct_damage, sbe.dot_damage, sbe.ap_bonus
+                            , dbcLoadedData->direct_damage, dbcLoadedData->dot_damage, dbcLoadedData->ap_bonus);
+        }
 
         mSpellBonusMap[entry] = sbe;
 
@@ -1905,6 +2003,26 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
     if ((spellInfo_1->Attributes & SPELL_ATTR_PASSIVE)!=(spellInfo_2->Attributes & SPELL_ATTR_PASSIVE))
         return false;
 
+    // Dispersion - stacks with everything
+    if ((spellInfo_1->Id == 47585 && spellInfo_2->Id == 60069) ||
+         (spellInfo_2->Id == 47585 && spellInfo_1->Id == 60069))
+         return false;
+
+    // Mistletoe debuff stack with everything
+    if (spellInfo_1->Id == 26218 || spellInfo_2->Id == 26218)
+        return false;
+
+    // Improved Mind Blast debuff stacks with everything
+    if (spellInfo_1->Id == 48301 || spellInfo_2->Id == 48301)
+        return false;
+    // Righteous Vengeance stack with all
+    if (spellInfo_1->Id == 61840 || spellInfo_2->Id == 61840)
+         return false;
+
+    // Ardent Defender cooldown debuff stacks with everything
+    if (spellInfo_1->Id == 66233 || spellInfo_2->Id == 66233)
+        return false;
+
     // Specific spell family spells
     switch(spellInfo_1->SpellFamilyName)
     {
@@ -2026,6 +2144,11 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                     if ((spellInfo_2->SpellFamilyFlags & UI64LIT(0x2)) && spellInfo_1->Id == 23694)
                         return false;
 
+                    // Taste of Blood and Sudden Death
+                    if( (spellInfo_1->Id == 52437 && spellInfo_2->Id == 60503) ||
+                        (spellInfo_2->Id == 52437 && spellInfo_1->Id == 60503) )
+                        return false;
+
                     break;
                 }
                 case SPELLFAMILY_DRUID:
@@ -2036,6 +2159,10 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
 
                     // Dragonmaw Illusion (multi-family check)
                     if (spellId_1 == 40216 && spellId_2 == 42016)
+                        return false;
+
+                    // Rejuvenation and Forethought Talisman (item 40258)
+                    if(spellInfo_1->Id == 60530 && spellInfo_2->SpellIconID == 64)
                         return false;
 
                     break;
@@ -2071,6 +2198,11 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                     // *Band of Eternal Champion and Seal of Command(multi-family check)
                     if (spellId_1 == 35081 && spellInfo_2->SpellIconID==561 && spellInfo_2->SpellVisual[0]==7992)
                         return false;
+
+                    // Blessing of Sanctuary (multi-family check, some from 16 spell icon spells)
+                    if (spellInfo_1->Id == 67480 && spellInfo_2->Id == 20911)
+                        return false;
+                    break;
                 }
             }
             // Dragonmaw Illusion, Blood Elf Illusion, Human Illusion, Illidari Agent Illusion, Scarlet Crusade Disguise
@@ -2156,6 +2288,9 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                 if (spellInfo_1->SpellIconID == 3314 && spellInfo_2->SpellIconID == 3314)
                     return false;
 
+                // Shadowflame fix
+                if (spellInfo_1->SpellIconID == 3317 || spellInfo_2->SpellIconID == 3317)
+
                 // Nether Protection effects
                 if( spellInfo_2->SpellIconID == 1985 && spellInfo_1->SpellIconID == 1985 && spellInfo_1->SpellVisual[0] == 9750 )
                     return false;
@@ -2218,10 +2353,6 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                 //StarShards and Shadow Word: Pain
                 if (((spellInfo_1->SpellFamilyFlags & UI64LIT(0x200000)) && (spellInfo_2->SpellFamilyFlags & UI64LIT(0x8000))) ||
                     ((spellInfo_2->SpellFamilyFlags & UI64LIT(0x200000)) && (spellInfo_1->SpellFamilyFlags & UI64LIT(0x8000))))
-                    return false;
-                // Dispersion
-                if ((spellInfo_1->Id == 47585 && spellInfo_2->Id == 60069) ||
-                    (spellInfo_2->Id == 47585 && spellInfo_1->Id == 60069))
                     return false;
                 // Power Word: Shield and Divine Aegis
                 if ((spellInfo_1->SpellIconID == 566 && spellInfo_2->SpellIconID == 2820) ||
@@ -2384,6 +2515,11 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
 
                 // Seal of Corruption (caster/target parts stacking allow, other stacking checked by spell specs)
                 if (spellInfo_1->SpellIconID == 2292 && spellInfo_2->SpellIconID == 2292)
+                    return false;
+
+                // Seal of Corruption/Vengeance DoT and Righteouss Fury
+                if ((spellInfo_1->SpellIconID == 3025 && spellInfo_2->SpellIconID == 2292) ||
+                    (spellInfo_1->SpellIconID == 2292 && spellInfo_2->SpellIconID == 3025))
                     return false;
 
                 // Divine Sacrifice and Divine Guardian
@@ -4435,6 +4571,9 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
             // Crippling poison - Limit to 10 seconds in PvP (No SpellFamilyFlags)
             else if (spellproto->SpellIconID == 163)
                 return DIMINISHING_LIMITONLY;
+            // Wound poison - Limit to 10 seconds in PvP (No SpellFamilyFlags)
+            else if (spellproto->SpellIconID == 1496)
+                return DIMINISHING_LIMITONLY;
             break;
         }
         case SPELLFAMILY_HUNTER:
@@ -4570,6 +4709,7 @@ bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group)
         case DIMINISHING_CYCLONE:
         case DIMINISHING_BANISH:
         case DIMINISHING_LIMITONLY:
+        case DIMINISHING_CHARGE:
             return true;
         default:
             return false;
@@ -4584,6 +4724,7 @@ DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group)
         case DIMINISHING_CYCLONE:
         case DIMINISHING_TRIGGER_STUN:
         case DIMINISHING_CONTROL_STUN:
+        case DIMINISHING_CHARGE:
             return DRTYPE_ALL;
         case DIMINISHING_CONTROL_ROOT:
         case DIMINISHING_TRIGGER_ROOT:

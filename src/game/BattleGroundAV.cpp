@@ -75,6 +75,7 @@ void BattleGroundAV::HandleKillUnit(Creature *creature, Player *killer)
                 return;
             RewardReputationToTeam(BG_AV_FACTION_H, m_RepCaptain, HORDE);
             RewardHonorToTeam(GetBonusHonorFromKill(BG_AV_KILL_CAPTAIN), HORDE);
+            RewardXpToTeam(0, 0.91f, HORDE);
             UpdateScore(BG_TEAM_ALLIANCE, (-1) * BG_AV_RES_CAPTAIN);
             // spawn destroyed aura
             SpawnEvent(BG_AV_NodeEventCaptainDead_A, 0, true);
@@ -84,6 +85,7 @@ void BattleGroundAV::HandleKillUnit(Creature *creature, Player *killer)
                 return;
             RewardReputationToTeam(BG_AV_FACTION_A, m_RepCaptain, ALLIANCE);
             RewardHonorToTeam(GetBonusHonorFromKill(BG_AV_KILL_CAPTAIN), ALLIANCE);
+            RewardXpToTeam(0, 0.91f, ALLIANCE);
             UpdateScore(BG_TEAM_HORDE, (-1) * BG_AV_RES_CAPTAIN);
             // spawn destroyed aura
             SpawnEvent(BG_AV_NodeEventCaptainDead_H, 0, true);
@@ -326,6 +328,7 @@ void BattleGroundAV::EndBattleGround(Team winner)
         {
             RewardReputationToTeam(faction[i], tower_survived[i] * m_RepSurviveTower, team[i]);
             RewardHonorToTeam(GetBonusHonorFromKill(tower_survived[i] * BG_AV_KILL_SURVIVING_TOWER), team[i]);
+            RewardXpToTeam(0, 0.6f, team[i]);
         }
         DEBUG_LOG("BattleGroundAV: EndbattleGround: bgteam: %u towers:%u honor:%u rep:%u", i, tower_survived[i], GetBonusHonorFromKill(tower_survived[i] * BG_AV_KILL_SURVIVING_TOWER), tower_survived[i] * BG_AV_REP_SURVIVING_TOWER);
         if (graves_owned[i])
@@ -438,6 +441,7 @@ void BattleGroundAV::EventPlayerDestroyedPoint(BG_AV_Nodes node)
         UpdateScore(GetOtherTeamIndex(ownerTeamIdx), (-1) * BG_AV_RES_TOWER);
         RewardReputationToTeam((ownerTeam == ALLIANCE) ? BG_AV_FACTION_A : BG_AV_FACTION_H, m_RepTowerDestruction, ownerTeam);
         RewardHonorToTeam(GetBonusHonorFromKill(BG_AV_KILL_TOWER), ownerTeam);
+        RewardXpToTeam(0, 0.91f, ownerTeam);
         SendYell2ToAll(LANG_BG_AV_TOWER_TAKEN, LANG_UNIVERSAL, GetSingleCreatureGuid(BG_AV_HERALD, 0), GetNodeName(node), (ownerTeam == ALLIANCE) ? LANG_BG_ALLY : LANG_BG_HORDE);
     }
     else
@@ -565,6 +569,7 @@ void BattleGroundAV::EventPlayerDefendsPoint(Player* player, BG_AV_Nodes node)
             GetNodeName(node),
             ( teamIdx == BG_TEAM_ALLIANCE ) ? LANG_BG_ALLY:LANG_BG_HORDE);
         UpdatePlayerScore(player, SCORE_TOWERS_DEFENDED, 1);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,64);
         PlaySoundToAll(BG_AV_SOUND_BOTH_TOWER_DEFEND);
     }
     else
@@ -573,6 +578,7 @@ void BattleGroundAV::EventPlayerDefendsPoint(Player* player, BG_AV_Nodes node)
             GetNodeName(node),
             ( teamIdx == BG_TEAM_ALLIANCE ) ? LANG_BG_ALLY:LANG_BG_HORDE);
         UpdatePlayerScore(player, SCORE_GRAVEYARDS_DEFENDED, 1);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,65);
     // update the statistic for the defending player
         PlaySoundToAll((teamIdx == BG_TEAM_ALLIANCE)?BG_AV_SOUND_ALLIANCE_GOOD:BG_AV_SOUND_HORDE_GOOD);
     }
@@ -596,6 +602,7 @@ void BattleGroundAV::EventPlayerAssaultsPoint(Player* player, BG_AV_Nodes node)
             GetNodeName(node),
             ( teamIdx == BG_TEAM_ALLIANCE ) ? LANG_BG_ALLY:LANG_BG_HORDE);
         UpdatePlayerScore(player, SCORE_TOWERS_ASSAULTED, 1);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,61);
     }
     else
     {
@@ -604,6 +611,7 @@ void BattleGroundAV::EventPlayerAssaultsPoint(Player* player, BG_AV_Nodes node)
             ( teamIdx == BG_TEAM_ALLIANCE ) ? LANG_BG_ALLY:LANG_BG_HORDE);
         // update the statistic for the assaulting player
         UpdatePlayerScore(player, SCORE_GRAVEYARDS_ASSAULTED, 1);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,63);
     }
 
     PlaySoundToAll((teamIdx == BG_TEAM_ALLIANCE) ? BG_AV_SOUND_ALLIANCE_ASSAULTS : BG_AV_SOUND_HORDE_ASSAULTS);

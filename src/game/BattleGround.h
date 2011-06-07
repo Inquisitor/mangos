@@ -113,6 +113,7 @@ enum BattleGroundTimeIntervals
     RESPAWN_IMMEDIATELY             = 0,                    // secs
     BUFF_RESPAWN_TIME               = 180,                  // secs
     ARENA_SPAWN_BUFF_OBJECTS        = 90000,                // ms - 90sec after start
+    ARENA_TIME_LIMIT                = 2820000,              // ms - 47 minutes after start
 };
 
 enum BattleGroundStartTimeIntervals
@@ -205,9 +206,12 @@ enum ScoreType
     SCORE_TOWERS_ASSAULTED      = 13,
     SCORE_TOWERS_DEFENDED       = 14,
     SCORE_SECONDARY_OBJECTIVES  = 15,
+    //SA
+    SCORE_GATES_DESTROYED       = 16,
+    SCORE_DEMOLISHERS_DESTROYED = 17,
     /** World of Warcraft Armory **/
-    SCORE_DAMAGE_TAKEN          = 16,
-    SCORE_HEALING_TAKEN         = 17
+    SCORE_DAMAGE_TAKEN           = 18,
+    SCORE_HEALING_TAKEN          = 19
     /** World of Warcraft Armory **/
 };
 
@@ -348,6 +352,12 @@ class BattleGround
         uint32 GetBonusHonorFromKill(uint32 kills) const;
         bool IsRandom() { return m_IsRandom; }
 
+        // Strand of the Ancients and Isle of Conquest related
+        virtual Team   GetDefender()                    const   { return TEAM_NONE; }
+        virtual uint8  GetGydController(uint8 /*gyd*/)  const   { return false; }
+        virtual uint8  GetNodeControll(uint8 /*node*/)  const   { return false; }
+        virtual uint32 GetVehicleFaction(uint8 vehicleType) const { return 35; }
+
         // Set methods:
         void SetName(char const* Name)      { m_Name = Name; }
         void SetTypeID(BattleGroundTypeId TypeID) { m_TypeID = TypeID; }
@@ -440,6 +450,7 @@ class BattleGround
         void CastSpellOnTeam(uint32 SpellID, Team team);
         void RewardHonorToTeam(uint32 Honor, Team team);
         void RewardReputationToTeam(uint32 faction_id, uint32 Reputation, Team team);
+        void RewardXpToTeam(uint32 Xp, float percentOfLevel, Team TeamID);
         void RewardMark(Player *plr,uint32 count);
         void SendRewardMarkByMail(Player *plr,uint32 mark, uint32 count);
         void RewardItem(Player *plr, uint32 item_id, uint32 count);
@@ -453,6 +464,9 @@ class BattleGround
         void SendMessageToAll(int32 entry, ChatMsg type, Player const* source = NULL);
         void SendYellToAll(int32 entry, uint32 language, ObjectGuid guid);
         void PSendMessageToAll(int32 entry, ChatMsg type, Player const* source, ...  );
+        void SendWarningToAll(int32 entry, ...);
+
+        GameObject* GetBGObject(uint32 type);
 
         // specialized version with 2 string id args
         void SendMessage2ToAll(int32 entry, ChatMsg type, Player const* source, int32 strId1 = 0, int32 strId2 = 0);
@@ -463,6 +477,7 @@ class BattleGround
         void SetBgRaid(Team team, Group *bg_raid);
 
         virtual void UpdatePlayerScore(Player *Source, uint32 type, uint32 value);
+        uint32 GetPlayerScore(Player *Source, uint32 type);
 
         static BattleGroundTeamIndex GetTeamIndexByTeamId(Team team) { return team == ALLIANCE ? BG_TEAM_ALLIANCE : BG_TEAM_HORDE; }
         uint32 GetPlayersCountByTeam(Team team) const { return m_PlayersCount[GetTeamIndexByTeamId(team)]; }
@@ -493,6 +508,11 @@ class BattleGround
         virtual void EventPlayerDroppedFlag(Player* /*player*/) {}
         virtual void EventPlayerClickedOnFlag(Player* /*player*/, GameObject* /*target_obj*/) {}
         virtual void EventPlayerCapturedFlag(Player* /*player*/) {}
+
+        virtual void EventPlayerDamageGO(Player* /*player*/, GameObject* /*target_obj*/, uint32 /*eventId*/) {}
+        virtual void EventSpawnGOSA(Player* /*owner*/, Creature* /*obj*/, float /*x*/, float /*y*/, float /*z*/) {}
+        virtual void VirtualUpdatePlayerScore(Player* /*Source*/, uint32 /*type*/, uint32 /*value*/) {}
+
         void EventPlayerLoggedIn(Player* player, ObjectGuid plr_guid);
         void EventPlayerLoggedOut(Player* player);
 
@@ -565,6 +585,7 @@ class BattleGround
         // door-events are automaticly added - but _ALL_ other must be in this vector
         std::map<uint8, uint8> m_ActiveEvents;
 
+        uint32 GetDamageDoneForTeam(Team team);
 
     protected:
         //this method is called, when BG cannot spawn its own spirit guide, or something is wrong, It correctly ends BattleGround
@@ -609,6 +630,7 @@ class BattleGround
         bool   m_IsRated;                                   // is this battle rated?
         bool   m_PrematureCountDown;
         uint32 m_PrematureCountDownTimer;
+        bool   m_ArenaEnded;
         char const *m_Name;
 
         /* Player lists */

@@ -19,6 +19,7 @@
 #include "Map.h"
 #include "MapManager.h"
 #include "Player.h"
+#include "Vehicle.h"
 #include "GridNotifiers.h"
 #include "Log.h"
 #include "GridStates.h"
@@ -36,6 +37,7 @@
 #include "MapPersistentStateMgr.h"
 #include "VMapFactory.h"
 #include "BattleGroundMgr.h"
+#include "CreatureEventAI.h"
 
 Map::~Map()
 {
@@ -1271,6 +1273,13 @@ bool DungeonMap::CanEnter(Player *player)
         return false;
     }
 
+    if(!player->isGameMaster() && GetInstanceData() && GetInstanceData()->IsEncounterInProgress())
+    {
+        sLog.outDebug("MAP: Player '%s' can't enter instance '%s' while an encounter is in progress.", player->GetName(), GetMapName());
+        player->SendTransferAborted(GetId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
+        return false;
+    }
+
     return Map::CanEnter(player);
 }
 
@@ -1744,6 +1753,67 @@ void Map::ScriptsProcess()
 
         if (target && !target->IsInWorld())
             target = NULL;
+
+        bool requirement_passed = true;
+
+        if( source && (source->GetTypeId() == TYPEID_UNIT || source->GetTypeId() == TYPEID_PLAYER) )
+        {
+            Unit * uSource = static_cast<Unit*>(source);
+
+            switch(step.script->reqtype)
+            {
+                case REQUIREMENT_T_INVOKER_AURA:
+                    if( !uSource->HasAura( step.script->reqvalue ) )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_QUEST:
+                    if( uSource->GetTypeId() != TYPEID_PLAYER || ((Player*)uSource)->GetQuestStatus(step.script->reqvalue) != QUEST_STATUS_INCOMPLETE )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_INVOKER_HAS_NO_AURA:
+                    if( uSource->HasAura( step.script->reqvalue ) )
+                        requirement_passed = false;
+                    break;
+            }
+        }
+
+        if( target && (target->GetTypeId() == TYPEID_UNIT || target->GetTypeId() == TYPEID_PLAYER) )
+        {
+            Unit * uTarget = static_cast<Unit*>(target);
+
+            switch( step.script->reqtype )
+            {
+                case REQUIREMENT_T_HP_PERCENT:
+                    if( uTarget->GetHealth() * 100 / uTarget->GetMaxHealth() > step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_MANA_PERCENT:
+                    if( uTarget->GetPower(POWER_MANA) * 100 / uTarget->GetMaxPower(POWER_MANA) > step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_AURA:
+                    if( !uTarget->HasAura( step.script->reqvalue ) )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_ZONE:
+                    if( uTarget->GetZoneId() != step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+                case REQUIREMENT_T_ENTRY:
+                    if( uTarget->GetTypeId() != TYPEID_UNIT || uTarget->GetEntry() != step.script->reqvalue )
+                        requirement_passed = false;
+                    break;
+            }
+        }
+
+        if( !requirement_passed )
+        {
+            m_scriptSchedule.erase(iter);
+            sScriptMgr.DecreaseScheduledScriptCount();
+
+            iter = m_scriptSchedule.begin();
+            return;
+        }
 
         switch(step.script->command)
         {
@@ -2749,6 +2819,37 @@ void Map::ScriptsProcess()
 
                     pOwner->Mount(display_id);
                 }
+
+                break;
+            }
+            case SCRIPT_COMMAND_SET_ENTRY:
+            {
+                if(!target || target->GetTypeId() != TYPEID_UNIT)
+                {
+                    sLog.outError("SCRIPT_COMMAND_SET_ENTRY (script id %u) call for NULL target or non-creature type.", step.script->id);
+                    break;
+                }
+
+                Creature *pCreature = (Creature*)target;
+                pCreature->UpdateEntry(step.script->set_entry.entry, ALLIANCE, 0, 0, step.script->set_entry.keep_stat ? true : false);
+
+                break;
+            }
+            case SCRIPT_COMMAND_ENTER_VEHICLE:
+            {
+                if (!target || target->GetTypeId() != TYPEID_PLAYER)
+                {
+                    sLog.outError("SCRIPT_COMMAND_ENTER_VEHICLE (script id %u) call for NULL source or non-player type.", step.script->id);
+                    break;
+                }
+
+                if (!source || !source->GetObjectGuid().IsVehicle())
+                {
+                    sLog.outError("SCRIPT_COMMAND_ENTER_VEHICLE (script id %u) call for NULL target or non-vehicle type.", step.script->id);
+                    break;
+                }
+
+                ((Unit*)target)->EnterVehicle(((Unit*)source)->GetVehicleKit());
 
                 break;
             }

@@ -82,6 +82,51 @@ namespace MaNGOS
             va_list* i_args;
     };
 
+    class BattleGroundWarningBuilder
+    {
+        public:
+            BattleGroundWarningBuilder(int32 textId, va_list* args = NULL)
+                : i_textId(textId), i_args(args) {}
+            void operator()(WorldPacket& data, int32 loc_idx)
+            {
+                char const* text = sObjectMgr.GetMangosString(i_textId,loc_idx);
+
+                if (i_args)
+                {
+                    // we need copy va_list before use or original va_list will corrupted
+                    va_list ap;
+                    va_copy(ap,*i_args);
+
+                    char str [2048];
+                    vsnprintf(str,2048,text, ap );
+                    va_end(ap);
+
+                    WorldPacket data(SMSG_MESSAGECHAT, 200);
+
+                    do_helper(data,&str[0]);
+                }
+                else
+                    do_helper(data,text);
+            }
+        private:
+            void do_helper(WorldPacket& data, char const* text)
+            {
+                data << uint8(CHAT_MSG_RAID_BOSS_EMOTE);
+                data << uint32(LANG_UNIVERSAL);
+                data << uint64(0);             // there 0 for BG messages
+                data << uint32(0);             // can be chat msg group or something
+                data << uint32(1);
+                data << uint8(0);
+                data << uint64(0);
+                data << uint32(strlen(text)+1);
+                data << text;
+                data << uint8(0);
+            }
+
+            int32 i_textId;
+            va_list* i_args;
+    };
+
     class BattleGroundYellBuilder
     {
         public:
@@ -266,6 +311,8 @@ BattleGround::BattleGround()
 
     m_PrematureCountDown = false;
     m_PrematureCountDownTimer = 0;
+
+    m_ArenaEnded = false;
 
     m_StartDelayTimes[BG_STARTING_EVENT_FIRST]  = BG_START_DELAY_2M;
     m_StartDelayTimes[BG_STARTING_EVENT_SECOND] = BG_START_DELAY_1M;
@@ -511,6 +558,24 @@ void BattleGround::Update(uint32 diff)
         }
     }
 
+    // Arena time limit
+    if(isArena() && !m_ArenaEnded)
+    {
+        if(m_StartTime > uint32(ARENA_TIME_LIMIT))
+        {
+            Team winner;
+            // winner is team with higher damage
+            if(GetDamageDoneForTeam(ALLIANCE) > GetDamageDoneForTeam(HORDE))
+                winner = ALLIANCE;
+            else if (GetDamageDoneForTeam(HORDE) > GetDamageDoneForTeam(ALLIANCE))
+                winner = HORDE;
+            else
+                winner = TEAM_NONE;
+            EndBattleGround(winner);
+           m_ArenaEnded = true;
+        }
+    }
+
     //update start time
     m_StartTime += diff;
 }
@@ -671,6 +736,36 @@ void BattleGround::RewardReputationToTeam(uint32 faction_id, uint32 Reputation, 
     }
 }
 
+void BattleGround::RewardXpToTeam(uint32 Xp, float percentOfLevel, Team team)
+{
+    for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+    {
+        if (itr->second.OfflineRemoveTime)
+            continue;
+        Player *plr = sObjectMgr.GetPlayer(itr->first);
+
+        if (!plr)
+        {
+            sLog.outError("BattleGround:RewardXpToTeam: Player (GUID: %s) not found!", itr->first.GetString().c_str());
+            continue;
+        }
+
+        uint32 bgTeam = itr->second.PlayerTeam;
+        if(!team) bgTeam = plr->GetTeam();
+
+        if (bgTeam == team)
+        {
+            uint32 gain = Xp;
+            if(gain == 0 && percentOfLevel != 0)
+            {
+                percentOfLevel = percentOfLevel / 100;
+                gain = uint32(float(plr->GetUInt32Value(PLAYER_NEXT_LEVEL_XP))*percentOfLevel);
+            }
+            plr->GiveXP(gain, NULL);
+        }
+    }
+}
+
 void BattleGround::UpdateWorldState(uint32 Field, uint32 Value)
 {
     WorldPacket data;
@@ -714,7 +809,8 @@ void BattleGround::EndBattleGround(Team winner)
     }
     else
     {
-        SetWinner(3);
+        SetWinner(WINNER_NONE);
+        winmsg_id = LANG_BG_WIN_NONE;
     }
 
     SetStatus(STATUS_WAIT_LEAVE);
@@ -1342,12 +1438,60 @@ void BattleGround::AddPlayer(Player *plr)
     plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, ACHIEVEMENT_CRITERIA_CONDITION_MAP, GetMapId());
     plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DAMAGE_DONE, ACHIEVEMENT_CRITERIA_CONDITION_MAP, GetMapId());
 
+    plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS);
+    plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL);
+    plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL);
+    plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE);
+    plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA);
+
+    plr->Unmount();
+    plr->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+
     // setup BG group membership
     PlayerAddedToBGCheckIfBGIsRunning(plr);
     AddOrSetPlayerToCorrectBgGroup(plr, guid, team);
 
     // Log
     DETAIL_LOG("BATTLEGROUND: Player %s joined the battle.", plr->GetName());
+}
+
+uint32 BattleGround::GetPlayerScore(Player *Source, uint32 type)
+{
+    BattleGroundScoreMap::const_iterator itr = m_PlayerScores.find(Source->GetGUID());
+
+    if(itr == m_PlayerScores.end())                         // player not found...
+        return 0;
+
+    switch(type)
+    {
+        case SCORE_KILLING_BLOWS:                           // Killing blows
+            return itr->second->KillingBlows;
+        case SCORE_DEATHS:                                  // Deaths
+            return itr->second->Deaths;
+        case SCORE_DAMAGE_DONE:                             // Damage Done
+            return itr->second->DamageDone;
+        case SCORE_HEALING_DONE:                            // Healing Done
+            return itr->second->HealingDone;
+        default:
+            sLog.outError("BattleGround: Unknown player score type %u", type);
+            return 0;
+    }
+}
+
+uint32 BattleGround::GetDamageDoneForTeam(Team team)
+{
+    uint32 finaldamage = 0;
+    for(BattleGroundPlayerMap::iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+    {
+        Team bgTeam = itr->second.PlayerTeam;
+        Player *plr = sObjectMgr.GetPlayer(itr->first);
+        if (!plr)
+            continue;
+        if(!bgTeam) bgTeam = plr->GetTeam();
+        if(bgTeam == team)
+            finaldamage += GetPlayerScore(plr, SCORE_DAMAGE_DONE);
+    }
+    return finaldamage;
 }
 
 /* this method adds player to his team's bg group, or sets his correct group if player is already in bg group */
@@ -1781,6 +1925,13 @@ void BattleGround::SendYell2ToAll(int32 entry, uint32 language, ObjectGuid guid,
     BroadcastWorker(bg_do);
 }
 
+void BattleGround::SendWarningToAll(int32 entry, ...)
+{
+    MaNGOS::BattleGroundWarningBuilder bg_builder(entry);
+    MaNGOS::LocalizedPacketDo<MaNGOS::BattleGroundWarningBuilder> bg_do(bg_builder);
+    BroadcastWorker(bg_do);
+}
+
 void BattleGround::EndNow()
 {
     RemoveFromBGFreeSlotQueue();
@@ -1850,6 +2001,9 @@ void BattleGround::HandleKillPlayer( Player *player, Player *killer )
     {
         UpdatePlayerScore(killer, SCORE_HONORABLE_KILLS, 1);
         UpdatePlayerScore(killer, SCORE_KILLING_BLOWS, 1);
+        killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS,1);
+        killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL,1);
+        killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA,1);
 
         for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
         {
@@ -1859,7 +2013,12 @@ void BattleGround::HandleKillPlayer( Player *player, Player *killer )
                 continue;
 
             if (plr->GetTeam() == killer->GetTeam() && plr->IsAtGroupRewardDistance(player))
+            {
                 UpdatePlayerScore(plr, SCORE_HONORABLE_KILLS, 1);
+                plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL,1);
+                plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL,1);
+                plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA,1);
+            }
         }
     }
 
@@ -1955,4 +2114,12 @@ void BattleGround::SetBracket( PvPDifficultyEntry const* bracketEntry )
 {
     m_BracketId  = bracketEntry->GetBracketId();
     SetLevelRange(bracketEntry->minLevel,bracketEntry->maxLevel);
+}
+
+GameObject* BattleGround::GetBGObject(uint32 type)
+{
+    GameObject *obj = GetBgMap()->GetGameObject(m_BgObjects[type]);
+    if (!obj)
+        sLog.outError("couldn't get gameobject %i",type);
+    return obj;
 }

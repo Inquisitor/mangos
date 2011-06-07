@@ -23,6 +23,7 @@
 #include "Player.h"
 #include "ObjectMgr.h"
 #include "SpellMgr.h"
+#include "SpellAuras.h"
 #include "CreatureAI.h"
 #include "InstanceData.h"
 
@@ -104,8 +105,27 @@ void Totem::Summon(Unit* owner)
     switch(m_type)
     {
         case TOTEM_PASSIVE:
+            {
+            if(GetEntry() == 28306) // Anti-Magic Zone
+            {
+                SpellEntry const *spellInfo = sSpellStore.LookupEntry(GetSpell());
+                if(!spellInfo)
+                    return;
+
+                int basePoints = spellInfo->CalculateSimpleValue(EFFECT_INDEX_0);
+
+                //Search for Magic Suppression
+                Unit::AuraList const& auras = GetOwner()->GetAurasByType(SPELL_AURA_ADD_FLAT_MODIFIER);
+                for(Unit::AuraList::const_iterator i = auras.begin(); i != auras.end(); ++i)
+                    if ((*i)->GetSpellProto()->SpellIconID == 99)
+                        basePoints += (*i)->GetModifier()->m_amount;
+
+                CastCustomSpell(this, spellInfo, &basePoints, NULL, NULL, true);
+            }
+            else
             CastSpell(this, GetSpell(), true);
             break;
+        }
         case TOTEM_STATUE:
             CastSpell(GetOwner(), GetSpell(), true);
             break;
