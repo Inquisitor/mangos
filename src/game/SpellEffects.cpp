@@ -8564,17 +8564,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     return;
                 }
-                case 48724:                                 // Q: The Denouncement
-                case 48726:
-                case 48728:
-                case 48730:
-                {
-                    if(!unitTarget)
-                        return;
-                    // triggered spell is stored in m_spellInfo->EffectBasePoints[0]
-                    unitTarget->CastSpell(unitTarget, damage, true);
-                    return;
-                }
                 case 50252:                                 // Q: In Service of Blood/Unholy/Frost
                 case 47724:
                 case 47703:
