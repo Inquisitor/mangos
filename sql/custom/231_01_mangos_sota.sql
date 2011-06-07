@@ -1,4 +1,7 @@
-﻿-- Strand of the Ancients BattleGround
+-- Strand of the Ancients BattleGround
+DELETE FROM `battleground_template` WHERE id = 9;
+INSERT INTO `battleground_template` (`id`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
+('9','8','15','1367','0','1368','0');
 
 UPDATE `creature_template` SET npcflag=1, `ScriptName` = 'npc_sa_vendor' WHERE entry in (29260,29262);
 -- Seaforium source
