@@ -39,6 +39,7 @@
 #include "BattleGroundAB.h"
 #include "BattleGroundAV.h"
 #include "BattleGroundSA.h"
+#include "BattleGroundWS.h"
 #include "Map.h"
 #include "InstanceData.h"
 
@@ -1019,6 +1020,12 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
+                        case 1310:             // SA, win under 4 minutes
+                        {
+                            if(((BattleGroundSA*)bg)->Round_timer > (4 * MINUTE * IN_MILLISECONDS))
+                                continue;
+                            break;
+                        }
                         case 1164:             // AV, own both mines (horde)
                         case 225:              // AV, own both mines (alliance)
                         {
@@ -1071,6 +1078,8 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     }
                 }
 
+                if(miscvalue1 == 2 && bg->GetTypeID(true) == BATTLEGROUND_SA && achievementCriteria->referredAchievement != 1310)
+                    continue;                            // Need to stop if not Storm the Beach
                 change = miscvalue1;
                 progressType = PROGRESS_ACCUMULATE;
                 break;
@@ -1863,6 +1872,8 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 if (!miscvalue1 || !miscvalue2 || !bg)
                     continue;
 
+                uint32 time;
+
                 if(achievementCriteria->objective_capture.captureID != miscvalue2)
                     continue;
 
@@ -1885,6 +1896,15 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     {
                         if(bg->GetPlayerScore(GetPlayer(),SCORE_DEATHS) != 0)
                             continue;
+                        break;
+                    }
+                    case 202:                    // WS, capture flag for 75 sec, ally
+                    case 1502:                   // WS, capture flag for 75 sec, horde
+                    {
+                        time = ((BattleGroundWS*)bg)->GetStartTime() - ((BattleGroundWS*)bg)->GetFlagCaptureTime(GetPlayer()->GetTeam());
+                        if(time > 75 * IN_MILLISECONDS)
+                            continue;
+                        miscvalue1 = time;
                         break;
                     }
                 }

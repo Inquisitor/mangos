@@ -115,6 +115,12 @@ void BattleGroundEY::StartingEventOpenDoors()
         uint8 buff = urand(0, 2);
         SpawnBGObject(m_BgObjects[BG_EY_OBJECT_SPEEDBUFF_FEL_REAVER + buff + i * 3], RESPAWN_IMMEDIATELY);
     }
+
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 13180);
+    }
 }
 
 void BattleGroundEY::AddPoints(Team team, uint32 Points)
@@ -319,6 +325,7 @@ void BattleGroundEY::AddPlayer(Player *plr)
     m_PlayersNearPoint[BG_EY_PLAYERS_OUT_OF_POINTS].push_back(plr->GetObjectGuid());
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
+    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 13180);
 }
 
 void BattleGroundEY::RemovePlayer(Player *plr, ObjectGuid guid)

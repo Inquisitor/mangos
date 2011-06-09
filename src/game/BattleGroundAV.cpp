@@ -284,6 +284,12 @@ void BattleGroundAV::StartingEventOpenDoors()
     UpdateWorldState(BG_AV_SHOW_A_SCORE, 1);
 
     OpenDoorEvent(BG_EVENT_DOOR);
+
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9166);
+    }
 }
 
 void BattleGroundAV::AddPlayer(Player *plr)
@@ -292,6 +298,7 @@ void BattleGroundAV::AddPlayer(Player *plr)
     // create score and add it to map, default values are set in constructor
     BattleGroundAVScore* sc = new BattleGroundAVScore;
     m_PlayerScores[plr->GetObjectGuid()] = sc;
+    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9166);
 }
 
 void BattleGroundAV::EndBattleGround(Team winner)

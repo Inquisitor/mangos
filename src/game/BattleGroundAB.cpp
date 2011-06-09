@@ -180,6 +180,12 @@ void BattleGroundAB::StartingEventOpenDoors()
         SpawnBGObject(m_BgObjects[BG_AB_OBJECT_SPEEDBUFF_STABLES + buff + i * 3], RESPAWN_IMMEDIATELY);
     }
     OpenDoorEvent(BG_EVENT_DOOR);
+
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9158);
+    }
 }
 
 void BattleGroundAB::AddPlayer(Player *plr)
@@ -189,6 +195,7 @@ void BattleGroundAB::AddPlayer(Player *plr)
     BattleGroundABScore* sc = new BattleGroundABScore;
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
+    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9158);
 }
 
 void BattleGroundAB::RemovePlayer(Player * /*plr*/, ObjectGuid /*guid*/)
