@@ -1035,6 +1035,13 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
+                        case 873:              // AV, Frostwolf Perfection
+                        case 220:              // AV, Stormpike Perfection
+                        {
+                            if(!((BattleGroundAV*)bg)->PerfectionAV(GetPlayer()->GetTeam()))
+                                continue;
+                            break;
+                        }
                         default:
                         {
                             // those requirements couldn't be found in the dbc
