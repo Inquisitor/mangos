@@ -6595,7 +6595,7 @@ Unit* Unit::SelectMagnetTarget(Unit *victim, Spell* spell, SpellEffectIndex eff)
         return NULL;
 
     // Magic case
-    if (spell && (spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_NONE || spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC))
+    if (spell && (spell->m_spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE || spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC))
     {
         Unit::AuraList const& magnetAuras = victim->GetAurasByType(SPELL_AURA_SPELL_MAGNET);
         for(Unit::AuraList::const_iterator itr = magnetAuras.begin(); itr != magnetAuras.end(); ++itr)
@@ -6607,12 +6607,6 @@ Unit* Unit::SelectMagnetTarget(Unit *victim, Spell* spell, SpellEffectIndex eff)
                     //Destroy totem...
                     if (magnet->GetObjectGuid().IsUnit() && ((Creature*)magnet)->IsTotem())
                          magnet->CastSpell(magnet, 5, true);
-                    else
-                    {
-                        if (SpellAuraHolder *holder = (*itr)->GetHolder())
-                            if (holder->DropAuraCharge())
-                                victim->RemoveSpellAuraHolder(holder);
-                    }
                     return magnet;
                 }
             }
@@ -6629,12 +6623,7 @@ Unit* Unit::SelectMagnetTarget(Unit *victim, Spell* spell, SpellEffectIndex eff)
                 if (magnet->isAlive() && magnet->IsWithinLOSInMap(this) && (!spell || spell->CheckTarget(magnet, eff)))
                 {
                     if (roll_chance_i((*i)->GetModifier()->m_amount))
-                    {
-                        if (SpellAuraHolder *holder = (*i)->GetHolder())
-                            if (holder->DropAuraCharge())
-                                victim->RemoveSpellAuraHolder(holder);
                         return magnet;
-                    }
                 }
             }
         }
@@ -12304,8 +12293,14 @@ ObjectGuid const& Unit::GetCreatorGuid() const
 {
     switch(GetObjectGuid().GetHigh())
     {
-        case HIGHGUID_UNIT:
         case HIGHGUID_VEHICLE:
+            {
+                if (!(const_cast<Unit*>(this)->GetVehicleInfo()->GetEntry()->m_flags & (VEHICLE_FLAG_NOT_DISMISS | VEHICLE_FLAG_ACCESSORY)))
+                    if (GetOwner())
+                        return GetOwner()->GetObjectGuid();
+            }
+        // No break here!
+        case HIGHGUID_UNIT:
             if (((Creature*)this)->IsTemporarySummon())
             {
                 return ((TemporarySummon*)this)->GetSummonerGuid();

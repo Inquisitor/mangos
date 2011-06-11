@@ -665,6 +665,16 @@ void Spell::FillTargetMap()
             }
         }
 
+        if (tmpUnitMap.size() == 1 && *tmpUnitMap.begin() == m_caster->getVictim())
+        {
+            if (Unit* pMagnetTarget = m_caster->SelectMagnetTarget(*tmpUnitMap.begin(), this, SpellEffectIndex(i)))
+                if (pMagnetTarget != *tmpUnitMap.begin())
+                {
+                    tmpUnitMap.clear();
+                    tmpUnitMap.push_back(pMagnetTarget);
+                }
+        }
+
         for (UnitList::iterator itr = tmpUnitMap.begin(); itr != tmpUnitMap.end();)
         {
             if (!CheckTarget (*itr, SpellEffectIndex(i)))
@@ -2326,6 +2336,10 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             if(Unit* target = m_targets.getUnitTarget())
                 if( target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsPet() && ((Pet*)target)->getPetType() == MINI_PET)
                     targetUnitMap.push_back(target);
+            break;
+        case TARGET_UNIT_CREATOR:
+            if(Unit* target = m_caster->GetCreator())
+                targetUnitMap.push_back(target);
             break;
         case TARGET_OWNED_VEHICLE:
             if (VehicleKit* vehicle = m_caster->GetVehicle())
