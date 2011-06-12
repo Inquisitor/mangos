@@ -910,6 +910,26 @@ void BattleGround::EndBattleGround(Team winner)
         }
     }
 
+    //for achievement Last man standing
+    bool isAlive5v5 = false;
+    if (isArena() && isRated() && winner_arena_team && loser_arena_team && GetArenaType() == ARENA_TYPE_5v5)
+    {
+        bool norepeat = true;
+        for(BattleGroundPlayerMap::iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+        {
+             Player *player = sObjectMgr.GetPlayer(itr->first);
+             if (player->isAlive() && norepeat)
+                 if(!isAlive5v5)
+                     isAlive5v5 = true;
+                 else
+                 {
+                     isAlive5v5 = false;
+                     norepeat = false;
+                 }
+        }
+    }
+
+
     for(BattleGroundPlayerMap::iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
     {
         Team team = itr->second.PlayerTeam;
@@ -932,6 +952,15 @@ void BattleGround::EndBattleGround(Team winner)
         {
             sLog.outError("BattleGround:EndBattleGround %s not found!", itr->first.GetString().c_str());
             continue;
+        }
+
+        if(isArena() && isRated() && isAlive5v5 && GetArenaType() == ARENA_TYPE_5v5)
+        {
+            if (plr->isAlive())
+            {
+                plr->CastSpell(plr, 26549, false);
+                plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 26549);
+            }
         }
 
         // should remove spirit of redemption

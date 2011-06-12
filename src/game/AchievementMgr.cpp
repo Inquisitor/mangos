@@ -1403,9 +1403,12 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
 
                 switch(achievement->ID)
                 {
-                    case 2193:                             //this is hack for damage from bomb
-                    case 1761:                             //this is not such spell in dbc
-                        if(miscvalue1 == 60937)
+                    case 2193:
+                    case 1761:
+                    case 409:
+                        if(miscvalue1 == 60937)            //this is hack for damage from bomb
+                            break;                         //this is not such spell in dbc
+                        else if(miscvalue1 == 26549)       //this is hack for Last man standing
                             break;
                         else
                             continue;
