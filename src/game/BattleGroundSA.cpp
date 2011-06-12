@@ -167,6 +167,13 @@ void BattleGroundSA::Update(uint32 diff)
                 SendMessageToAll(defender == ALLIANCE ? LANG_BG_SA_ALLIANCE_TIMEOUT_END_1ROUND : LANG_BG_SA_HORDE_TIMEOUT_END_1ROUND, CHAT_MSG_BG_SYSTEM_NEUTRAL, NULL);
                 RoundScores[0].winner = GetDefender();
                 RoundScores[0].time = 601000;
+
+                for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+                {
+                    if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 52459);
+                }
+
                 ResetBattle(0, defender);
             }
             else // Timeout of second round
@@ -174,6 +181,13 @@ void BattleGroundSA::Update(uint32 diff)
                 SendMessageToAll(defender == ALLIANCE ? LANG_BG_SA_ALLIANCE_TIMEOUT_END_2ROUND : LANG_BG_SA_HORDE_TIMEOUT_END_2ROUND, CHAT_MSG_BG_SYSTEM_NEUTRAL, NULL);
                 RoundScores[1].winner = GetDefender();
                 RoundScores[1].time = 601000;
+
+                for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+                {
+                    if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 52459);
+                }
+
                 BattleGroundSA::EndBattleGround(defender);
                 return;
             }
@@ -915,6 +929,13 @@ void BattleGroundSA::HandleKillUnit(Creature* unit, Player* killer)
     {
         UpdatePlayerScore(killer, SCORE_DEMOLISHERS_DESTROYED, 1);
         isDemolisherDestroyed[killer->GetTeam() == HORDE ? 0 : 1] = true;
+        if(killer->GetVehicle())
+            killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, unit->GetEntry(), 1);
+    }
+
+    if(unit->GetEntry() == 50000) //bomb
+    {
+        killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 1843);
     }
 }
 
@@ -1230,4 +1251,18 @@ uint32 BattleGroundSA::GetCorrectFactionSA(uint8 vehicleType) const
         }
     }
     return VEHICLE_FACTION_NEUTRAL;
+}
+
+bool BattleGroundSA::winSAwithAllWalls(Team team)
+{
+   if(GetDefender() != team)
+        return false;
+
+    bool allNotDestroyed = true;
+
+    for (uint32 i = 0; i < BG_SA_GATE_MAX; ++i)
+        if(GateStatus[i] == BG_SA_GO_GATES_DESTROY)
+            allNotDestroyed = false;
+
+    return allNotDestroyed;
 }

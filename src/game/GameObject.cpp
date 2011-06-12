@@ -1931,7 +1931,11 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
 
     Player* pWho = NULL;
     if (pDoneBy && pDoneBy->GetTypeId() == TYPEID_PLAYER)
+    {
         pWho = (Player*)pDoneBy;
+        //this is damage from bomb on SA
+        pWho->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+    }
 
     if(pDoneBy && ((Creature*)pDoneBy)->GetVehicleKit())
         pWho = (Player*)pDoneBy->GetCharmerOrOwner();

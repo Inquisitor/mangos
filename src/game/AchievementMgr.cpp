@@ -509,6 +509,9 @@ void AchievementMgr::ResetAchievementCriteria(AchievementCriteriaTypes type, uin
             case ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL:
             case ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE:
             case ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA:
+            case ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET:
+            case ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL:
+            case ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE:
             {
                 switch(achievementCriteria->referredAchievement) // All achievements that should reset its progress.
                 {
@@ -1099,10 +1102,22 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 if(achievementCriteria->kill_creature.creatureID != miscvalue1)
                     continue;
 
-                // those requirements couldn't be found in the dbc
-                AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                if(!data || !data->Meets(GetPlayer(),unit))
-                    continue;
+                switch(achievement->ID)                    //this is hack for kill vehicle on SA
+                {
+                    case 1763:
+                    case 2189:
+                        if(miscvalue1 == 28781)
+                            break;
+                        else
+                            continue;
+                    default:
+                        {
+                            // those requirements couldn't be found in the dbc
+                            AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                            if(!data || !data->Meets(GetPlayer(),unit))
+                                continue;
+                        }
+                }
 
                 change = miscvalue2;
                 progressType = PROGRESS_ACCUMULATE;
@@ -1385,13 +1400,40 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 if (!miscvalue1 || miscvalue1 != achievementCriteria->be_spell_target.spellID)
                     continue;
 
-                // those requirements couldn't be found in the dbc
-                AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                if(!data)
-                    continue;
+                switch(achievement->ID)
+                {
+                    case 2193:                             //this is hack for damage from bomb
+                    case 1761:                             //this is not such spell in dbc
+                        if(miscvalue1 == 60937)
+                            break;
+                        else
+                            continue;
+                    case 1757:
+                    case 2200:                            //this is hack for win SA with all walls
+                        if(miscvalue1 == 52459)
+                        {
+                            BattleGround* bg = GetPlayer()->GetBattleGround();
+                            if (!bg)
+                                continue;
 
-                if(!data->Meets(GetPlayer(),unit))
-                    continue;
+                            if(((BattleGroundSA*)bg)->winSAwithAllWalls(GetPlayer()->GetTeam()))
+                                break;
+                            else
+                                continue;
+                        }
+                        else
+                            continue;
+                    default:
+                        {
+                            // those requirements couldn't be found in the dbc
+                            AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                            if(!data)
+                            continue;
+
+                            if(!data->Meets(GetPlayer(),unit))
+                            continue;
+                        }
+                }
 
                 change = 1;
                 progressType = PROGRESS_ACCUMULATE;
@@ -1401,6 +1443,25 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
             {
                 if (!miscvalue1 || miscvalue1 != achievementCriteria->cast_spell.spellID)
                     continue;
+
+                switch(achievement->ID)                    //this is hack for kill bomb SA
+                {
+                    case 1765:
+                        if(miscvalue1 == 1843)
+                            break;
+                        else
+                            continue;
+                    default:
+                        {
+                            // those requirements couldn't be found in the dbc
+                            AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                            if(!data)
+                            continue;
+
+                            if(!data->Meets(GetPlayer(),unit))
+                            continue;
+                        }
+                }
 
                 AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
                 if(!data)
