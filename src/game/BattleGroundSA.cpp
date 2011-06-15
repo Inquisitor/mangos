@@ -929,8 +929,6 @@ void BattleGroundSA::HandleKillUnit(Creature* unit, Player* killer)
     {
         UpdatePlayerScore(killer, SCORE_DEMOLISHERS_DESTROYED, 1);
         isDemolisherDestroyed[killer->GetTeam() == HORDE ? 0 : 1] = true;
-        if(killer->GetVehicle())
-            killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, unit->GetEntry(), 1);
     }
 
     if(unit->GetEntry() == 50000) //bomb

@@ -1108,7 +1108,8 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     case 1763:
                     case 2189:
                         if(miscvalue1 == 28781)
-                            break;
+                            if(GetPlayer()->GetVehicle())
+                                break;
                         else
                             continue;
                     default:
@@ -2021,10 +2022,36 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 if (!miscvalue1)
                     continue;
 
-                // They have no proper requirements in dbc
-                AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                if (!data || !data->Meets(GetPlayer(), NULL))
-                    continue;
+                //title achievement of arena
+                switch(achievementCriteria->referredAchievement)
+                {
+                    case 2090:
+                        if(GetPlayer()->GetAchievementMgr().HasAchievement(2093))
+                            break;
+                        else if(GetPlayer()->GetAchievementMgr().HasAchievement(2092))
+                            break;
+                        else if(GetPlayer()->GetAchievementMgr().HasAchievement(2091))
+                            break;
+                        //there is no break!
+                    case 2093:
+                        if(GetPlayer()->GetAchievementMgr().HasAchievement(2092))
+                            break;
+                        else if(GetPlayer()->GetAchievementMgr().HasAchievement(2091))
+                            break;
+                        //there is no break!
+                    case 2092:
+                        if(GetPlayer()->GetAchievementMgr().HasAchievement(2091))
+                            break;
+                        //there is no break!
+                    default:
+                        {
+                            // They have no proper requirements in dbc
+                            AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                            if (!data || !data->Meets(GetPlayer(), NULL))
+                                continue;
+                        }
+
+                }
 
                 change = 1;
                 progressType = PROGRESS_ACCUMULATE;
