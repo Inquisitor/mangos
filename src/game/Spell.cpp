@@ -7294,7 +7294,7 @@ bool Spell::CheckTarget( Unit* target, SpellEffectIndex eff )
     }
 
     // Bloodlust / Heroism - Sated & Exhaustion debuffs
-    if(m_spellInfo->SpellFamilyName==SPELLFAMILY_SHAMAN && m_spellInfo->SpellFamilyFlags == UI64LIT(0x4000000000)
+    if(m_spellInfo->IsFitToFamily<SPELLFAMILY_SHAMAN, CF_SHAMAN_BLOODLUST_HEROISM>()
         && (target->HasAura(57724) || target->HasAura(57723)) )
         return false;
 

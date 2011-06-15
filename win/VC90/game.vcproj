@@ -863,11 +863,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\MailHandler.cpp"
+				RelativePath="..\..\src\game\Mail.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\Mail.h"
+				RelativePath="..\..\src\game\MailHandler.cpp"
 				>
 			</File>
 			<File
@@ -1016,6 +1016,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\SpellAuras.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\SpellClassMask.h"
 				>
 			</File>
 			<File
