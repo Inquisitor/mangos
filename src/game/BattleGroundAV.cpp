@@ -284,6 +284,12 @@ void BattleGroundAV::StartingEventOpenDoors()
     UpdateWorldState(BG_AV_SHOW_A_SCORE, 1);
 
     OpenDoorEvent(BG_EVENT_DOOR);
+
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9166);
+    }
 }
 
 void BattleGroundAV::AddPlayer(Player *plr)
@@ -292,6 +298,7 @@ void BattleGroundAV::AddPlayer(Player *plr)
     // create score and add it to map, default values are set in constructor
     BattleGroundAVScore* sc = new BattleGroundAVScore;
     m_PlayerScores[plr->GetObjectGuid()] = sc;
+    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9166);
 }
 
 void BattleGroundAV::EndBattleGround(Team winner)
@@ -300,6 +307,10 @@ void BattleGroundAV::EndBattleGround(Team winner)
     uint32 tower_survived[BG_TEAMS_COUNT]  = {0, 0};
     uint32 graves_owned[BG_TEAMS_COUNT]    = {0, 0};
     uint32 mines_owned[BG_TEAMS_COUNT]     = {0, 0};
+
+    for (uint32 i = 0; i < BG_TEAMS_COUNT; ++i)
+        m_PerfectionAV[i] = false;
+
     // towers all not destroyed:
     for(BG_AV_Nodes i = BG_AV_NODES_DUNBALDAR_SOUTH; i <= BG_AV_NODES_STONEHEART_BUNKER; ++i)
         if (m_Nodes[i].State == POINT_CONTROLLED)
@@ -318,6 +329,24 @@ void BattleGroundAV::EndBattleGround(Team winner)
     for (uint32 i = 0; i < BG_AV_MAX_MINES; ++i)
         if (m_Mine_Owner[i] != BG_AV_TEAM_NEUTRAL)
             ++mines_owned[m_Mine_Owner[i]];
+
+    // achievement Stormpike/Frostwolf Perfection
+    if(winner == ALLIANCE)
+        if(tower_survived[BG_TEAM_ALLIANCE]==4)
+            if(tower_survived[BG_TEAM_HORDE]==0)
+                if(!IsActiveEvent(BG_AV_NodeEventCaptainDead_A, 0))
+                    if (IsActiveEvent(BG_AV_BOSS_A, 0))
+                        m_PerfectionAV[BG_TEAM_ALLIANCE] = true;
+
+    if(winner == HORDE)
+        if(tower_survived[BG_TEAM_HORDE]==4)
+            if(tower_survived[BG_TEAM_ALLIANCE]==0)
+                if(!IsActiveEvent(BG_AV_NodeEventCaptainDead_H, 0))
+                    if (IsActiveEvent(BG_AV_BOSS_H, 0))
+                        m_PerfectionAV[BG_TEAM_HORDE] = true;
+
+
+
 
     // now we have the values give the honor/reputation to the teams:
     Team team[BG_TEAMS_COUNT]      = { ALLIANCE, HORDE };

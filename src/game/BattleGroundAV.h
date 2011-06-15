@@ -347,6 +347,8 @@ class BattleGroundAV : public BattleGround
         virtual WorldSafeLocsEntry const* GetClosestGraveYard(Player *plr);
 
         static BattleGroundAVTeamIndex GetAVTeamIndexByTeamId(Team team) { return BattleGroundAVTeamIndex(GetTeamIndexByTeamId(team)); }
+        // achievement Stormpike/Frostwolf Perfection
+        bool PerfectionAV(Team team) const { return m_PerfectionAV[GetTeamIndexByTeamId(team)]; }
     private:
         /* Nodes occupying */
         void EventPlayerAssaultsPoint(Player* player, BG_AV_Nodes node);
@@ -394,6 +396,8 @@ class BattleGroundAV : public BattleGround
         uint32 m_RepOwnedMine;
         uint32 m_RepSurviveCaptain;
         uint32 m_RepSurviveTower;
+
+        bool   m_PerfectionAV[BG_TEAMS_COUNT];
 };
 
 #endif

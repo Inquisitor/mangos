@@ -150,6 +150,14 @@ void BattleGroundWS::StartingEventOpenDoors()
     SpawnEvent(WS_EVENT_SPIRITGUIDES_SPAWN, 0, true);
     SpawnEvent(WS_EVENT_FLAG_A, 0, true);
     SpawnEvent(WS_EVENT_FLAG_H, 0, true);
+    m_FlagCaptureTime[0] = 0;
+    m_FlagCaptureTime[1] = 0;
+
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 8563);
+    }
 }
 
 void BattleGroundWS::AddPlayer(Player *plr)
@@ -159,6 +167,7 @@ void BattleGroundWS::AddPlayer(Player *plr)
     BattleGroundWGScore* sc = new BattleGroundWGScore;
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
+    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 8563);
 }
 
 void BattleGroundWS::RespawnFlag(Team team, bool captured)
@@ -216,6 +225,12 @@ void BattleGroundWS::EventPlayerCapturedFlag(Player *Source)
     m_LastCapturedFlagTeam = Source->GetTeam();
 
     Team winner = TEAM_NONE;
+
+    // capture flag 75 sec
+    if (Source->GetTeam() == ALLIANCE)
+        Source->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET2, BG_WS_SPELL_WARSONG_FLAG);
+    else
+        Source->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET2, BG_WS_SPELL_SILVERWING_FLAG);
 
     Source->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
     if (Source->GetTeam() == ALLIANCE)
@@ -332,6 +347,7 @@ void BattleGroundWS::EventPlayerDroppedFlag(Player *Source)
             m_FlagState[BG_TEAM_HORDE] = BG_WS_FLAG_STATE_ON_GROUND;
             Source->CastSpell(Source, BG_WS_SPELL_WARSONG_FLAG_DROPPED, true);
             set = true;
+            m_FlagCaptureTime[0] = 0;
         }
     }
     else
@@ -345,6 +361,7 @@ void BattleGroundWS::EventPlayerDroppedFlag(Player *Source)
             m_FlagState[BG_TEAM_ALLIANCE] = BG_WS_FLAG_STATE_ON_GROUND;
             Source->CastSpell(Source, BG_WS_SPELL_SILVERWING_FLAG_DROPPED, true);
             set = true;
+            m_FlagCaptureTime[1] = 0;
         }
     }
 
@@ -392,6 +409,8 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
         UpdateFlagState(HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
         UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, 1);
         Source->CastSpell(Source, BG_WS_SPELL_SILVERWING_FLAG, true);
+        m_FlagCaptureTime[1] = GetStartTime();
+        Source->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, 61265);
     }
 
     //horde flag picked up from base
@@ -408,6 +427,8 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
         UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_ON_PLAYER);
         UpdateWorldState(BG_WS_FLAG_UNK_HORDE, 1);
         Source->CastSpell(Source, BG_WS_SPELL_WARSONG_FLAG, true);
+        m_FlagCaptureTime[0] = GetStartTime();
+        Source->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, 61266);
     }
 
     //Alliance flag on ground(not in base) (returned or picked up again from ground!)
@@ -421,6 +442,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
             RespawnFlag(ALLIANCE, false);
             PlaySoundToAll(BG_WS_SOUND_FLAG_RETURNED);
             UpdatePlayerScore(Source, SCORE_FLAG_RETURNS, 1);
+            m_FlagCaptureTime[0] = 0;
             Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,44);
         }
         else
@@ -434,6 +456,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
             m_FlagState[BG_TEAM_ALLIANCE] = BG_WS_FLAG_STATE_ON_PLAYER;
             UpdateFlagState(HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
             UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, 1);
+            m_FlagCaptureTime[1] = 0;
         }
         //called in HandleGameObjectUseOpcode:
         //target_obj->Delete();

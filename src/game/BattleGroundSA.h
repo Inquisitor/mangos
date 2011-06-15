@@ -305,7 +305,8 @@ class BattleGroundSA : public BattleGround
         uint32 GetCorrectFactionSA(uint8 vehicleType) const;
         /* This teleports player to correct loc in function of BG status and it resurects player if necesary */
         void TeleportPlayerToCorrectLoc(Player *player, bool resetBattle = false);
-
+        // for achievement - win with all walls
+        bool winSAwithAllWalls(Team team);
     private:
         uint8 m_Gyd[BG_SA_GRY_MAX];
         uint8 m_prevGyd[BG_SA_GRY_MAX]; // used for performant wordlstate-updating
