@@ -2661,6 +2661,7 @@ enum DiminishingGroup
     // Warrior Specific
     DIMINISHING_CHARGE,
     // Other
+    DIMINISHING_TAUNT,
     // Don't Diminish, but limit duration to 10s
     DIMINISHING_LIMITONLY
 };
