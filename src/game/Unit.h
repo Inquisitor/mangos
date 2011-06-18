@@ -1431,6 +1431,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         }
 
         bool HasAuraType(AuraType auraType) const;
+        bool HasAffectedAura(AuraType auraType, SpellEntry const* spellProto) const;
         bool HasAura(uint32 spellId, SpellEffectIndex effIndex) const;
         bool HasAura(uint32 spellId) const
         {
@@ -1699,6 +1700,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
             return form != FORM_NONE && form != FORM_BATTLESTANCE && form != FORM_BERSERKERSTANCE && form != FORM_DEFENSIVESTANCE &&
                 form != FORM_SHADOW;
         }
+
+        virtual uint32 GetModelForForm(SpellShapeshiftFormEntry const* ssEntry) const;
+        uint32 GetModelForForm() const;     // for current form
 
         float m_modMeleeHitChance;
         float m_modRangedHitChance;

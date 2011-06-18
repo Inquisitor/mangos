@@ -3616,7 +3616,8 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
     if(sSpellMgr.IsPrimaryProfessionFirstRankSpell(spell_id))
     {
         uint32 freeProfs = GetFreePrimaryProfessionPoints()+1;
-        if(freeProfs <= sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL))
+        uint32 maxProfs = GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_MAX_PRIMARY_COUNT)) ? sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL) : 10;
+        if(freeProfs <= maxProfs)
             SetFreePrimaryProfessions(freeProfs);
     }
 
@@ -4248,16 +4249,19 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
         return TRAINER_SPELL_RED;
 
     // known spell
-    if(HasSpell(trainer_spell->learnedSpell))
+    if (HasSpell(trainer_spell->learnedSpell))
         return TRAINER_SPELL_GRAY;
 
     // check race/class requirement
-    if(!IsSpellFitByClassAndRace(trainer_spell->learnedSpell))
+    if (!IsSpellFitByClassAndRace(trainer_spell->learnedSpell))
         return TRAINER_SPELL_RED;
 
+    bool prof = SpellMgr::IsProfessionSpell(trainer_spell->learnedSpell);
+
     // check level requirement
-    if(getLevel() < trainer_spell->reqLevel)
-        return TRAINER_SPELL_RED;
+    if (prof && GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_LEVEL)))
+        if (getLevel() < trainer_spell->reqLevel)
+            return TRAINER_SPELL_RED;
 
     if(SpellChainNode const* spell_chain = sSpellMgr.GetSpellChainNode(trainer_spell->learnedSpell))
     {
@@ -4271,8 +4275,9 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
     }
 
     // check skill requirement
-    if(trainer_spell->reqSkill && GetBaseSkillValue(trainer_spell->reqSkill) < trainer_spell->reqSkillValue)
-        return TRAINER_SPELL_RED;
+    if (prof && GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_SKILL)))
+        if (trainer_spell->reqSkill && GetBaseSkillValue(trainer_spell->reqSkill) < trainer_spell->reqSkillValue)
+            return TRAINER_SPELL_RED;
 
     // exist, already checked at loading
     SpellEntry const* spell = sSpellStore.LookupEntry(trainer_spell->learnedSpell);
@@ -8907,6 +8912,9 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
     FillInitialWorldState(data, count, 0xC77, sWorld.getConfig(CONFIG_UINT32_ARENA_SEASON_ID));
                                                             // 3901 8 Previous arena season
     FillInitialWorldState(data, count, 0xF3D, sWorld.getConfig(CONFIG_UINT32_ARENA_SEASON_PREVIOUS_ID));
+    FillInitialWorldState(data, count, 0xED9, 1);           // 3801 9  0 - Battle for Wintergrasp in progress, 1 - otherwise
+                                                            // 4354 10 Time when next Battle for Wintergrasp starts
+    FillInitialWorldState(data, count, 0x1102, uint32(time(NULL) + 9000));
 
     if(mapid == 530)                                        // Outland
     {
@@ -16652,12 +16660,7 @@ void Player::_LoadAuras(QueryResult *result, uint32 timediff)
             }
 
             // prevent wrong values of remaincharges
-            if (spellproto->procCharges)
-            {
-                if (remaincharges <= 0 || remaincharges > spellproto->procCharges)
-                    remaincharges = spellproto->procCharges;
-            }
-            else
+            if (spellproto->procCharges == 0)
                 remaincharges = 0;
 
             if (!spellproto->StackAmount)
@@ -20737,7 +20740,9 @@ void Player::SetPhaseMask(uint32 newPhaseMask, bool update)
 
 void Player::InitPrimaryProfessions()
 {
-    SetFreePrimaryProfessions(sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL));
+    uint32 maxProfs = GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_MAX_PRIMARY_COUNT))
+        ? sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL) : 10;
+    SetFreePrimaryProfessions(maxProfs);
 }
 
 void Player::SendComboPoints(ObjectGuid targetGuid, uint8 combopoints)
@@ -24095,6 +24100,91 @@ uint8 Player::GetTalentsCount(uint8 tab)
     }
     m_cachedTC[tab] = talentCount;
     return talentCount;
+}
+
+uint32 Player::GetModelForForm(SpellShapeshiftFormEntry const* ssEntry) const
+{
+    ShapeshiftForm form = ShapeshiftForm(ssEntry->ID);
+    Team team = TeamForRace(getRace());
+    uint32 modelid = 0;
+    // The following are the different shapeshifting models for cat/bear forms according
+    // to hair color for druids and skin tone for tauren introduced in patch 3.2
+    if (form == FORM_CAT || form == FORM_BEAR || form == FORM_DIREBEAR)
+    {
+        if (team == ALLIANCE)
+        {
+            uint8 hairColour = GetByteValue(PLAYER_BYTES, 3);
+            if (form == FORM_CAT)
+            {
+                if (hairColour >= 0 && hairColour <= 2) modelid = 29407;
+                else if (hairColour == 3 || hairColour == 5) modelid = 29405;
+                else if (hairColour == 6) modelid = 892;
+                else if (hairColour == 7) modelid = 29406;
+                else if (hairColour == 4) modelid = 29408;
+            }
+            else // form == FORM_BEAR || form == FORM_DIREBEAR
+            {
+                if (hairColour >= 0 && hairColour <= 2) modelid = 29413;
+                else if (hairColour == 3 || hairColour == 5) modelid = 29415;
+                else if (hairColour == 6) modelid = 29414;
+                else if (hairColour == 7) modelid = 29417;
+                else if (hairColour == 4) modelid = 29416;
+            }
+        }
+        else if (team == HORDE)
+        {
+            uint8 skinColour = GetByteValue(PLAYER_BYTES, 0);
+            if (getGender() == GENDER_MALE)
+            {
+                if (form == FORM_CAT)
+                {
+                    if (skinColour >= 0 && skinColour <= 5) modelid = 29412;
+                    else if (skinColour >= 6 && skinColour <= 8) modelid = 29411;
+                    else if (skinColour >= 9 && skinColour <= 11) modelid = 29410;
+                    else if (skinColour >= 12 && skinColour <= 14 || skinColour == 18) modelid = 29409;
+                    else if (skinColour >= 15 && skinColour <= 17) modelid = 8571;
+                }
+                else // form == FORM_BEAR || form == FORM_DIREBEAR
+                {
+                    if (skinColour >= 0 && skinColour <= 2) modelid = 29418;
+                    else if (skinColour >= 3 && skinColour <= 5 || skinColour >= 12 && skinColour <= 14) modelid = 29419;
+                    else if (skinColour >= 9 && skinColour <= 11 || skinColour >= 15 && skinColour <= 17) modelid = 29420;
+                    else if (skinColour >= 6 && skinColour <= 8) modelid = 2289;
+                    else if (skinColour == 18) modelid = 29421;
+                }
+            }
+            else // getGender() == GENDER_FEMALE
+            {
+                if (form == FORM_CAT)
+                {
+                    if (skinColour >= 0 && skinColour <= 3) modelid = 29412;
+                    else if (skinColour == 4 || skinColour == 5) modelid = 29411;
+                    else if (skinColour == 6 || skinColour == 7) modelid = 29410;
+                    else if (skinColour == 8 || skinColour == 9) modelid = 8571;
+                    else if (skinColour == 10) modelid = 29409;
+                }
+                else // form == FORM_BEAR || form == FORM_DIREBEAR
+                {
+                    if (skinColour == 0 || skinColour == 1) modelid = 29418;
+                    else if (skinColour == 2 || skinColour == 3) modelid = 29419;
+                    else if (skinColour == 4 || skinColour == 5) modelid = 2289;
+                    else if (skinColour >= 6 && skinColour <= 9) modelid = 29420;
+                    else if (skinColour == 10) modelid = 29421;
+                }
+            }
+        }
+    }
+    else if (team == HORDE)
+    {
+        if (ssEntry->modelID_H)
+            modelid = ssEntry->modelID_H;           // 3.2.3 only the moonkin form has this information
+        else                                        // get model for race
+            modelid = sObjectMgr.GetModelForRace(ssEntry->modelID_A, getRaceMask());
+    }
+    // nothing found in above, so use default
+    if (!modelid)
+        modelid = ssEntry->modelID_A;
+    return modelid;
 }
 
 bool Player::HasOrphan()
