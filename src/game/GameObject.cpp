@@ -1933,8 +1933,13 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
     if (pDoneBy && pDoneBy->GetTypeId() == TYPEID_PLAYER)
     {
         pWho = (Player*)pDoneBy;
-        //this is damage from bomb on SA
-        pWho->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+        //this is damage from bomb on SA (need x2 damage)
+        if (BattleGround *bg = pWho->GetBattleGround())
+            if(bg->GetTypeID(true) == BATTLEGROUND_SA)
+            {
+                damage = 2*damage;
+                pWho->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+            }
     }
 
     if(pDoneBy && ((Creature*)pDoneBy)->GetVehicleKit())
