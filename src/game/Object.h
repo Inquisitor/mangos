@@ -526,6 +526,12 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         bool IsInRange2d(float x, float y, float minRange, float maxRange) const;
         bool IsInRange3d(float x, float y, float z, float minRange, float maxRange) const;
 
+        bool IsInBetween(const WorldObject *obj1, const WorldObject *obj2, float size = 0) const;
+        float GetExactDist2dSq(float x, float y) const
+        { float dx = m_position.x - x; float dy = m_position.y - y; return dx*dx + dy*dy; }
+        float GetExactDist2d(const float x, const float y) const
+        { return sqrt(GetExactDist2dSq(x, y)); }
+
         float GetAngle( const WorldObject* obj ) const;
         float GetAngle( const float x, const float y ) const;
         bool HasInArc( const float arcangle, const WorldObject* obj ) const;
@@ -601,7 +607,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         Player* GetOriginalLootRecipient() const;           // ignore group changes/etc, not for looting
         // helper functions to select units
         Creature* GetClosestCreatureWithEntry(WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange);
-        GameObject* GetClosestGameObjectWithEntry(WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange);
+        GameObject* GetClosestGameObjectWithEntry(const WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange);
         void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& lList, uint32 uiEntry, float fMaxSearchRange);
         void GetCreatureListWithEntryInGrid(std::list<Creature*>& lList, uint32 uiEntry, float fMaxSearchRange);
 

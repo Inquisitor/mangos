@@ -1278,6 +1278,25 @@ bool WorldObject::IsWithinLOSInMap(const WorldObject* obj) const
     if (!IsInMap(obj)) return false;
     float ox,oy,oz;
     obj->GetPosition(ox,oy,oz);
+
+    if(GetMapId() == 617) // Dalaran Arena Waterfall
+        if(GameObject * pWaterfall = ((WorldObject*)this)->GetClosestGameObjectWithEntry(this, 194395/*191877*/, 60))
+            if(pWaterfall->isSpawned())
+                if(pWaterfall->IsInBetween(this, obj, pWaterfall->GetObjectBoundingRadius()))
+                    return false;
+
+    if(GetMapId() == 618)
+    {
+        for(int i = 0; i < 4; ++i)
+        {
+            const int pillars[4] = {194583, 194584, 194585, 194587};
+            if(GameObject * pPillar = ((WorldObject*)this)->GetClosestGameObjectWithEntry(this, pillars[i], 35))
+                if(pPillar->GetGoState() == GO_STATE_ACTIVE)
+                    if(pPillar->IsInBetween(this, obj, pPillar->GetObjectBoundingRadius()))
+                        return false;
+        }
+    }
+
     return(IsWithinLOS(ox, oy, oz ));
 }
 
@@ -1376,6 +1395,21 @@ bool WorldObject::IsInRange3d(float x, float y, float z, float minRange, float m
 
     float maxdist = maxRange + sizefactor;
     return distsq < maxdist * maxdist;
+}
+
+bool WorldObject::IsInBetween(const WorldObject *obj1, const WorldObject *obj2, float size) const
+{
+    if(GetPositionX() > std::max(obj1->GetPositionX(), obj2->GetPositionX())
+        || GetPositionX() < std::min(obj1->GetPositionX(), obj2->GetPositionX())
+        || GetPositionY() > std::max(obj1->GetPositionY(), obj2->GetPositionY())
+        || GetPositionY() < std::min(obj1->GetPositionY(), obj2->GetPositionY()))
+        return false;
+
+    if(!size)
+        size = GetObjectBoundingRadius() / 2;
+
+    float angle = obj1->GetAngle(this) - obj1->GetAngle(obj2);
+    return abs(sin(angle)) * GetExactDist2d(obj1->GetPositionX(), obj1->GetPositionY()) < size;
 }
 
 float WorldObject::GetAngle(const WorldObject* obj) const
@@ -2063,7 +2097,7 @@ Creature* WorldObject::GetClosestCreatureWithEntry(WorldObject* pSource, uint32 
 }
 
 //return closest gameobject in grid, with range from pSource
-GameObject* WorldObject::GetClosestGameObjectWithEntry(WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange)
+GameObject* WorldObject::GetClosestGameObjectWithEntry(const WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange)
 {
     GameObject* pGameObject = NULL;
 
