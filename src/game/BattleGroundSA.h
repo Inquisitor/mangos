@@ -274,6 +274,7 @@ class BattleGroundSA : public BattleGround
         Team GetDefender() const { return defender; }
         uint8 GetGydController(uint8 gyd) const { return m_Gyd[gyd]; }
         uint32 GetVehicleFaction(uint8 vehicleType) const { return GetCorrectFactionSA(vehicleType); }
+        int32 GetGateStatus(int32 Type) const { return GateStatus[Type]; }
         void RemovePlayer(Player *plr, ObjectGuid guid);
         void HandleAreaTrigger(Player *Source, uint32 Trigger);
         void EndBattleGround(Team winner);
