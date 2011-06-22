@@ -583,6 +583,78 @@ void LoadDBCStores(const std::string& dataPath)
     sfix5->EffectImplicitTargetA[EFFECT_INDEX_1] = TARGET_SELF;
     sfix5->Effect[EFFECT_INDEX_1] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
 
+    // Deliver Gryphon
+    SpellEntry *sfix10 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(54420));
+    sfix10->EffectImplicitTargetA[EFFECT_INDEX_0] = TARGET_SELF;
+    sfix10->Effect[EFFECT_INDEX_0] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+    sfix10->Effect[EFFECT_INDEX_1] = SPELL_EFFECT_DUMMY;
+
+    // Moorabi Transform
+    SpellEntry *sfix11 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(55098));
+    sfix11->InterruptFlags |= SPELL_INTERRUPT_FLAG_INTERRUPT;
+
+    // Drop Off Soldier
+    SpellEntry *sfix12 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49081));
+    sfix12->EffectImplicitTargetA[EFFECT_INDEX_1] = TARGET_SELF;
+    sfix12->Effect[EFFECT_INDEX_1] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+
+    // Drop Off Gnome
+    SpellEntry *sfix13 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49122));
+    sfix13->EffectImplicitTargetA[EFFECT_INDEX_0] = TARGET_SELF;
+    sfix13->Effect[EFFECT_INDEX_0] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+
+    // Grappling Hook
+    SpellEntry *sfix14 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(43770));
+    sfix14->EffectImplicitTargetA[EFFECT_INDEX_0] = TARGET_SELF;
+
+    // Hand over Mammoth
+    SpellEntry *sfix15 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(51660));
+    sfix15->EffectImplicitTargetA[EFFECT_INDEX_0] = TARGET_SELF;
+    sfix15->Effect[EFFECT_INDEX_0] = SPELL_EFFECT_KILL_CREDIT_PERSONAL;
+    sfix15->EffectImplicitTargetA[EFFECT_INDEX_1] = TARGET_SELF;
+
+    // Wind Shear
+    SpellEntry *sfix16 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(57994));
+    sfix16->EffectBasePoints[1] = 1;
+
+    // Conjure Mana Gem filling
+    for(int i = 0; i < 7; ++i)
+    {
+        SpellEntry *sfix17 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(54407+i));
+        sfix17->manaCost = 0;
+    }
+
+    // Mana Shield (rank 2)
+    SpellEntry *sfix18 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(8494));
+    sfix18->procChance = 0;
+
+    // Improved Shadowform (Rank 1)
+    SpellEntry *sfix19 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(47569));
+    sfix19->Attributes &= ~SPELL_ATTR_NOT_SHAPESHIFT;
+
+    // Evocation - Add interrupt flag
+    SpellEntry *sfix20 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(12051));
+    sfix20->InterruptFlags |= SPELL_INTERRUPT_FLAG_INTERRUPT;
+
+    // Heart of the Phoenix - Make it give 100% Health and instant cast
+    SpellEntry *sfix21 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(54114));
+    sfix21->EffectBasePoints[EFFECT_INDEX_0] = 99; // 100% Health
+    sfix21->CastingTimeIndex = 1;
+
+    // Magic Suppression rank 1 and 3 (2 is fine ^^)
+    SpellEntry *sfix22 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49224));
+    sfix22->procCharges = 0;
+    SpellEntry *sfix23 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49611));
+    sfix23->procCharges = 0;
+
+    // Divine Hymn
+    SpellEntry *sfix24 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(64844));
+    sfix24->DmgClass = SPELL_DAMAGE_CLASS_MAGIC;
+
+    // Searing Flames
+    SpellEntry *sfix25 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(62661));
+    sfix25->InterruptFlags |= SPELL_INTERRUPT_FLAG_INTERRUPT;
+
     // Rescue Injured Soldier
     SpellEntry *sfix6 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(47962));
     sfix6->SpellFamilyName = SPELLFAMILY_GENERIC;

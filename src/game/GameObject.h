@@ -24,6 +24,7 @@
 #include "Object.h"
 #include "LootMgr.h"
 #include "Database/DatabaseEnv.h"
+#include "Utilities/EventProcessor.h"
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
 #if defined( __GNUC__ )
@@ -635,6 +636,9 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         // overwrite WorldObject function for proper name localization
         const char* GetNameForLocaleIdx(int32 locale_idx) const;
 
+        // Event handler
+        EventProcessor m_ObjectEvents;
+
         void SaveToDB();
         void SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask);
         bool LoadFromDB(uint32 guid, Map *map);
@@ -682,7 +686,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         bool isSpawnedByDefault() const { return m_spawnedByDefault; }
         uint32 GetRespawnDelay() const { return m_respawnDelayTime; }
         void Refresh();
-        void Delete();
+        void Delete(uint32 timeMSToDelete = 0);
 
         // Functions spawn/remove gameobject with DB guid in all loaded map copies (if point grid loaded in map)
         static void AddToRemoveListInMaps(uint32 db_guid, GameObjectData const* data);
@@ -791,4 +795,15 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         GridReference<GameObject> m_gridRef;
 };
+
+class ForcedDeleteDelayEvent : public BasicEvent
+{
+    public:
+        ForcedDeleteDelayEvent(GameObject& owner) : BasicEvent(), m_owner(owner) { }
+        bool Execute(uint64 e_time, uint32 p_time);
+
+    private:
+        GameObject& m_owner;
+};
+
 #endif

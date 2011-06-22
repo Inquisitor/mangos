@@ -650,7 +650,39 @@ void Unit::RemoveSpellbyDamageTaken(AuraType auraType, uint32 damage)
     uint32 max_dmg = getLevel() > 8 ? 25 * getLevel() - 150 : 50;
     float chance = float(damage) / max_dmg * 100.0f;
     if (roll_chance_f(chance))
+    {
+        // manually remove auras except ones that shouldn't be removed. TODO: better way of removing except some auras
+        if (auraType == SPELL_AURA_MOD_ROOT)
+        {
+            AuraList const &auras = GetAurasByType(SPELL_AURA_MOD_ROOT);
+            AuraList::const_iterator tmp;
+            for (AuraList::const_iterator itr = auras.begin(); itr != auras.end();)
+            {
+                tmp = itr;
+                tmp++;
+                switch ((*itr)->GetId())
+                {
+                    case 62283:                               // Iron Roots (Freya)
+                    case 62930:
+                    case 62438:
+                    case 62861:
+                    case 58373:                               // Glyph of Hamstring
+                    case 23694:                               // Improved Hamstring
+                    case 61969:                               // Flash Freeze (Hodir)
+                    case 62469:                               // Freeze (Hodir)
+                        // don't remove
+                        break;
+                    default:
+                        RemoveAurasDueToSpell((*itr)->GetId());
+                        break;
+                }
+                itr = tmp;
+            }
+            return;
+        }
+
         RemoveSpellsCausingAura(auraType);
+    }
 }
 
 void Unit::DealDamageMods(Unit *pVictim, uint32 &damage, uint32* absorb)
@@ -1244,7 +1276,12 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
                             if(spell->m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_ABORT_ON_DMG) // Always interrupt, even on absorbed.
                                 pVictim->InterruptSpell(CurrentSpellTypes(i));
                             else
-                                spell->Delayed();
+                            {
+                                // some spells should be considered as DoT, but are triggered spells
+                                // TODO: needs some research, maybe attribute SPELL_ATTR_EX3_UNK25
+                                if (!spellProto || spellProto && spellProto->Id != 62188) // Biting Cold (Hodir) exception
+                                    spell->Delayed();
+                            }
                         }
                     }
                 }
@@ -1900,6 +1937,7 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
     if(int32(damageInfo->damage) > 0)
     {
         damageInfo->procVictim |= PROC_FLAG_TAKEN_ANY_DAMAGE;
+        damageInfo->procEx |= PROC_EX_DIRECT_DAMAGE;
 
         // Calculate absorb & resists
         uint32 absorb_affected_damage = CalcNotIgnoreAbsorbDamage(damageInfo->damage,damageInfo->damageSchoolMask);
@@ -1912,6 +1950,9 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
         }
         if (damageInfo->resist)
             damageInfo->HitInfo|=HITINFO_RESIST;
+
+        if (damageInfo->damage <= 0)
+            damageInfo->procEx &= ~PROC_EX_DIRECT_DAMAGE;
 
     }
     else // Umpossible get negative result but....
@@ -2010,6 +2051,59 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
         // on weapon hit casts
         if(GetTypeId() == TYPEID_PLAYER && pVictim->isAlive())
             ((Player*)this)->CastItemCombatSpell(pVictim, damageInfo->attackType);
+
+        // victim's damage shield
+        std::set<Aura*> alreadyDone;
+        AuraList const& vDamageShields = pVictim->GetAurasByType(SPELL_AURA_DAMAGE_SHIELD);
+        for(AuraList::const_iterator i = vDamageShields.begin(); i != vDamageShields.end();)
+        {
+            if (alreadyDone.find(*i) == alreadyDone.end())
+            {
+                alreadyDone.insert(*i);
+                uint32 damage=(*i)->GetModifier()->m_amount;
+                SpellEntry const *i_spellProto = (*i)->GetSpellProto();
+                // Thorns
+                if (i_spellProto && i_spellProto->SpellFamilyName == SPELLFAMILY_DRUID && i_spellProto->SpellFamilyFlags & UI64LIT(0x00000100))
+                {
+                    Unit::AuraList const& dummyList = pVictim->GetAurasByType(SPELL_AURA_DUMMY);
+                    for(Unit::AuraList::const_iterator iter = dummyList.begin(); iter != dummyList.end(); ++iter)
+                    {
+                        // Brambles
+                        if((*iter)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_DRUID &&
+                            (*iter)->GetSpellProto()->SpellIconID == 53)
+                        {
+                            damage += uint32(damage * (*iter)->GetModifier()->m_amount / 100);
+                            break;
+                        }
+                    }
+                }
+                //Calculate absorb resist ??? no data in opcode for this possibly unable to absorb or resist?
+                //uint32 absorb;
+                //uint32 resist;
+                //CalcAbsorbResist(pVictim, SpellSchools(spellProto->School), SPELL_DIRECT_DAMAGE, damage, &absorb, &resist);
+                //damage-=absorb + resist;
+
+                pVictim->DealDamageMods(this,damage,NULL);
+
+                uint32 targetHealth = GetHealth();
+                uint32 overkill = damage > targetHealth ? damage - targetHealth : 0;
+
+                WorldPacket data(SMSG_SPELLDAMAGESHIELD,(8+8+4+4+4+4));
+                data << pVictim->GetObjectGuid();
+                data << GetObjectGuid();
+                data << uint32(i_spellProto->Id);
+                data << uint32(damage);                  // Damage
+                data << uint32(overkill);                // Overkill
+                data << uint32(i_spellProto->SchoolMask);
+                pVictim->SendMessageToSet(&data, true );
+
+                pVictim->DealDamage(this, damage, 0, SPELL_DIRECT_DAMAGE, GetSpellSchoolMask(i_spellProto), i_spellProto, true);
+
+                i = vDamageShields.begin();
+            }
+            else
+                ++i;
+        }
     }
 }
 
@@ -4323,6 +4417,16 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder *holder)
         sLog.outError("Holder (spell %u) add to spell aura holder list of %s (lowguid: %u) but spell aura holder target is %s (lowguid: %u)",
             holder->GetId(),(GetTypeId()==TYPEID_PLAYER?"player":"creature"),GetGUIDLow(),
             (holder->GetTarget()->GetTypeId()==TYPEID_PLAYER?"player":"creature"),holder->GetTarget()->GetGUIDLow());
+        delete holder;
+        return false;
+    }
+
+    // Alterac Valley Marshals', Warmasters' buffs, Runic Fortification, Berserk (Thorim) and Defense Matrix should affect only mobs
+    if (this->GetTypeId() != TYPEID_UNIT &&
+        (holder->GetId() == 45828 || holder->GetId() == 45829 || holder->GetId() == 45831 || holder->GetId() == 45830 ||
+         holder->GetId() == 45826 || holder->GetId() == 45822 || holder->GetId() == 45823 || holder->GetId() == 45824 ||
+         holder->GetId() == 65070 || holder->GetId() == 62942 || holder->GetId() == 62560))
+    {
         delete holder;
         return false;
     }
@@ -6667,6 +6771,10 @@ void Unit::SendEnergizeSpellLog(Unit *pVictim, uint32 SpellID, uint32 Damage, Po
 
 void Unit::EnergizeBySpell(Unit *pVictim, uint32 SpellID, uint32 Damage, Powers powertype)
 {
+    // don't energize isolated units (banished)
+    if (pVictim->hasUnitState(UNIT_STAT_ISOLATED))
+        return;
+
     SendEnergizeSpellLog(pVictim, SpellID, Damage, powertype);
     // needs to be called after sending spell log
     pVictim->ModifyPower(powertype, Damage);
@@ -7093,6 +7201,20 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                         DoneTotalMod *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
                     }
                 }
+                // Icy Touch
+                if (spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000002))
+                {
+                    // Improved Icy Touch
+                    Unit::AuraList const& dummyAuras = GetAurasByType(SPELL_AURA_DUMMY);
+                    for(Unit::AuraList::const_iterator i = dummyAuras.begin(); i != dummyAuras.end(); ++i)
+                    {
+                        if ((*i)->GetSpellProto()->SpellIconID == 2721)
+                        {
+                            DoneTotalMod *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
+                            break;
+                        }
+                    }
+                }
             }
             // Death Coil (bonus from Item - Death Knight T8 DPS Relic)
             else if (spellProto->SpellFamilyFlags.test<CF_DEATHKNIGHT_DEATH_COIL>())
@@ -7439,6 +7561,12 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                             if (pVictim->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_SHAMAN, ClassFamilyMask::create<CF_SHAMAN_FLAME_SHOCK>(), GetObjectGuid()))
                                 return true;
                         }
+                        // Searing Totem
+                        else if (spellProto->IsFitToFamilyMask(UI64LIT(0x40000000)))
+                        {
+                            if(Unit * owner = GetOwner())
+                                crit_chance = owner->GetFloatValue( PLAYER_SPELL_CRIT_PERCENTAGE1 + GetFirstSchoolInMask(schoolMask));
+                        }
                         break;
                 }
             }
@@ -7470,7 +7598,7 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
             if (pVictim)
                 crit_chance += GetUnitCriticalChance(attackType, pVictim);
 
-            crit_chance+= GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_SPELL_CRIT_CHANCE_SCHOOL, schoolMask);
+            crit_chance += GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_SPELL_CRIT_CHANCE_SCHOOL, schoolMask);
             break;
         }
         default:
@@ -7857,6 +7985,10 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo)
 
 bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const
 {
+    // Saronite Vapors mana gain spell
+    if (spellInfo->Id == 63337)
+        return false;
+
     //If m_immuneToEffect type contain this effect type, IMMUNE effect.
     uint32 effect = spellInfo->Effect[index];
     SpellImmuneList const& effectList = m_spellImmune[IMMUNITY_EFFECT];
@@ -8717,6 +8849,20 @@ bool Unit::isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
         canDetectInvisibilityOf(u) ))
     {
         invisible = false;
+    }
+
+    // Buff in DK starting location provides invisibility for each faction players
+    if(GetMapId() == 609)
+    {
+        if(GetTypeId() == TYPEID_PLAYER && u->GetTypeId() == TYPEID_PLAYER)
+        {
+            if(((Player*)this)->GetTeam() == ((Player*)u)->GetTeam())
+                invisible = false;
+            else
+                invisible = true;
+        }
+        else
+            invisible = false;
     }
 
     // special cases for always overwrite invisibility/stealth
@@ -10504,12 +10650,28 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                     GetCharmInfo()->SetCommandState( COMMAND_STAY );
                     break;
                 case COMMAND_FOLLOW:                        //spellid=1792  //FOLLOW
+                    if (petGuid.IsVehicle())
+                        return;
+
+                    if(GetEntry() == 1863) // Succubus' Seduction (interrupt on follow command)
+                        InterruptSpell(CURRENT_CHANNELED_SPELL, false);
+
                     AttackStop();
                     GetMotionMaster()->MoveFollow(owner,PET_FOLLOW_DIST,((Pet*)this)->GetPetFollowAngle());
                     GetCharmInfo()->SetCommandState( COMMAND_FOLLOW );
                     break;
                 case COMMAND_ATTACK:                        //spellid=1792  //ATTACK
                 {
+                    if (petGuid.IsVehicle())
+                    {
+                        if (!GetVehicleKit())
+                            return;
+
+                         VehicleSeatEntry const* seatInfo = GetVehicleKit()->GetSeatInfo(owner);
+                         if (!seatInfo || !(seatInfo->m_flags & SEAT_FLAG_ATTACK_TEST))
+                             return;
+                    }
+
                     Unit *TargetUnit = owner->GetMap()->GetUnit(targetGuid);
                     if(!TargetUnit)
                         return;
@@ -10553,6 +10715,9 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                     break;
                 }
                 case COMMAND_ABANDON:                       // abandon (hunter pet) or dismiss (summoned pet)
+                    if (petGuid.IsVehicle())
+                        return;
+
                     if(((Creature*)this)->IsPet())
                     {
                         Pet* p = (Pet*)this;
@@ -10713,7 +10878,14 @@ void Unit::DoPetCastSpell( Player *owner, uint8 cast_count, SpellCastTargets* ta
     }
     else
     {
-        pet->SendPetCastFail(spellInfo->Id, result);
+        if(GetObjectGuid().IsVehicle())
+        {
+            Spell::SendCastResult(owner,spellInfo,0,result);
+            spell->SendInterrupted(0);
+        }
+        else
+            pet->SendPetCastFail(spellInfo->Id, result);
+
         if (!pet->HasSpellCooldown(spellInfo->Id))
             owner->SendClearCooldown(spellInfo->Id, pet);
 

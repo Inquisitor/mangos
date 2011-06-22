@@ -302,8 +302,8 @@ enum AttackingTarget
     ATTACKING_TARGET_RANDOM = 0,                            //Just selects a random target
     ATTACKING_TARGET_TOPAGGRO,                              //Selects targes from top aggro to bottom
     ATTACKING_TARGET_BOTTOMAGGRO,                           //Selects targets from bottom aggro to top
-    /* not implemented
     ATTACKING_TARGET_RANDOM_PLAYER,                         //Just selects a random target (player only)
+    /* not implemented
     ATTACKING_TARGET_TOPAGGRO_PLAYER,                       //Selects targes from top aggro to bottom (player only)
     ATTACKING_TARGET_BOTTOMAGGRO_PLAYER,                    //Selects targets from bottom aggro to top (player only)
     */
@@ -606,6 +606,9 @@ class MANGOS_DLL_SPEC Creature : public Unit
         // overwrite WorldObject function for proper name localization
         const char* GetNameForLocaleIdx(int32 locale_idx) const;
 
+        // Event handler
+        EventProcessor m_ObjectEvents;
+
         void SetDeathState(DeathState s);                   // overwrite virtual Unit::SetDeathState
         bool FallGround();
 
@@ -686,7 +689,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         void SetInCombatWithZone();
 
-        Unit* SelectAttackingTarget(AttackingTarget target, uint32 position) const;
+        Unit* SelectAttackingTarget(AttackingTarget target, uint32 position, float minRange = 0) const;
 
         bool HasQuest(uint32 quest_id) const;
         bool HasInvolvedQuest(uint32 quest_id)  const;

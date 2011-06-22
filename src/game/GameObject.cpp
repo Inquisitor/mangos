@@ -40,6 +40,12 @@
 #include "ScriptMgr.h"
 #include <G3D/Quat.h>
 
+bool ForcedDeleteDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
+{
+    m_owner.Delete();
+    return true;
+}
+
 GameObject::GameObject() : WorldObject(),
     m_goInfo(NULL),
     m_displayInfo(NULL)
@@ -583,8 +589,16 @@ void GameObject::AddUniqueUse(Player* player)
 
 }
 
-void GameObject::Delete()
+void GameObject::Delete(uint32 timeMSToDelete)
 {
+    if (timeMSToDelete)
+    {
+        ForcedDeleteDelayEvent *pEvent = new ForcedDeleteDelayEvent(*this);
+
+        m_ObjectEvents.AddEvent(pEvent, m_ObjectEvents.CalculateTime(timeMSToDelete));
+        return;
+    }
+
     SendObjectDeSpawnAnim(GetObjectGuid());
 
     SetGoState(GO_STATE_READY);

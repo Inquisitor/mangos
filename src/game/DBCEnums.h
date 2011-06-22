@@ -497,6 +497,7 @@ enum VehicleSeatFlags
     SEAT_FLAG_USABLE                = 0x02000000,           // Lua_CanExitVehicle
     SEAT_FLAG_CAN_SWITCH            = 0x04000000,           // Lua_CanSwitchVehicleSeats
     SEAT_FLAG_CAN_CAST              = 0x20000000,           // Lua_UnitHasVehicleUI
+    SEAT_FLAG_ATTACK_TEST           = 0x40000000,           // Attack test
 };
 
 enum VehicleSeatFlagsB
