@@ -1082,7 +1082,7 @@ void Aura::HandleAddModifier(bool apply, bool Real)
             {
                 if( m_effIndex == 0 )
                 {
-                    m_spellmod->mask = GetAuraSpellClassMask() | ClassFamilyMask::create<CF_PALADIN_SEAL_OF_RIGHTEOUSNESS>();// Seal of Righteoussness proc
+                    m_spellmod->mask = ClassFamilyMask::create<CF_PALADIN_JUDGEMENT_OF_RIGHT, CF_PALADIN_SEAL_OF_CORRUPT_VENGE, CF_PALADIN_JUDGEMENT_OF_CORRUPT_VENG, CF_PALADIN_SEAL_OF_RIGHTEOUSNESS>();// Seal of Righteoussness proc
                 }
                 break;
             }

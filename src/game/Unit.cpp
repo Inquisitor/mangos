@@ -2068,7 +2068,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
                 uint32 damage=(*i)->GetModifier()->m_amount;
                 SpellEntry const *i_spellProto = (*i)->GetSpellProto();
                 // Thorns
-                if (i_spellProto && i_spellProto->SpellFamilyName == SPELLFAMILY_DRUID && i_spellProto->SpellFamilyFlags & UI64LIT(0x00000100))
+                if (i_spellProto && i_spellProto->SpellFamilyName == SPELLFAMILY_DRUID && i_spellProto->SpellFamilyFlags.test<CF_DRUID_THORNS>())
                 {
                     Unit::AuraList const& dummyList = pVictim->GetAurasByType(SPELL_AURA_DUMMY);
                     for(Unit::AuraList::const_iterator iter = dummyList.begin(); iter != dummyList.end(); ++iter)
@@ -7207,7 +7207,7 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                     }
                 }
                 // Icy Touch
-                if (spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000002))
+                if (spellProto->SpellFamilyFlags.test<CF_MAGE_FINGERS_OF_FROST>())
                 {
                     // Improved Icy Touch
                     Unit::AuraList const& dummyAuras = GetAurasByType(SPELL_AURA_DUMMY);
@@ -7567,7 +7567,7 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                                 return true;
                         }
                         // Searing Totem
-                        else if (spellProto->IsFitToFamilyMask(UI64LIT(0x40000000)))
+                        else if (spellProto->SpellFamilyFlags.test<CF_SHAMAN_FIRE_TOTEM_ATTACK>())
                         {
                             if(Unit * owner = GetOwner())
                                 crit_chance = owner->GetFloatValue( PLAYER_SPELL_CRIT_PERCENTAGE1 + GetFirstSchoolInMask(schoolMask));

@@ -1957,14 +1957,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                         target = this;
                         break;
                     }
-                    // Tiger Fury (cat) - all ranks - the aura for the cat form from the 2 existing kotj auras has a miscValue != 126
-                    if (procSpell->IsFitToFamilyMask(0x0, 0x00000800)  && triggeredByAura->GetMiscValue() != 126)
-                    {
-                        basepoints[0] = triggerAmount;
-                        triggered_spell_id = 51178;
-                        target = this;
-                        break;
-                    }
                     break;
                 }
                 // Item - Druid T10 Restoration 4P Bonus (Rejuvenation)
