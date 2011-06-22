@@ -686,7 +686,6 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 52986:                                         // Penance heal effect trigger - Rank 2
         case 52987:                                         // Penance heal effect trigger - Rank 3
         case 52988:                                         // Penance heal effect trigger - Rank 4
-        case 64844:                                         // Divine Hymn
         case 642:                                           // Divine Shield
         case 64843:                                         // Divine Hymn
         case 64901:                                         // Hymn of Hope
@@ -694,8 +693,19 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 59286:                                         // Opening
         case 64343:                                         // Impact
         case 12042:                                         // Arcane Power
+        case 64844:                                         // Divine Hymn
         case 64904:                                         // Hymn of Hope
-        return true;
+        case 1008:                                          // Amplify Magic - Rank 1
+        case 8455:                                          // Amplify Magic - Rank 2
+        case 10169:                                         // Amplify Magic - Rank 3
+        case 10170:                                         // Amplify Magic - Rank 4
+        case 27130:                                         // Amplify Magic - Rank 5
+        case 33946:                                         // Amplify Magic - Rank 6
+        case 43017:                                         // Amplify Magic - Rank 7
+            return true;
+        case 62470:                                         // Deafening Thunder
+        case 63355:                                         // Crunch Armor
+            return false;
         default:
             break;
     }
@@ -728,12 +738,40 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case SPELL_EFFECT_THREAT:
             return false;
 
+        case SPELL_EFFECT_PERSISTENT_AREA_AURA:
+            switch(spellproto->Id)
+            {
+                case 62821:                                 // Toasty Fire (Ulduar Hodir); unclear why this spell has SPELL_ATTR_EX_NEGATIVE
+                    return true;
+                case 63540:                                 // Paralytic Field (Ulduar Thorim)
+                case 62241:
+                    return false;
+                default:
+                    break;
+            }
+            break;
+
             // non-positive aura use
         case SPELL_EFFECT_APPLY_AURA:
         case SPELL_EFFECT_APPLY_AREA_AURA_FRIEND:
         {
             switch(spellproto->EffectApplyAuraName[effIndex])
             {
+                case SPELL_AURA_PHASE:
+                {
+                    switch(spellproto->Id)
+                    {
+                        case 57508: // Insanity (Volazj ecounter)
+                        case 57509:
+                        case 57510:
+                        case 57511:
+                        case 57512:
+                            return false;
+                        default:
+                            break;
+                    }
+                    break;
+                }
                 case SPELL_AURA_DUMMY:
                 {
                     // dummy aura can be positive or negative dependent from casted spell
@@ -804,6 +842,10 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
                             }
                         }
                     }
+                    //Vortex
+                    if(spellproto->Id == 56266)
+                        return false;
+
                     break;
                 case SPELL_AURA_PROC_TRIGGER_SPELL:
                 {
@@ -939,6 +981,11 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
             }
             break;
         }
+        case SPELL_AURA_CONTROL_VEHICLE:
+            //Vortex
+            if(spellproto->Id == 56266)
+                return false;
+            break;
         default:
             break;
     }
@@ -1995,6 +2042,17 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
     if ((spellInfo_1->Attributes & SPELL_ATTR_PASSIVE)!=(spellInfo_2->Attributes & SPELL_ATTR_PASSIVE))
         return false;
 
+    // Mangle and Trauma
+    if (spellInfo_1->EffectApplyAuraName[EFFECT_INDEX_1] == SPELL_AURA_MOD_MECHANIC_DAMAGE_TAKEN_PERCENT &&
+        spellInfo_1->EffectMiscValue[EFFECT_INDEX_1] == MECHANIC_BLEED &&
+        spellInfo_2->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_MECHANIC_DAMAGE_TAKEN_PERCENT &&
+        spellInfo_2->EffectMiscValue[EFFECT_INDEX_0] == MECHANIC_BLEED ||
+        spellInfo_2->EffectApplyAuraName[EFFECT_INDEX_1] == SPELL_AURA_MOD_MECHANIC_DAMAGE_TAKEN_PERCENT &&
+        spellInfo_2->EffectMiscValue[EFFECT_INDEX_1] == MECHANIC_BLEED &&
+        spellInfo_1->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_MECHANIC_DAMAGE_TAKEN_PERCENT &&
+        spellInfo_1->EffectMiscValue[EFFECT_INDEX_0] == MECHANIC_BLEED )
+        return true;
+
     // Dispersion - stacks with everything
     if ((spellInfo_1->Id == 47585 && spellInfo_2->Id == 60069) ||
          (spellInfo_2->Id == 47585 && spellInfo_1->Id == 60069))
@@ -2036,6 +2094,21 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                     // Cologne Immune and Perfume Immune
                     if ((spellInfo_1->Id == 68529 && spellInfo_2->Id == 68530) ||
                         (spellInfo_2->Id == 68529 && spellInfo_1->Id == 68530))
+                        return true;
+
+                    // BG_WS_SPELL_FOCUSED_ASSAULT & BG_WS_SPELL_BRUTAL_ASSAULT
+                    if ((spellInfo_1->Id == 46392 && spellInfo_2->Id == 46393) ||
+                        (spellInfo_1->Id == 46393 && spellInfo_2->Id == 46392))
+                        return true;
+
+                    // Dark Essence & Light Essence
+                    if ((spellInfo_1->Id == 65684 && spellInfo_2->Id == 65686) ||
+                        (spellInfo_2->Id == 65684 && spellInfo_1->Id == 65686))
+                        return true;
+
+                    //Potent Fungus and Mini must remove each other (Amanitar encounter, Ahn'kahet)
+                    if ((spellInfo_1->Id == 57055 && spellInfo_2->Id == 56648) ||
+                        (spellInfo_2->Id == 57055 && spellInfo_1->Id == 56648))
                         return true;
 
                     // Thunderfury
@@ -2151,10 +2224,6 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
 
                     // Dragonmaw Illusion (multi-family check)
                     if (spellId_1 == 40216 && spellId_2 == 42016)
-                        return false;
-
-                    // Rejuvenation and Forethought Talisman (item 40258)
-                    if(spellInfo_1->Id == 60530 && spellInfo_2->SpellIconID == 64)
                         return false;
 
                     break;
@@ -2327,6 +2396,14 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             if (spellInfo_2->Id == 2825 && spellInfo_1->SpellIconID == 38 && spellInfo_1->SpellVisual[0] == 0)
                 return false;
 
+            else if (spellInfo_2->SpellFamilyName == SPELLFAMILY_ROGUE)
+            {
+                // Sunder Armor and Expose Armor
+                if (spellInfo_1->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_RESISTANCE_PCT &&
+                    spellInfo_2->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_RESISTANCE_PCT)
+                    return true;
+            }
+
                 // Taste of Blood and Sudden Death
             if( (spellInfo_1->Id == 52437 && spellInfo_2->Id == 60503) ||
                 (spellInfo_2->Id == 52437 && spellInfo_1->Id == 60503) )
@@ -2339,6 +2416,11 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                 //Devouring Plague and Shadow Vulnerability
                 if ((spellInfo_1->SpellFamilyFlags.test<CF_PRIEST_DEVOURING_PLAGUE>() && spellInfo_2->SpellFamilyFlags.test<CF_PRIEST_SHADOW_WEAVING>()) ||
                     (spellInfo_2->SpellFamilyFlags.test<CF_PRIEST_DEVOURING_PLAGUE>() && spellInfo_1->SpellFamilyFlags.test<CF_PRIEST_SHADOW_WEAVING>()))
+                    return false;
+
+                // Shadowform
+                if ((spellInfo_1->Id == 15473 && spellInfo_2->Id == 49868) ||
+                    (spellInfo_2->Id == 15473 && spellInfo_1->Id == 49868))
                     return false;
 
                 //StarShards and Shadow Word: Pain
@@ -2354,6 +2436,11 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
         case SPELLFAMILY_DRUID:
             if (spellInfo_2->SpellFamilyName == SPELLFAMILY_DRUID)
             {
+                // Mark/Gift of the Wild
+                if (spellInfo_1->SpellFamilyName == SPELLFAMILY_DRUID && spellInfo_1->SpellFamilyFlags.test<CF_DRUID_MARK_OF_THE_WILD>() &&
+                    spellInfo_2->SpellFamilyName == SPELLFAMILY_DRUID && spellInfo_2->SpellFamilyFlags.test<CF_DRUID_MARK_OF_THE_WILD>())
+                    return true;
+
                 //Omen of Clarity and Blood Frenzy
                 if (((!spellInfo_1->SpellFamilyFlags.Flags && spellInfo_1->SpellIconID == 108) && spellInfo_2->SpellFamilyFlags.test<CF_DRUID_CLEARCASTING>()) ||
                     ((!spellInfo_2->SpellFamilyFlags.Flags && spellInfo_2->SpellIconID == 108) && spellInfo_1->SpellFamilyFlags.test<CF_DRUID_CLEARCASTING>()))
@@ -2406,6 +2493,11 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                 if ((spellInfo_1->Id == 22842 && spellInfo_2->Id == 62606) ||
                     (spellInfo_2->Id == 22842 && spellInfo_1->Id == 62606))
                     return false;
+
+                // Rejuvenation and Forethought Talisman (item 40258)
+                if ((spellInfo_1->SpellIconID == 64 && spellInfo_2->SpellIconID == 3088) ||
+                    (spellInfo_2->SpellIconID == 64 && spellInfo_1->SpellIconID == 3088))
+                    return false;
             }
 
             // Leader of the Pack and Scroll of Stamina (multi-family check)
@@ -2437,6 +2529,14 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                 if (spellId_1 == 52916 && spellId_2 == 51699)
                     return false;
             }
+            else if (spellInfo_2->SpellFamilyName == SPELLFAMILY_WARRIOR)
+            {
+                // Sunder Armor and Expose Armor
+                if (spellInfo_1->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_RESISTANCE_PCT &&
+                    spellInfo_2->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_RESISTANCE_PCT)
+                    return true;
+            }
+
             //Overkill
             if (spellInfo_1->SpellIconID == 2285 && spellInfo_2->SpellIconID == 2285)
                 return false;
@@ -2620,6 +2720,13 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
         bool isModifier = false;
         for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
         {
+            // stack all DoT auras
+            if (spellInfo_1->EffectApplyAuraName[i] == SPELL_AURA_PERIODIC_DAMAGE ||
+                spellInfo_1->EffectApplyAuraName[i] == SPELL_AURA_PERIODIC_DAMAGE_PERCENT ||
+                spellInfo_2->EffectApplyAuraName[i] == SPELL_AURA_PERIODIC_DAMAGE ||
+                spellInfo_2->EffectApplyAuraName[i] == SPELL_AURA_PERIODIC_DAMAGE_PERCENT)
+                return false;
+
             if (spellInfo_1->EffectApplyAuraName[i] == SPELL_AURA_ADD_FLAT_MODIFIER ||
                 spellInfo_1->EffectApplyAuraName[i] == SPELL_AURA_ADD_PCT_MODIFIER  ||
                 spellInfo_2->EffectApplyAuraName[i] == SPELL_AURA_ADD_FLAT_MODIFIER ||
@@ -4219,11 +4326,6 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const *spell
             BattleGround* bg = player->GetBattleGround();
             return bg && bg->GetStatus()==STATUS_WAIT_JOIN ? SPELL_CAST_OK : SPELL_FAILED_ONLY_IN_ARENA;
         }
-        case 69065:                                         // Impaled
-        case 69126:                                         // Pungent blight - first aura
-        case 69152:                                         // Gazeous blight - first aura
-        case 72293:                                         // Mark of the Fallen Champion
-            return map_id == 631 ? SPELL_CAST_OK : SPELL_FAILED_INCORRECT_AREA;
         case 74410:                                         // Arena - Dampening
             return player && player->InArena() ? SPELL_CAST_OK : SPELL_FAILED_ONLY_IN_ARENA;
         case 74411:                                         // Battleground - Dampening
@@ -4234,6 +4336,11 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const *spell
             BattleGround* bg = player->GetBattleGround();
             return bg && !bg->isArena() ? SPELL_CAST_OK : SPELL_FAILED_ONLY_BATTLEGROUNDS;
         }
+        case 69065:                                         // Impaled
+        case 69126:                                         // Pungent blight - first aura
+        case 69152:                                         // Gazeous blight - first aura
+        case 72293:                                         // Mark of the Fallen Champion
+            return map_id == 631 ? SPELL_CAST_OK : SPELL_FAILED_INCORRECT_AREA;
     }
 
     return SPELL_CAST_OK;

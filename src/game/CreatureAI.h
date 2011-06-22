@@ -118,6 +118,9 @@ class MANGOS_DLL_SPEC CreatureAI
         // Called when the creature summon despawn
         virtual void SummonedCreatureDespawn(Creature* /*unit*/) {}
 
+        // Called when Player uses spell with effect Spell::EffectSummonWild
+        virtual void SummonedBySpell(Player* /*plr*/) {}
+
         // Called when hit by a spell
         virtual void SpellHit(Unit*, const SpellEntry*) {}
 

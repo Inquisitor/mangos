@@ -950,6 +950,14 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     target = this;
                     break;
                 }
+                // Petrified Bark
+                case 62337:
+                case 62933:
+                {
+                    int32 bp0 = damage;
+                    pVictim->CastCustomSpell(pVictim, 62379, &bp0, NULL, NULL, true, NULL, NULL, GetObjectGuid());
+                    return SPELL_AURA_PROC_OK;
+                }
                 // Shadowfiend Death (Gain mana if pet dies with Glyph of Shadowfiend)
                 case 57989:
                 {
@@ -1376,6 +1384,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
 
                     pVictim->RemoveSpellsCausingAura(SPELL_AURA_PERIODIC_DAMAGE);
                     pVictim->RemoveSpellsCausingAura(SPELL_AURA_PERIODIC_DAMAGE_PERCENT);
+                    pVictim->RemoveSpellsCausingAura(SPELL_AURA_PERIODIC_LEECH);
                     return SPELL_AURA_PROC_OK;
                 }
                 // Blessing of Ancient Kings
@@ -1446,6 +1455,18 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     return SPELL_AURA_PROC_FAILED;
 
                 triggered_spell_id = 26654;
+                break;
+            }
+            // Glyph of Blocking
+            if (dummySpell->Id == 58375)
+            {
+                triggered_spell_id = 58374;
+                break;
+            }
+             // Glyph of Devastate
+            if (dummySpell->Id == 58388)
+            {
+                triggered_spell_id = 58567;
                 break;
             }
             // Glyph of Sunder Armor
@@ -1874,6 +1895,16 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     triggered_spell_id = 54846;
                     break;
                 }
+                // Glyph of Rejuvenation
+                case 54754:
+                {
+                    // less 50% health
+                    if (pVictim->GetMaxHealth() < 2 * pVictim->GetHealth())
+                        return SPELL_AURA_PROC_FAILED;
+                    basepoints[0] = triggerAmount * damage / 100;
+                    triggered_spell_id = 54755;
+                    break;
+                }
                 // Glyph of Shred
                 case 54815:
                 {
@@ -1908,6 +1939,24 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 case 54821:
                 {
                     triggered_spell_id = 54820;
+                    break;
+                }
+                // King of the Jungle (Bear and Cat)
+                case 48492: // Rank  1
+                case 48494: // Rank  2
+                case 48495: // Rank  3
+                {
+                    if (!procSpell)
+                        return SPELL_AURA_PROC_FAILED;
+                    // Enrage (bear) - single rank - the aura for the bear form from the 2 existing kotj auras has a miscValue == 126
+                    if (procSpell->Id == 5229 && triggeredByAura->GetMiscValue() == 126)
+                    {
+                        // note : the remove part is done in spellAuras/HandlePeriodicEnergize as RemoveAurasDueToSpell
+                        basepoints[0] = triggerAmount;
+                        triggered_spell_id = 51185;
+                        target = this;
+                        break;
+                    }
                     break;
                 }
                 // Item - Druid T10 Restoration 4P Bonus (Rejuvenation)
@@ -3288,6 +3337,29 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 triggeredByAura->SetAuraPeriodicTimer(0);
                 return SPELL_AURA_PROC_OK;
             }
+            // Death Rune Mastery
+            if (dummySpell->SpellIconID == 2622)
+            {
+                if(GetTypeId()!=TYPEID_PLAYER)
+                    return SPELL_AURA_PROC_FAILED;
+
+                Player *player = (Player*)this;
+                for (uint32 i = 0; i < MAX_RUNES; ++i)
+                {
+                    RuneType currRune = player->GetCurrentRune(i);
+                    if (currRune == RUNE_UNHOLY || currRune == RUNE_FROST)
+                    {
+                        uint16 cd = player->GetRuneCooldown(i);
+                        if(!cd)
+                            player->ConvertRune(i, RUNE_DEATH, dummySpell->Id);
+                        else // there is a cd
+                            player->SetNeedConvertRune(i, true, dummySpell->Id);
+                        // no break because it converts all
+                    }
+                }
+                triggeredByAura->SetAuraPeriodicTimer(0);
+                return SPELL_AURA_PROC_OK;
+            }
             // Hungering Cold - not break from diseases
             if (dummySpell->SpellIconID == 2797)
             {
@@ -3782,6 +3854,28 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                     default:
                         return SPELL_AURA_PROC_FAILED;
                 }
+            }
+            // Barkskin
+            else if(auraSpellInfo->Id == 22812)
+            {
+                bool found = false;
+                Unit::AuraList const& auras = GetAurasByType(SPELL_AURA_ADD_FLAT_MODIFIER);
+                for (Unit::AuraList::const_iterator i = auras.begin(); i != auras.end(); i++)
+                {
+                    switch((*i)->GetId())
+                    {
+                        case 16836: // Brambles - do not proc Barkskin's daze without this talent
+                        case 16839:
+                        case 16840:
+                        {
+                            found = true;
+                            if(!roll_chance_i((*i)->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_2)))
+                                return SPELL_AURA_PROC_FAILED;
+                        }
+                    }
+                }
+                if (!found)
+                    return SPELL_AURA_PROC_FAILED;
             }
             // Druid T9 Feral Relic (Lacerate, Swipe, Mangle, and Shred)
             else if (auraSpellInfo->Id==67353)
@@ -4592,15 +4686,37 @@ SpellAuraProcResult Unit::HandleModDamageFromCasterAuraProc(Unit* pVictim, uint3
     return triggeredByAura->GetCasterGuid() == pVictim->GetObjectGuid() ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }
 
-SpellAuraProcResult Unit::HandleAddFlatModifierAuraProc(Unit* /*pVictim*/, uint32 /*damage*/, Aura* triggeredByAura, SpellEntry const * /*procSpell*/, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
+SpellAuraProcResult Unit::HandleAddFlatModifierAuraProc(Unit* pVictim, uint32 /*damage*/, Aura* triggeredByAura, SpellEntry const * /*procSpell*/, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
 {
     SpellEntry const *spellInfo = triggeredByAura->GetSpellProto();
 
-    if (spellInfo->Id == 55166)                             // Tidal Force
+    switch (spellInfo->Id)
+    {
+        case 55166:                             // Tidal Force
     {
         // Remove only single aura from stack
         if (triggeredByAura->GetStackAmount() > 1 && !triggeredByAura->GetHolder()->ModStackAmount(-1))
             return SPELL_AURA_PROC_CANT_TRIGGER;
+            break;
+        }
+        case 31656:                             // Empowered Fire
+        case 31657:
+        case 31658:
+        {
+            Unit* caster = triggeredByAura->GetCaster();
+            // it should not be triggered from other ignites
+            if (caster && caster->GetObjectGuid() == GetObjectGuid())
+            {
+                if(roll_chance_i(int32(spellInfo->procChance)))
+                {
+                    caster->CastSpell(caster, 67545, true);
+                    return SPELL_AURA_PROC_OK;
+                }
+                else
+                    return SPELL_AURA_PROC_FAILED;
+            }
+            return SPELL_AURA_PROC_FAILED;
+        }
     }
 
     return SPELL_AURA_PROC_OK;
@@ -4810,14 +4926,33 @@ SpellAuraProcResult Unit::HandleRemoveByDamageChanceProc(Unit* pVictim, uint32 d
 {
     SpellEntry const* spellInfo = triggeredByAura->GetSpellProto();
 
-    if (!spellInfo || spellInfo == procSpell)
-        return SPELL_AURA_PROC_FAILED;
+    switch (triggeredByAura->GetSpellProto()->Id)
+    {
+        case 62283:                               // Iron Roots (Freya)
+        case 62930:
+        case 62438:
+        case 62861:
+        case 58373:                               // Glyph of Hamstring
+        case 23694:                               // Improved Hamstring
+        case 61969:                               // Flash Freeze (Hodir)
+        case 62469:                               // Freeze (Hodir)
+        // don't remove
+            return SPELL_AURA_PROC_CANT_TRIGGER;
+    }
 
-    // The chance to dispel an aura depends on the damage taken with respect to the casters level.
-    uint32 max_dmg = getLevel() > 8 ? 25 * getLevel() - 150 : 50;
-    float chance = float(damage) / max_dmg * 100.0f;
-    if (roll_chance_f(chance))
-        return HandleRemoveByDamageProc(pVictim, damage, triggeredByAura, procSpell, procFlag, procEx, cooldown);
+    if (pVictim && damage)
+    {
+        // Damage is dealt after proc system - lets ignore auras which wasn't updated yet
+        // to make spell not remove its own aura
+        if (triggeredByAura->GetAuraDuration() == triggeredByAura->GetAuraMaxDuration())
+            return SPELL_AURA_PROC_FAILED;
+        int32 damageLeft = triggeredByAura->GetModifier()->m_amount;
+        // No damage left
+        if (damageLeft < damage )
+            return HandleRemoveByDamageProc(pVictim, damage, triggeredByAura, procSpell, procFlag, procEx, cooldown);
+        else
+            triggeredByAura->GetModifier()->m_amount = (damageLeft-damage);
+    }
 
     return SPELL_AURA_PROC_FAILED;
 }

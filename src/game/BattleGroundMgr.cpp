@@ -927,8 +927,13 @@ void BattleGroundQueue::Update(BattleGroundTypeId bgTypeId, BattleGroundBracketI
         }
 
         //set rating range
-        uint32 arenaMinRating = (arenaRating <= sBattleGroundMgr.GetMaxRatingDifference()) ? 0 : arenaRating - sBattleGroundMgr.GetMaxRatingDifference();
-        uint32 arenaMaxRating = arenaRating + sBattleGroundMgr.GetMaxRatingDifference();
+        uint32 arenaMinRating = 0;
+        uint32 arenaMaxRating = 1500 + sBattleGroundMgr.GetMaxRatingDifference();
+        if(arenaRating > 1500)
+        {
+            arenaMinRating = (arenaRating <= sBattleGroundMgr.GetMaxRatingDifference()) ? 0 : arenaRating - sBattleGroundMgr.GetMaxRatingDifference();
+            arenaMaxRating = arenaRating + sBattleGroundMgr.GetMaxRatingDifference();
+        }
         // if max rating difference is set and the time past since server startup is greater than the rating discard time
         // (after what time the ratings aren't taken into account when making teams) then
         // the discard time is current_time - time_to_discard, teams that joined after that, will have their ratings taken into account
@@ -1572,7 +1577,8 @@ BattleGround * BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeI
     }
 
     // set before Map creating for let use proper difficulty
-    bg->SetBracket(bracketEntry);
+    if (!(bg->GetMapId() == 607))
+        bg->SetBracket(bracketEntry);
 
     // will also set m_bgMap, instanceid
     sMapMgr.CreateBgMap(bg->GetMapId(), bg);
@@ -1584,6 +1590,8 @@ BattleGround * BattleGroundMgr::CreateNewBattleGround(BattleGroundTypeId bgTypeI
 
     // start the joining of the bg
     bg->SetStatus(STATUS_WAIT_JOIN);
+    if (bg->GetMapId() == 607)
+        bg->SetBracket(bracketEntry);
     bg->SetArenaType(arenaType);
     bg->SetRated(isRated);
     bg->SetRandom(isRandom);

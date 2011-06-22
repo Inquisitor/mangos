@@ -491,6 +491,23 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         }
                         break;
                     }
+                    // Biting Cold
+                    case 62188:
+                    {
+                        if (!unitTarget)
+                            return;
+
+                        // 200 * 2 ^ stack_amount
+                        SpellAuraHolder *holder = unitTarget->GetSpellAuraHolder(62039);
+                        damage = 200 * int32(pow(2.0f, (holder ? float(holder->GetStackAmount()) : 0)));
+                        break;
+                    }
+                    // Gargoyle Strike
+                    case 51963:
+                    {
+                        damage += m_caster->GetTotalAttackPowerValue(BASE_ATTACK);
+                        break;
+                    }
                     // Tympanic Tantrum
                     case 62775:
                     {
@@ -587,6 +604,22 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     {
                         if (m_caster->GetObjectGuid() != unitTarget->GetObjectGuid() && unitTarget->HasAura(71340))
                             damage = 0;
+                        break;
+                    }
+                    // Loken Pulsing Shockwave
+                    case 59837:
+                    case 52942:
+                    {
+
+                        // don't damage self and only players
+                        if(unitTarget->GetObjectGuid() == m_caster->GetObjectGuid() || unitTarget->GetTypeId() != TYPEID_PLAYER)
+                            return;
+
+                        float radius = sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[0])->Radius;
+                        if (!radius)
+                            return;
+                        float distance = m_caster->GetDistance2d(unitTarget);
+                        damage = (distance > radius) ? 0 : int32(m_spellInfo->EffectBasePoints[0]*distance);
                         break;
                     }
                 }
@@ -1295,36 +1328,27 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     }
                     return;
                 }
-                case 14537:                                 // Six Demon Bag
+                case 14537:
                 {
                     if (!unitTarget)
                         return;
 
-                    Unit* newTarget = unitTarget;
-                    uint32 spell_id = 0;
-                    uint32 roll = urand(0, 99);
-                    if (roll < 25)                          // Fireball (25% chance)
-                        spell_id = 15662;
-                    else if (roll < 50)                     // Frostbolt (25% chance)
-                        spell_id = 11538;
-                    else if (roll < 70)                     // Chain Lighting (20% chance)
-                        spell_id = 21179;
-                    else if (roll < 77)                     // Polymorph (10% chance, 7% to target)
-                        spell_id = 14621;
-                    else if (roll < 80)                     // Polymorph (10% chance, 3% to self, backfire)
-                    {
-                        spell_id = 14621;
-                        newTarget = m_caster;
-                    }
-                    else if (roll < 95)                     // Enveloping Winds (15% chance)
-                        spell_id = 25189;
-                    else                                    // Summon Felhund minion (5% chance)
-                    {
-                        spell_id = 14642;
-                        newTarget = m_caster;
-                    }
+                    if (urand(0, 99) < 10)                  //10% chance for rare effects
+                        switch(urand(1, 4))
+                        {
+                            case 1: m_caster->CastSpell(unitTarget, 31718, true); break; //enveloping winds
+                            case 2: m_caster->CastSpell(unitTarget, 118, true); break;   //polymorph target
+                            case 3: m_caster->CastSpell(m_caster, 118, true); break;     //polymorph self
+                            case 4: m_caster->CastSpell(m_caster, 8176, true); break;    //summon fellhunter
+                        }
+                    else                                    //common effects
+                        switch(urand(1, 3))
+                        {
+                            case 1: m_caster->CastSpell(unitTarget, 8401, true); break;  //fireball
+                            case 2: m_caster->CastSpell(unitTarget, 8407, true); break;  //frostbolt
+                            case 3: m_caster->CastSpell(unitTarget, 421, true); break;   //chain lightning
 
-                    m_caster->CastSpell(newTarget, spell_id, true, m_CastItem);
+                        }
                     return;
                 }
                 case 15998:                                 // Capture Worg Pup
@@ -3059,6 +3083,8 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 45877:                                 // Q:Bring 'Em Back Alive
                 case 49285:                                 // Q:Mounting Up
                 case 48297:                                 // Q:Fresh Remounts
+                case 54420:                                 // Q:You'll Need a Gryphon
+                case 51660:                                 // Q:A Mammoth Undertaking
                     {
                         if(m_caster->GetObjectGuid().IsVehicle())
                             ((Creature*)m_caster)->ForcedDespawn(500);
@@ -5295,6 +5321,10 @@ void Spell::EffectEnergize(SpellEffectIndex eff_idx)
     if(!unitTarget->isAlive())
         return;
 
+    // don't energize isolated units (banished)
+    if (unitTarget->hasUnitState(UNIT_STAT_ISOLATED))
+        return;
+
     if(m_spellInfo->EffectMiscValue[eff_idx] < 0 || m_spellInfo->EffectMiscValue[eff_idx] >= MAX_POWERS)
         return;
 
@@ -6244,6 +6274,9 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
 
             if(forceFaction)
                 summon->setFaction(forceFaction);
+
+            if(m_caster->GetTypeId() == TYPEID_PLAYER && summon->AI())
+                summon->AI()->SummonedBySpell((Player*)m_caster );
 
         }
     }
@@ -7313,6 +7346,10 @@ void Spell::EffectThreat(SpellEffectIndex /*eff_idx*/)
         if (m_spellInfo->SpellFamilyName==SPELLFAMILY_WARRIOR && m_spellInfo->SpellFamilyFlags & 0x00004000)
             bonus+=m_caster->GetTotalAttackPowerValue(BASE_ATTACK)/20; //Sunder Armor bonus threat
 
+    // Wind Shear: guessed values
+    if (m_spellInfo->Id == 57994)
+        damage = -(30 * (m_caster->getLevel() - 10));
+
     unitTarget->AddThreat(m_caster, float(damage+bonus), false, GetSpellSchoolMask(m_spellInfo), m_spellInfo);
 }
 
@@ -8199,6 +8236,24 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     // Torture the Torturer: High Executor's Branding Iron Impact
                     unitTarget->CastSpell(unitTarget, 48614, true);
                     return;
+                case 43770:                                 //Grappling Hook
+                {
+                    if(Creature * pSack = m_caster->GetClosestCreatureWithEntry(m_caster, 24439, 30))
+                    {
+                        if(m_caster->GetDistance2d(pSack) > 5)
+                            return;
+
+                        m_caster->CastSpell(pSack, 43789, false);
+
+                        pSack->ForcedDespawn(500);
+
+                        if (m_caster->GetCharmerOrOwner())
+                            if (m_caster->GetCharmerOrOwner()->GetTypeId() == TYPEID_PLAYER)
+                                ((Player*)m_caster->GetCharmerOrOwner())->KilledMonsterCredit(24439);
+
+                    }
+                    return;
+                }
                 case 48724:                                 // The Denouncement: Commander Jordan On Death
                 case 48726:                                 // The Denouncement: Lead Cannoneer Zierhut On Death
                 case 48728:                                 // The Denouncement: Blacksmith Goodman On Death
@@ -10710,18 +10765,22 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
     if (unitTarget->GetObjectGuid().IsVehicle())
         return;
 
+    // Can't knockback rooted target
+    if (unitTarget->hasUnitState(UNIT_STAT_ROOT))
+        return;
+
     // Typhoon
-    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_DRUID && m_spellInfo->SpellFamilyFlags & UI64LIT(0x100000000000000) )
+    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_DRUID && m_spellInfo->SpellFamilyFlags.test<CF_DRUID_TYPHOON>())
         if (m_caster->HasAura(62135))         // Glyph of Typhoon
             return;
 
     // Thunderstorm
-    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_SHAMAN && m_spellInfo->SpellFamilyFlags & UI64LIT(0x00200000000000))
+    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_SHAMAN && m_spellInfo->SpellFamilyFlags.test<CF_SHAMAN_THUNDERSTORM>())
         if (m_caster->HasAura(62132))         // Glyph of Thunderstorm
             return;
 
     // Blast Wave
-    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_MAGE && m_spellInfo->SpellFamilyFlags & UI64LIT(0x0004000000000))
+    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_MAGE && m_spellInfo->SpellFamilyFlags.test<CF_MAGE_BLAST_WAVE2>())
         if (m_caster->HasAura(62126))         // Glyph of Blast Wave
             return;
 

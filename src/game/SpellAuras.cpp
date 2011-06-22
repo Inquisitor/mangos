@@ -423,6 +423,9 @@ m_isPersistent(false), m_in_use(0), m_spellAuraHolder(holder)
 
     SetModifier(AuraType(spellproto->EffectApplyAuraName[eff]), damage, spellproto->EffectAmplitude[eff], spellproto->EffectMiscValue[eff]);
 
+    if (int32 amount = CalculateCrowdControlAuraAmount(caster))
+        m_modifier.m_amount = amount;
+
     Player* modOwner = caster ? caster->GetSpellModOwner() : NULL;
 
     // Apply periodic time mod
@@ -2233,6 +2236,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     case 48025:                             // Headless Horseman's Mount
                         Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 51621, 48024, 51617, 48023, 0);
                         return;
+                    case 50141:                             // Blood Oath
+                        target->CastSpell(target, 50001, true, NULL, this);
+                        return;
                     case 48143:                             // Forgotten Aura
                         // See Death's Door
                         target->CastSpell(target, 48814, true, NULL, this);
@@ -2283,6 +2289,15 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             // Reindeer Transformation
                             target->CastSpell(target, 25860, true, NULL, this);
                         return;
+                    case 39238:                             // Q: Fumping
+                    {
+                        if (!target)
+                            return;
+
+                        if (Unit* caster = GetCaster())
+                                 caster->SummonCreature(urand(0,1) ? 22482 : 22483, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 60000 );
+                        return;
+                    }
                     case 39246:                             // Q: The Big Bone Worm
                         {
                         if (!target)
@@ -2311,7 +2326,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             int32 damage = 50 << GetStackAmount();
                             target->CastCustomSpell(target, 63338, &damage, 0, 0, true, 0, 0, caster->GetObjectGuid()); // damage spell
                             damage = damage >> 1;
-                            target->CastCustomSpell(target, 63337, &damage, 0, 0, true, 0, 0, caster->GetObjectGuid()); // manareg spell
+                            target->CastCustomSpell(target, 63337, &damage, 0, 0, true);                                // manareg spell
                         }
                         return;
                     case 45611:                             // Q: Abduction
@@ -2553,7 +2568,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 break;
             }
             case SPELLFAMILY_MAGE:
+            {
+                // Fingers of Frost stacks set to max at apply
+                if (GetId() == 74396)
+                    GetHolder()->SetAuraCharges(GetSpellProto()->StackAmount);
                 break;
+            }
             case SPELLFAMILY_HUNTER:
             {
                 switch(GetId())
@@ -2708,6 +2728,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             }
             case 35079:                                     // Misdirection, triggered buff
             case 59628:                                     // Tricks of the Trade, triggered buff
+            case 59665:                                     // Vigilance, redirection spell
             {
                 if (Unit* pCaster = GetCaster())
                     pCaster->getHostileRefManager().ResetThreatRedirection();
@@ -3232,9 +3253,19 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                                 caster->CastSpell(caster, 43138, true);
                     }
                     return;
-                case 10848:
+                case 62248:                                 // Sleeping Sleep
+                {
+                    if (apply)
+                        target->setFaction(190);            // Ambient (neutral)
+                    else
+                        target->setFaction(1990);           // Ambient (hostile)
+
+                    target->ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE, apply);
+                    return;
+                }
                 case 40131:
                 case 27978:
+                case 10848:
                     if (apply)
                         target->m_AuraFlags |= UNIT_AURAFLAG_ALIVE_INVISIBLE;
                     else
@@ -3934,6 +3965,10 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
         // special case (spell specific functionality)
         if (m_modifier.m_miscvalue == 0)
         {
+            // player applied only
+            if (target->GetTypeId() != TYPEID_PLAYER)
+                return;
+
             switch (GetId())
             {
                 case 16739:                                 // Orb of Deception
@@ -4509,6 +4544,10 @@ void Aura::HandleModPossess(bool apply, bool Real)
 
         if(target->GetTypeId() == TYPEID_UNIT)
         {
+            target->CombatStop();
+            target->getHostileRefManager().deleteReferences();
+            target->getThreatManager().addThreat(p_caster, 9999999.0f);
+
             ((Creature*)target)->AIM_Initialize();
             target->AttackedBy(caster);
         }
@@ -5519,6 +5558,20 @@ void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
     // Heroic Fury (Intercept cooldown remove)
     else if (apply && GetSpellProto()->Id == 60970 && target->GetTypeId() == TYPEID_PLAYER)
         ((Player*)target)->RemoveSpellCooldown(20252, true);
+    // Potent Pheromones (Freya encounter)
+    else if (GetId() == 64321 || GetId() == 62619)
+    {
+        if (apply)
+            HandleAuraModPacifyAndSilence(false, true);
+        else
+        {
+            if (GetId() == 64321 && m_removeMode == AURA_REMOVE_BY_EXPIRE || GetId() == 62619)
+            {
+                if (GetTarget()->HasAura(62532, EFFECT_INDEX_0))
+                    HandleAuraModPacifyAndSilence(true, true);
+            }
+        }
+    }
 }
 
 void Aura::HandleModMechanicImmunityMask(bool apply, bool /*Real*/)
@@ -5859,6 +5912,13 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                         target->CastSpell(caster, (spell->Id == 62717) ? 62836 : 63536, true);
 
                     break;
+                }
+                case 63276:                                   // Mark of the Faceless (General Vezax - Ulduar)
+                {
+                    Unit *caster = GetCaster();
+                    if (caster && target)
+                        caster->CastCustomSpell(target, 63278, 0, &(spell->EffectBasePoints[0]), 0, false, 0, 0, caster->GetObjectGuid() , spell);
+                    return;
                 }
             }
         }
@@ -7391,6 +7451,13 @@ void Aura::HandleAuraModPacify(bool apply, bool /*Real*/)
 
 void Aura::HandleAuraModPacifyAndSilence(bool apply, bool Real)
 {
+    // Conservator's Grip (Freya)
+    if (GetId() == 62532)
+    {
+        if (GetTarget()->HasAura(64321, EFFECT_INDEX_0) || GetTarget()->HasAura(62619, EFFECT_INDEX_0))
+            return;
+    }
+
     HandleAuraModPacify(apply, Real);
     HandleAuraModSilence(apply, Real);
 }
@@ -7918,6 +7985,11 @@ void Aura::PeriodicTick()
 
             pdamage = (pdamage <= absorb + resist) ? 0 : (pdamage - absorb - resist);
 
+            if (pdamage <= 0)
+                procEx &= ~PROC_EX_DIRECT_DAMAGE;
+            else
+                procEx |= PROC_EX_DIRECT_DAMAGE;
+
             uint32 overkill = pdamage > target->GetHealth() ? pdamage - target->GetHealth() : 0;
             SpellPeriodicAuraLogInfo pInfo(this, pdamage, overkill, absorb, resist, 0.0f, isCrit);
             target->SendPeriodicAuraLog(&pInfo);
@@ -8146,6 +8218,10 @@ void Aura::PeriodicTick()
             if (!target->isAlive())
                 return;
 
+            // don't energize isolated units (banished)
+            if (target->hasUnitState(UNIT_STAT_ISOLATED))
+                return;
+
             if(m_modifier.m_miscvalue < 0 || m_modifier.m_miscvalue >= MAX_POWERS)
                 return;
 
@@ -8240,6 +8316,10 @@ void Aura::PeriodicTick()
             if (!target->isAlive())
                 return;
 
+            // don't energize isolated units (banished)
+            if (target->hasUnitState(UNIT_STAT_ISOLATED))
+                return;
+
             // ignore non positive values (can be result apply spellmods to aura damage
             uint32 pdamage = m_modifier.m_amount > 0 ? m_modifier.m_amount : 0;
 
@@ -8267,6 +8347,10 @@ void Aura::PeriodicTick()
         {
             // don't energize target if not alive, possible death persistent effects
             if (!target->isAlive())
+                return;
+
+            // don't energize isolated units (banished)
+            if (target->hasUnitState(UNIT_STAT_ISOLATED))
                 return;
 
             Powers powerType = ( (m_modifier.m_miscvalue > POWER_RUNIC_POWER || m_modifier.m_miscvalue < 0) ? POWER_MANA : Powers(m_modifier.m_miscvalue));
@@ -8655,6 +8739,42 @@ void Aura::PeriodicDummyTick()
                 case 50824:                                 // Summon earthen dwarf
                     target->CastSpell(target, roll_chance_i(50) ? 50825 : 50826, true, NULL, this);
                     return;
+                case 62038:                                   // Biting Cold (Ulduar: Hodir)
+                {
+                    if (target->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    // aura stack increase every 3 (data in m_miscvalue) seconds and decrease every 1s
+                    SpellAuraHolder *holder = target->GetSpellAuraHolder(62039);
+
+                    // dmg dealing every second
+                    target->CastSpell(target, 62188, true);
+
+                    // Reset reapply counter at move and decrease stack amount by 1
+                    if (((Player*)target)->isMoving())
+                    {
+                        if (holder)
+                        {
+                            if (holder->ModStackAmount(-1))
+                                target->RemoveSpellAuraHolder(holder);
+                        }
+                        m_modifier.m_miscvalue = 3;
+                        return;
+                    }
+
+                    // We are standing at the moment, countdown
+                    if (m_modifier.m_miscvalue > 0)
+                    {
+                        --m_modifier.m_miscvalue;
+                        return;
+                    }
+
+                    target->CastSpell(target, 62039, true);
+
+                    // recast every ~3 seconds
+                    m_modifier.m_miscvalue = 3;
+                    return;
+                }
                 case 52441:                                 // Cool Down
                     target->CastSpell(target, 52443, true);
                     return;
@@ -9271,19 +9391,25 @@ bool Aura::IsEffectStacking()
             if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_SHAMAN && GetSpellProto()->AttributesEx6 & SPELL_ATTR_EX6_UNK26)
                 return false;
             break;
+        case SPELL_AURA_MOD_ATTACKER_SPELL_CRIT_CHANCE:                 // Winter's Chill / Improved Scorch
+            if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_MAGE)
+                return false;
+            break;
         case SPELL_AURA_MOD_RESISTANCE_PCT:
             // Ancestral Healing / Inspiration
             if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_SHAMAN ||
                 GetSpellProto()->SpellFamilyName == SPELLFAMILY_PRIEST)
                 return false;
             break;
-        // case SPELL_AURA_MOD_HEALING_PCT:
-            // break;
         case SPELL_AURA_MOD_RESISTANCE_EXCLUSIVE:
             return false;
         case SPELL_AURA_230:
             // Commanding Shout
             return false;
+        case SPELL_AURA_MOD_HEALING_PCT:                                // Mortal Strike / Wound Poison / Aimed Shot / Furious Attacks
+            // Healing debuffs
+            if (GetSpellProto()->EffectBasePoints[m_effIndex] < 0)
+                return false;
 
         default:
             return true;
@@ -9556,7 +9682,6 @@ m_permanent(false), m_isRemovedOnShapeLost(true), m_deleted(false), m_in_use(0)
         case 62519:                                         // Attuned to Nature
         case 64455:                                         // Feral Essence
         case 71564:                                         // Deadly Precision
-        case 74396:                                         // Fingers of Frost
             m_stackAmount = m_spellProto->StackAmount;
             break;
     }
@@ -10131,9 +10256,14 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                             caster->RemoveAurasDueToSpell(34027);
                     return;
                 }
-                case 62692:                                 // Aura of Despair
+                case 62692:                                 // Aura of Despair (General Vezax - Ulduar)
                 {
                     spellId1 = 64848;
+                    break;
+                }
+                case 63277:                                 // Shadow Crash (General Vezax - Ulduar)
+                {
+                    spellId1 = 65269;
                     break;
                 }
                 case 70867:                                 // Soul of Blood Qween
@@ -10281,6 +10411,31 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                         return;
                     break;
                 }
+                case 44614:                                 // Frostfire Bolt
+                case 47610:
+                {
+                    if (apply)
+                    {
+                        Unit* caster = GetCaster();
+                        if(!caster)
+                            return;
+
+                        Unit::AuraList const& auras = caster->GetAurasByType(SPELL_AURA_ADD_FLAT_MODIFIER);
+                        for(Unit::AuraList::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
+                        {
+                            // Permafrost
+                            if ((*itr)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_MAGE
+                                && (*itr)->GetSpellProto()->SpellIconID == 143)
+                            {
+                                // custom cast code
+                                int32 basepoints0 = (*itr)->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_2);
+                                caster->CastCustomSpell(m_target, 68391, &basepoints0, NULL, NULL, true, NULL);
+                                return;
+                            }
+                        }
+                    }
+                    return;
+                }
                 default:
                     return;
             }
@@ -10395,6 +10550,23 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                 }
                 else
                     return;
+            }
+
+            // Power Word: Shield
+            else if (apply && m_spellProto->SpellFamilyFlags.test<CF_PRIEST_POWER_WORD_SHIELD>() && m_spellProto->Mechanic == MECHANIC_SHIELD)
+            {
+               Unit* caster = GetCaster();
+               if(!caster)
+                    return;
+
+                // Glyph of Power Word: Shield
+                if (Aura* glyph = caster->GetAura(55672, EFFECT_INDEX_0))
+                {
+                    Aura *shield = GetAuraByEffectIndex(EFFECT_INDEX_0);
+                    int32 heal = (glyph->GetModifier()->m_amount * shield->GetModifier()->m_amount)/100;
+                    caster->CastCustomSpell(m_target, 56160, &heal, NULL, NULL, true, 0, shield);
+                }
+                return;
             }
 
             switch(GetId())
@@ -11248,4 +11420,39 @@ void Aura::HandleAuraFactionChange(bool apply, bool real)
     if (newFaction && newFaction != target->getFaction())
         target->setFaction(newFaction);
 
+}
+
+int32 Aura::CalculateCrowdControlAuraAmount(Unit * caster)
+{
+    // Damage cap for CC effects
+    if (!GetSpellProto()->procFlags || !GetTarget())
+        return 0;
+
+    if (m_modifier.m_auraname !=SPELL_AURA_MOD_CONFUSE &&
+        m_modifier.m_auraname !=SPELL_AURA_MOD_FEAR &&
+        m_modifier.m_auraname !=SPELL_AURA_MOD_STUN &&
+        m_modifier.m_auraname !=SPELL_AURA_MOD_ROOT &&
+        m_modifier.m_auraname !=SPELL_AURA_TRANSFORM)
+        return 0;
+
+    int32 damageCap = (int32)(GetTarget()->GetMaxHealth()*0.10f);
+
+    if (!caster)
+        return damageCap;
+
+    // Glyphs increasing damage cap
+    Unit::AuraList const& overrideClassScripts = caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
+    for (Unit::AuraList::const_iterator itr = overrideClassScripts.begin(); itr != overrideClassScripts.end(); ++itr)
+    {
+        if((*itr)->isAffectedOnSpell(GetSpellProto()))
+        {
+            // Glyph of Fear, Glyph of Frost nova and similar auras
+            if ((*itr)->GetMiscValue() == 7801)
+            {
+                damageCap += (int32)(damageCap*(*itr)->GetModifier()->m_amount/100.0f);
+                break;
+            }
+        }
+    }
+    return damageCap;
 }
