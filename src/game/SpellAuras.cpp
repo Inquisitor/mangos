@@ -522,6 +522,13 @@ SingleEnemyTargetAura::~SingleEnemyTargetAura()
 
 Unit* SingleEnemyTargetAura::GetTriggerTarget() const
 {
+    // search for linked dummy aura with the correct target
+    for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+        if (i != GetEffIndex())
+            if (Aura *aur = GetHolder()->GetAuraByEffectIndex(SpellEffectIndex(i)))
+                if (aur->GetSpellProto()->EffectApplyAuraName[i] == SPELL_AURA_DUMMY)
+                    return aur->GetTarget();
+
     return ObjectAccessor::GetUnit(*(m_spellAuraHolder->GetTarget()), m_castersTargetGuid);
 }
 
@@ -3737,12 +3744,7 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
     if (apply)
     {
         // remove other shapeshift before applying a new one
-        if (target->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
-        {
-            target->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT, GetHolder());
-            // need send to client not form active state, or at re-apply form client go crazy
-            target->AddToClientUpdateList();
-        }
+        target->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT, GetHolder());
 
         if (modelid > 0)
             target->SetDisplayId(modelid);
@@ -3750,8 +3752,6 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
         // now only powertype must be set
         switch (form)
         {
-            case FORM_SHADOW_DANCE:
-                target->SetByteValue(UNIT_FIELD_BYTES_2, 3, uint8(FORM_STEALTH));
             case FORM_CAT:
                 PowerType = POWER_ENERGY;
                 break;
@@ -3838,6 +3838,10 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
                     break;
             }
         }
+
+        // send FORM_STEALTH to client so it uses correct stealth action bar
+        if (form == FORM_SHADOW_DANCE)
+            form = FORM_STEALTH;
 
         target->SetShapeshiftForm(form);
 
@@ -5860,15 +5864,27 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
         }
         case SPELLFAMILY_ROGUE:
         {
-            if(!apply)
+            switch (spell->Id)
             {
-                switch(spell->Id)
+                // Master of Subtlety
+                case 31666:
                 {
-                    // Master of Subtlety
-                    case 31666: target->RemoveAurasDueToSpell(31665); break;
+                    if (apply)
+                    {
+                        // for make duration visible
+                        if (SpellAuraHolder* holder = target->GetSpellAuraHolder(31665))
+                        {
+                            holder->SetAuraMaxDuration(GetHolder()->GetAuraDuration());
+                            holder->RefreshHolder();
+                        }
+                    }
+                    else
+                        target->RemoveAurasDueToSpell(31665);
+                    break;
                 }
+                default:
+                    break;
             }
-            break;
         }
         case SPELLFAMILY_WARLOCK:
         {
@@ -8663,7 +8679,6 @@ void Aura::PeriodicDummyTick()
                         case 2: target->CastSpell(target, 55739, true); break;
                     }
                     return;
-
                 case 54798: // FLAMING Arrow Triggered Effect
                 {
                     Unit * caster = GetCaster();
@@ -8706,7 +8721,14 @@ void Aura::PeriodicDummyTick()
 
                     break;
                 }
-
+                case 62566:                                 // Healthy Spore Summon Periodic
+                {
+                    target->CastSpell(target, 62582, true);
+                    target->CastSpell(target, 62591, true);
+                    target->CastSpell(target, 62592, true);
+                    target->CastSpell(target, 62593, true);
+                    return;
+                }
                 case 62717:                                 // Slag Pot (periodic dmg)
                 case 63477:
                 {
@@ -9052,13 +9074,26 @@ void Aura::HandleManaShield(bool apply, bool Real)
 
 void Aura::HandleArenaPreparation(bool apply, bool Real)
 {
-    if(!Real)
+    if (!Real)
         return;
 
-    if(apply)
-        GetTarget()->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREPARATION);
+    Unit* target = GetTarget();
+
+    target->ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREPARATION, apply);
+
+    if (apply)
+    {
+        // max regen powers at start preparation
+        target->SetHealth(target->GetMaxHealth());
+        target->SetPower(POWER_MANA, target->GetMaxPower(POWER_MANA));
+        target->SetPower(POWER_ENERGY, target->GetMaxPower(POWER_ENERGY));
+    }
     else
-        GetTarget()->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREPARATION);
+    {
+        // reset originally 0 powers at start/leave
+        target->SetPower(POWER_RAGE, 0);
+        target->SetPower(POWER_RUNIC_POWER, 0);
+    }
 }
 
 /**
@@ -9396,7 +9431,8 @@ void Aura::HandleAuraSafeFall( bool Apply, bool Real )
 
 bool Aura::IsCritFromAbilityAura(Unit* caster, uint32& damage)
 {
-    if (!GetSpellProto()->IsFitToFamily(SPELLFAMILY_ROGUE, UI64LIT(0x100000)) && // Rupture
+    if (!GetSpellProto()->IsFitToFamily<SPELLFAMILY_ROGUE, CF_ROGUE_RUPTURE>() && // Rupture
+        !GetSpellProto()->IsFitToFamily<SPELLFAMILY_ROGUE, CF_ROGUE_DEADLY_POISON>() &&
         !caster->HasAffectedAura(SPELL_AURA_ABILITY_PERIODIC_CRIT, GetSpellProto()))
         return false;
 
@@ -9404,16 +9440,6 @@ bool Aura::IsCritFromAbilityAura(Unit* caster, uint32& damage)
     {
         damage = caster->SpellCriticalDamageBonus(GetSpellProto(), damage, GetTarget());
         return true;
-    }
-
-    // Special exception for Rupture spell, damage can crit after patch 3.3.3
-    if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_ROGUE && GetSpellProto()->SpellFamilyFlags.test<CF_ROGUE_RUPTURE>())
-    {
-        if(caster->IsSpellCrit(GetTarget(), GetSpellProto(), GetSpellSchoolMask(GetSpellProto())))
-        {
-            damage = caster->SpellCriticalDamageBonus(GetSpellProto(), damage, GetTarget());
-            return true;
-        }
     }
 
     return false;
@@ -9527,6 +9553,7 @@ m_permanent(false), m_isRemovedOnShapeLost(true), m_deleted(false), m_in_use(0)
         case 34027:                                         // Kill Command
         case 55166:                                         // Tidal Force
         case 58914:                                         // Kill Command (pet part)
+        case 62519:                                         // Attuned to Nature
         case 64455:                                         // Feral Essence
         case 71564:                                         // Deadly Precision
         case 74396:                                         // Fingers of Frost
@@ -10075,7 +10102,7 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                     spellId1 = 68066;                       // Damage Reduction
                     break;
                 }
-                case 55001:
+                case 55001:                                 // Parachute
                 {
                     if (apply)
                     {
@@ -10132,7 +10159,7 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                         return;
                     break;
                 }
-                case 69674:
+                case 69674:                                 // Mutated Infection
                 {
                     if (!apply)
                     {
@@ -10144,7 +10171,7 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                     }
                     break;
                 }
-                case 73034:
+                case 73034:                                 // Blighted Spores
                 case 73033:
                 case 71222:
                 case 69290:
@@ -10430,11 +10457,22 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
             // Barkskin
             else if (GetId()==22812 && m_target->HasAura(63057)) // Glyph of Barkskin
                 spellId1 = 63058;                           // Glyph - Barkskin 01
-            // Item - Druid T10 Feral 4P Bonus
-            else if (GetId() == 5229 && m_target->HasAura(70726))// Enrage
-                spellId1 = 70725;
-            else if (!apply && GetId() == 5229)             // Enrage (Druid Bear)
-                spellId1 = 51185;                           // King of the Jungle (Enrage damage aura)
+            // Enrage (Druid Bear)
+            else if (GetId() == 5229)
+            {
+                if (apply)
+                {
+                    if (m_target->HasAura(70726))           // Druid T10 Feral 4P Bonus
+                        spellId1 = 70725;                   // Enraged Defense
+                    else
+                        return;
+                }
+                else
+                {
+                    spellId1 = 70725;
+                    spellId2 = 51185;                       // King of the Jungle (Enrage damage aura)
+                }
+            }
             else
                 return;
             break;
@@ -10446,14 +10484,19 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
             {
                 // search poison
                 bool found = false;
-                Unit::SpellAuraHolderMap const& auras = m_target->GetSpellAuraHolderMap();
-                for (Unit::SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
+                if (m_target->HasAuraState(AURA_STATE_DEADLY_POISON))
+                    found = true;
+                else
                 {
-                    uint32 flags1 = m_target->HasAuraState(AURA_STATE_DEADLY_POISON);
-                    if (itr->second->GetSpellProto()->SpellFamilyName == SPELLFAMILY_ROGUE && (flags1 & (0x80000)))
+                    Unit::SpellAuraHolderMap const& auras = m_target->GetSpellAuraHolderMap();
+                    for (Unit::SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
                     {
-                        found = true;
-                        break;
+                        if (itr->second->GetSpellProto()->SpellFamilyName == SPELLFAMILY_ROGUE &&
+                            itr->second->GetSpellProto()->Dispel == DISPEL_POISON)
+                        {
+                            found = true;
+                            break;
+                        }
                     }
                 }
 
