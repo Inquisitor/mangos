@@ -56,14 +56,12 @@ void BattleGroundDS::Update(uint32 diff)
             {
                 if(Player *plr = sObjectMgr.GetPlayer(itr->first))
                     {
+                        // Remove Demonic Circle
+                        if(GameObject* obj = plr->GetGameObject(48018))
+                            obj->Delete();
+
                         if(plr->GetPositionZ() < 11.0f)
                             continue;
-
-                        // Remove Demonic Circle
-                        for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
-                            if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-                                if(GameObject* obj = plr->GetGameObject(48018))
-                                    obj->Delete();
 
                         float angle = (plr->GetBGTeam() == ALLIANCE /* gold */) ? plr->GetAngle(1259.58f, 764.43f) : plr->GetAngle(1325.84f, 817.304f);
 
@@ -72,7 +70,7 @@ void BattleGroundDS::Update(uint32 diff)
                         data << uint32(0);                                  // Sequence
                         data << float(cos(angle));                          // x direction
                         data << float(sin(angle));                          // y direction
-                        data << float(55);                                  // Horizontal speed
+                        data << float(45);                                  // Horizontal speed
                         data << float(-7);                                  // Z Movement speed (vertical)
                         plr->GetSession()->SendPacket(&data);
                     }
@@ -121,6 +119,31 @@ void BattleGroundDS::Update(uint32 diff)
             }
             else
                 m_uiTeleport -= diff;
+
+        // Waterfall
+        if (m_uiWaterfall < diff)
+        {
+            if (waterfallActivated)
+            {
+                SpawnEvent(WATERFALL_EVENT, 0, false);
+                waterfallActivated = false;
+            }
+            else
+            {
+                SpawnEvent(WATERFALL_EVENT, 0, true);
+                waterfallActivated = true;
+
+                for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+                {
+                    Player * plr = sObjectMgr.GetPlayer(itr->first);
+                    if (plr && plr->GetDistance2d(1291, 790) <= 6)
+                        plr->KnockBackFrom(plr, -20.0f, 9.0f);
+                }
+            }
+            m_uiWaterfall = urand(30,45)*IN_MILLISECONDS;
+        }
+        else
+            m_uiWaterfall -= diff;
     }
 }
 
@@ -212,12 +235,14 @@ void BattleGroundDS::Reset()
 {
     //call parent's class reset
     BattleGround::Reset();
-    m_uiTeleport = 20000;
+    m_uiTeleport = 10000;
     teleportCheck = true;
 
-    m_uiKnockback = 15000;
-    pushbackCheck = true;
     m_uiKnockback = 5000;
+    pushbackCheck = true;
+
+    m_uiWaterfall = 2000;
+    waterfallActivated = false;
 }
 
 bool BattleGroundDS::SetupBattleGround()
