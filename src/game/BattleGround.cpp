@@ -1485,6 +1485,12 @@ void BattleGround::AddPlayer(Player *plr)
             plr->CastSpell(plr, SPELL_PREPARATION, true);   // reduces all mana cost of spells.
 
         plr->CastSpell(plr, SPELL_BATTLEGROUND_DAMPENING, true);
+
+        BattleGround* bg = plr->GetBattleGround();
+        //start time achievement
+        for (uint32 i = 0; i < MAX_BG_START_ACHI; ++i)
+            if(BG_ACHI_START[i][0] == bg->GetTypeID(true))
+                plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_ACHI_START[i][1]);
     }
 
     plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, ACHIEVEMENT_CRITERIA_CONDITION_MAP, GetMapId());
@@ -1912,6 +1918,19 @@ void BattleGround::OpenDoorEvent(uint8 event1, uint8 event2 /*=0*/)
     BGObjects::const_iterator itr = m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.begin();
     for(; itr != m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.end(); ++itr)
         DoorOpen(*itr);
+
+    //start time achievement
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+        {
+            BattleGround* bg = plr->GetBattleGround();
+
+            for (uint32 i = 0; i < MAX_BG_START_ACHI; ++i)
+                if(BG_ACHI_START[i][0] == bg->GetTypeID(true))
+                    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_ACHI_START[i][1]);
+        }
+    }
 }
 
 void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
@@ -1937,6 +1956,22 @@ void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
     BGObjects::const_iterator itr2 = m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.begin();
     for(; itr2 != m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.end(); ++itr2)
         SpawnBGObject(*itr2, (spawn) ? RESPAWN_IMMEDIATELY : RESPAWN_ONE_DAY);
+
+    //start time achievement
+    if (event1 == BG_EVENT_DOOR && spawn == false)
+    {
+        for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+        {
+            if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            {
+                BattleGround* bg = plr->GetBattleGround();
+
+                for (uint32 i = 0; i < MAX_BG_START_ACHI; ++i)
+                    if(BG_ACHI_START[i][0] == bg->GetTypeID(true))
+                        plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_ACHI_START[i][1]);
+            }
+        }
+    }
 }
 
 void BattleGround::SpawnBGObject(ObjectGuid guid, uint32 respawntime)

@@ -32,6 +32,7 @@
 // only arena event
 // cause this buff apears 90sec after start in every bg i implement it here
 #define ARENA_BUFF_EVENT 253
+#define MAX_BG_START_ACHI  5
 
 
 class Creature;
@@ -291,6 +292,35 @@ enum BattlegroundCreatures
 {
     BG_CREATURE_ENTRY_A_SPIRITGUIDE      = 13116,           // alliance
     BG_CREATURE_ENTRY_H_SPIRITGUIDE      = 13117,           // horde
+};
+
+enum BattleGroundStartAchi
+{
+    BG_WS_START_WIN         = 8563,
+    BG_AB_START_WIN         = 9158,
+    BG_AV_START_WIN         = 9166,
+    BG_SA_START_WIN         = 23748,
+    BG_EY_START_WIN         = 13180,
+    BG_SA_START_CAP_FLAG_H  = 61265,
+    BG_SA_START_CAP_FLAG_A  = 61266,
+};
+
+enum BattleGroundAchi
+{
+    BATTLEGROUND_WS_ACHI = 0,
+    BATTLEGROUND_AB_ACHI = 1,
+    BATTLEGROUND_AV_ACHI = 2,
+    BATTLEGROUND_SA_ACHI = 3,
+    BATTLEGROUND_EY_ACHI = 4,
+};
+
+const uint32 BG_ACHI_START[5][2] =
+{
+    {BATTLEGROUND_WS_ACHI, BG_WS_START_WIN},
+    {BATTLEGROUND_AB_ACHI, BG_AB_START_WIN},
+    {BATTLEGROUND_AV_ACHI, BG_AV_START_WIN},
+    {BATTLEGROUND_SA_ACHI, BG_SA_START_WIN},
+    {BATTLEGROUND_EY_ACHI, BG_EY_START_WIN}
 };
 
 class BattleGroundScore

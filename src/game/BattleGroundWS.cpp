@@ -152,12 +152,6 @@ void BattleGroundWS::StartingEventOpenDoors()
     SpawnEvent(WS_EVENT_FLAG_H, 0, true);
     m_FlagCaptureTime[0] = 0;
     m_FlagCaptureTime[1] = 0;
-
-    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-    {
-        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 8563);
-    }
 }
 
 void BattleGroundWS::AddPlayer(Player *plr)
@@ -167,7 +161,6 @@ void BattleGroundWS::AddPlayer(Player *plr)
     BattleGroundWGScore* sc = new BattleGroundWGScore;
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
-    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 8563);
 }
 
 void BattleGroundWS::RespawnFlag(Team team, bool captured)
@@ -410,7 +403,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
         UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, 1);
         Source->CastSpell(Source, BG_WS_SPELL_SILVERWING_FLAG, true);
         m_FlagCaptureTime[1] = GetStartTime();
-        Source->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, 61265);
+        Source->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, BG_SA_START_CAP_FLAG_H);
     }
 
     //horde flag picked up from base
@@ -428,7 +421,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
         UpdateWorldState(BG_WS_FLAG_UNK_HORDE, 1);
         Source->CastSpell(Source, BG_WS_SPELL_WARSONG_FLAG, true);
         m_FlagCaptureTime[0] = GetStartTime();
-        Source->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, 61266);
+        Source->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, BG_SA_START_CAP_FLAG_A);
     }
 
     //Alliance flag on ground(not in base) (returned or picked up again from ground!)

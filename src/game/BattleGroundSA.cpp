@@ -272,12 +272,6 @@ void BattleGroundSA::Update(uint32 diff)
             PlaySoundToAll(SOUND_BG_START);
             SendMessageToAll(LANG_BG_SA_HAS_BEGUN, CHAT_MSG_BG_SYSTEM_NEUTRAL, NULL);
             SendWarningToAll(LANG_BG_SA_HAS_BEGUN);
-
-            for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-            {
-                if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-                    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 23748);
-            }
         }
         else
             TimeST2Round -= diff;
@@ -341,12 +335,6 @@ void BattleGroundSA::StartingEventOpenDoors()
     SpawnEvent(BG_EVENT_DOOR, 0, false);
     SpawnEvent(SA_EVENT_ADD_NPC, 0, true);
     ToggleTimer();
-
-    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-    {
-        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 23748);
-    }
 }
 
 void BattleGroundSA::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
@@ -362,7 +350,6 @@ void BattleGroundSA::AddPlayer(Player *plr)
     BattleGroundSAScore* sc = new BattleGroundSAScore;
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
-    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 23748);
 }
 
 void BattleGroundSA::HandleAreaTrigger(Player * /*Source*/, uint32 /*Trigger*/)
