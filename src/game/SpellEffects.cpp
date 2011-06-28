@@ -2822,6 +2822,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 58418:                                 // Portal to Orgrimmar
                 case 58420:                                 // Portal to Stormwind
                     return;                                 // implemented in EffectScript[0]
+                case 66218:
                 case 62324: // Throw Passenger
                 {
                     if (VehicleKit *vehicle = m_caster->GetVehicleKit())
@@ -4591,6 +4592,32 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
     if(!unitTarget || unitTarget->IsTaxiFlying())
         return;
 
+    switch (m_spellInfo->Id)
+    {
+        case 66550: // teleports outside (Isle of Conquest)
+        {
+            if (Player* pTarget = ((Player*)unitTarget))
+            {
+                if (pTarget->GetTeamId() == TEAM_ALLIANCE)
+                    m_targets.setDestination(442.24f, -835.25f, 44.30f);
+                else
+                    m_targets.setDestination(1120.43f, -762.11f, 47.92f);
+            }
+            break;
+        }
+        case 66551: // teleports inside (Isle of Conquest)
+        {
+            if (Player* pTarget = ((Player*)unitTarget))
+            {
+                if (pTarget->GetTeamId() == TEAM_ALLIANCE)
+                    m_targets.setDestination(389.57f, -832.38f, 48.65f);
+                else
+                    m_targets.setDestination(1174.85f, -763.24f, 48.72f);
+            }
+            break;
+        }
+    }
+
     switch (m_spellInfo->EffectImplicitTargetB[eff_idx])
     {
         case TARGET_INNKEEPER_COORDINATES:
@@ -5516,7 +5543,7 @@ void Spell::EffectOpenLock(SpellEffectIndex eff_idx)
             if (BattleGround *bg = player->GetBattleGround())
             {
                 // check if it's correct bg
-                if (bg->GetTypeID(true) == BATTLEGROUND_AB || bg->GetTypeID(true) == BATTLEGROUND_AV || bg->GetTypeID(true) == BATTLEGROUND_SA)
+                if (bg->GetTypeID(true) == BATTLEGROUND_AB || bg->GetTypeID(true) == BATTLEGROUND_AV || bg->GetTypeID(true) == BATTLEGROUND_SA || bg->GetTypeID(true) == BATTLEGROUND_IC)
                     bg->EventPlayerClickedOnFlag(player, gameObjTarget);
                 return;
             }
@@ -10683,7 +10710,8 @@ void Spell::EffectCharge2(SpellEffectIndex /*eff_idx*/)
     unitTarget->UpdateGroundPositionZ(x, y, z);
 
     // Only send MOVEMENTFLAG_WALK_MODE, client has strange issues with other move flags
-    m_caster->MonsterMove(x, y, z, 1);
+    if (!(m_spellInfo->Id == 67797))   //dont move for "Taran" (bug: ignoring vmaps);
+        m_caster->MonsterMove(x, y, z, 1);
 
     // not all charge effects used in negative spells
     if (unitTarget && unitTarget != m_caster && !IsPositiveSpell(m_spellInfo->Id))
@@ -11010,9 +11038,9 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
                 if (m_caster->GetTypeId()==TYPEID_PLAYER)
                 {
                     if (((Player*)m_caster)->GetTeam() == HORDE)
-                        team = BG_IC_TEAM[1];
+                        team = 83;
                     if (((Player*)m_caster)->GetTeam() == ALLIANCE)
-                        team = BG_IC_TEAM[0];
+                        team = 84;
                 }
                 float fx, fy, fz;
                 m_caster->GetPosition(fx, fy, fz);
@@ -11559,6 +11587,31 @@ void Spell::EffectWMODamage(SpellEffectIndex eff_idx)
 
     if (!caster)
         return;
+
+    Player* plr = NULL;
+    if (caster && caster->GetTypeId() == TYPEID_PLAYER)
+    {
+        plr = (Player*)caster;
+        //this is damage from bomb
+        if (BattleGround *bg = plr->GetBattleGround())
+            // on SA need x2 damage
+            if(bg->GetTypeID(true) == BATTLEGROUND_SA)
+            {
+                damage = 2*damage;
+                plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+            }
+            // on IC need x5 damage
+            else if(bg->GetTypeID(true) == BATTLEGROUND_IC)
+            {
+                damage = 5*damage;
+            }
+    }
+
+    if (caster->HasAura(68719))
+        damage = 1.15*damage;
+
+    if (caster->HasAura(68720))
+        damage = 1.15*damage;
 
     DEBUG_LOG( "Spell::EffectWMODamage,  spell ID %u, object %u, damage %u", m_spellInfo->Id,gameObjTarget->GetEntry(),uint32(damage));
 

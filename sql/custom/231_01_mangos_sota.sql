@@ -1,4 +1,4 @@
--- Strand of the Ancients BattleGround
+﻿-- Strand of the Ancients BattleGround
 DELETE FROM `battleground_template` WHERE id = 9;
 INSERT INTO `battleground_template` (`id`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
 ('9','8','15','1367','0','1368','0');
@@ -20,8 +20,8 @@ UPDATE `locales_gameobject` SET name_loc3 = 'Zephyriumbombe' WHERE entry = '1907
 UPDATE `locales_gameobject` SET name_loc3 = 'Zephyriumbombe' WHERE entry = '194086';
 
 -- Demolisher
-UPDATE creature_template SET npcflag = 1, minlevel = 70, maxlevel = 70, minhealth = 89820, maxhealth = 89820, spell1 = 52338, spell2 = 60206, `ScriptName` = 'npc_sa_demolisher', RegenHealth=0 WHERE entry = 28781;
-UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 126000, maxhealth = 126000, spell1 = 52338, spell2 = 60206, `ScriptName` = 'npc_sa_demolisher', RegenHealth=0 WHERE entry = 32796;
+UPDATE creature_template SET npcflag = 1, minlevel = 70, maxlevel = 70, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, `ScriptName` = 'npc_sa_demolisher', RegenHealth=0 WHERE entry = 28781;
+UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, `ScriptName` = 'npc_sa_demolisher', RegenHealth=0 WHERE entry = 32796;
 DELETE FROM npc_spellclick_spells WHERE npc_entry = 28781;
 INSERT INTO npc_spellclick_spells VALUES (28781, 60968, 0, 0, 0, 0);
 -- AP Cannon

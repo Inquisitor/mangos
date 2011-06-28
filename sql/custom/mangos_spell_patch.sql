@@ -18,3 +18,12 @@ DELETE FROM `spell_patch` WHERE `dbc` = 'Achievement_Criteria.dbc' AND `entry` I
 INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
     ( '8758','Achievement_Criteria.dbc','2 1 3 607 26 2','BG Strand of the Ancients - Storm the Beach achievement requirements correction')
 ;
+
+-- by Antimozg
+DELETE FROM `spell_patch` WHERE `dbc` = 'Spell.dbc' AND `entry` IN (
+    65635, 67441
+);
+INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
+    ( '65635','Spell.dbc','81 0','Gear Scaling - fix % damage')
+   ,( '67441','Spell.dbc','76 0 88 47 91 52','Ram - hack damage on GO (tar-108 not implement)')
+;

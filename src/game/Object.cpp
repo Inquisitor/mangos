@@ -271,6 +271,12 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
                 /*if (((Creature*)unit)->hasUnitState(UNIT_STAT_MOVING))
                     unit->m_movementInfo.SetMovementFlags(MOVEFLAG_FORWARD);*/
 
+                if (unit->GetTransport())
+                {
+                    unit->m_movementInfo.AddMovementFlag(MOVEFLAG_ONTRANSPORT);
+                    unit->m_movementInfo.SetTransportData(unit->GetTransport()->GetObjectGuid(), unit->GetTransOffsetX(), unit->GetTransOffsetY(), unit->GetTransOffsetZ(), unit->GetTransOffsetO(), 0, 0);
+                }
+
                 if (((Creature*)unit)->CanFly())
                 {
                     // (ok) most seem to have this
@@ -279,7 +285,7 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
                     /*if (!((Creature*)unit)->hasUnitState(UNIT_STAT_MOVING))
                     {
                         // (ok) possibly some "hover" mode
-                        unit->m_movementInfo.AddMovementFlag(MOVEFLAG_ROOT);
+                        // unit->m_movementInfo.AddMovementFlag(MOVEFLAG_ROOT);
                     }
                     else*/
                     {
@@ -1264,6 +1270,36 @@ bool WorldObject::_IsWithinDist(WorldObject const* obj, float dist2compare, bool
     return distsq < maxdist * maxdist;
 }
 
+bool WorldObject::_IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D, Unit * unit, Player * plr) const
+{
+    float sizefactor = GetObjectBoundingRadius() + obj->GetObjectBoundingRadius();
+    float maxdist = dist2compare + sizefactor;
+
+    if (unit->GetTransport() && plr->GetTransport() &&  plr->GetTransport()->GetGUIDLow() == unit->GetTransport()->GetGUIDLow())
+    {
+        float dtx = unit->m_movementInfo.GetTransportPos()->x - plr->m_movementInfo.GetTransportPos()->x;
+        float dty = unit->m_movementInfo.GetTransportPos()->y - plr->m_movementInfo.GetTransportPos()->y;
+        float disttsq = dtx * dtx + dty * dty;
+        if (is3D)
+        {
+            float dtz = unit->m_movementInfo.GetTransportPos()->z - plr->m_movementInfo.GetTransportPos()->z;
+            disttsq += dtz * dtz;
+        }
+        return disttsq < (maxdist * maxdist);
+    }
+
+    float dx = GetPositionX() - obj->GetPositionX();
+    float dy = GetPositionY() - obj->GetPositionY();
+    float distsq = dx*dx + dy*dy;
+    if(is3D)
+    {
+        float dz = GetPositionZ() - obj->GetPositionZ();
+        distsq += dz*dz;
+    }
+
+    return distsq < maxdist * maxdist;
+}
+
 bool WorldObject::IsWithinLOSInMap(const WorldObject* obj) const
 {
     if (!IsInMap(obj)) return false;
@@ -1751,6 +1787,51 @@ TerrainInfo const* WorldObject::GetTerrain() const
 void WorldObject::AddObjectToRemoveList()
 {
     GetMap()->AddObjectToRemoveList(this);
+}
+
+Creature* WorldObject::SummonCreatureOnTransport(uint32 entry, uint32 transportEntry, float tX, float tY, float tZ, float tO, TempSummonType spwtype, uint32 despwtime, bool asActiveObject)
+{
+    CreatureInfo const *cinfo = ObjectMgr::GetCreatureTemplate(entry);
+    if(!cinfo)
+    {
+        sLog.outErrorDb("WorldObject::SummonCreatureOnTransport: Creature (Entry: %u) not existed for summoner: %s. ", entry, GetGuidStr().c_str());
+        return NULL;
+    }
+
+    TemporarySummon* pCreature = new TemporarySummon(GetObjectGuid());
+    CreatureCreatePos pos(GetMap(), tX, tY, tZ, tO, GetPhaseMask());
+
+    if (tX == 0.0f && tY == 0.0f && tZ == 0.0f)
+        return NULL;
+    //    pos = GetClosePoint(tX, tY, tZ, GetObjectBoundingRadius(), CONTACT_DISTANCE, tO);
+
+    if (!pCreature->Create(GetMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, cinfo))
+    {
+        delete pCreature;
+        return NULL;
+    }
+
+    for (MapManager::TransportSet::const_iterator iter = sMapMgr.m_Transports.begin(); iter != sMapMgr.m_Transports.end(); ++iter)
+    {
+        Transport* trans = *iter;
+        if (trans->GetEntry() == transportEntry)
+        {
+            pCreature->SetTransport(trans);
+            pCreature->m_movementInfo.AddMovementFlag(MOVEFLAG_ONTRANSPORT);
+            pCreature->m_movementInfo.SetTransportData(ObjectGuid(HIGHGUID_MO_TRANSPORT, GetObjectGuid().GetCounter()), tX, tY, tZ, tO, 0, -1);
+            trans->AddPassenger(pCreature);
+            trans->UpdateCreaturePositions(pCreature, GetMap(), GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
+            break;
+        }
+    }
+
+    pCreature->SetActiveObjectState(asActiveObject);
+    pCreature->Summon(spwtype, despwtime);
+
+    if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->AI())
+        ((Creature*)this)->AI()->JustSummoned(pCreature);
+
+    return pCreature;
 }
 
 Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype,uint32 despwtime, bool asActiveObject)

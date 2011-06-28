@@ -42,6 +42,7 @@
 #include "GMTicketMgr.h"
 #include "WaypointManager.h"
 #include "Util.h"
+#include "Transports.h"
 #include <cctype>
 #include <iostream>
 #include <fstream>
@@ -1592,34 +1593,49 @@ bool ChatHandler::HandleNpcAddCommand(char* args)
 
     Player *chr = m_session->GetPlayer();
     CreatureCreatePos pos(chr, chr->GetOrientation());
+    float tX = chr->GetTransOffsetX();
+    float tY = chr->GetTransOffsetY();
+    float tZ = chr->GetTransOffsetZ();
+    float tO = chr->GetTransOffsetO();
     Map *map = chr->GetMap();
 
-    Creature* pCreature = new Creature;
-
-    // used guids from specially reserved range (can be 0 if no free values)
-    uint32 lowguid = sObjectMgr.GenerateStaticCreatureLowGuid();
-    if (!lowguid)
+    if (chr->GetTransport())
     {
-        SendSysMessage(LANG_NO_FREE_STATIC_GUID_FOR_SPAWN);
-        SetSentErrorMessage(true);
-        return false;
+        if (Creature* TransNPC = chr->GetTransport()->AddNPCPassenger(id, tX, tY, tZ, tO))
+        {
+            TransNPC->SaveToDB(chr->GetTransport()->GetGOInfo()->moTransport.mapID, (1 << map->GetSpawnMode()), chr->GetPhaseMaskForSpawn());
+            sObjectMgr.AddCreatureToGrid(TransNPC->GetGUIDLow(), sObjectMgr.GetCreatureData(TransNPC->GetGUIDLow()));
+        }
     }
-
-    if (!pCreature->Create(lowguid, pos, cinfo))
+    else
     {
-        delete pCreature;
-        return false;
+        Creature* pCreature = new Creature;
+
+        // used guids from specially reserved range (can be 0 if no free values)
+        uint32 lowguid = sObjectMgr.GenerateStaticCreatureLowGuid();
+        if (!lowguid)
+        {
+            SendSysMessage(LANG_NO_FREE_STATIC_GUID_FOR_SPAWN);
+            SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (!pCreature->Create(lowguid, pos, cinfo))
+        {
+            delete pCreature;
+            return false;
+        }
+
+        pCreature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMaskForSpawn());
+
+        uint32 db_guid = pCreature->GetGUIDLow();
+
+        // To call _LoadGoods(); _LoadQuests(); CreateTrainerSpells();
+        pCreature->LoadFromDB(db_guid, map);
+
+        map->Add(pCreature);
+        sObjectMgr.AddCreatureToGrid(db_guid, sObjectMgr.GetCreatureData(db_guid));
     }
-
-    pCreature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMaskForSpawn());
-
-    uint32 db_guid = pCreature->GetGUIDLow();
-
-    // To call _LoadGoods(); _LoadQuests(); CreateTrainerSpells();
-    pCreature->LoadFromDB(db_guid, map);
-
-    map->Add(pCreature);
-    sObjectMgr.AddCreatureToGrid(db_guid, sObjectMgr.GetCreatureData(db_guid));
     return true;
 }
 

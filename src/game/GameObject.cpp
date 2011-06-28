@@ -36,6 +36,7 @@
 #include "MapPersistentStateMgr.h"
 #include "BattleGround.h"
 #include "BattleGroundAV.h"
+#include "BattleGroundIC.h"
 #include "Util.h"
 #include "ScriptMgr.h"
 #include <G3D/Quat.h>
@@ -1550,6 +1551,11 @@ void GameObject::Use(Unit* user)
                 user->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
             AddUse();
+            // For Isle of Conquest teleports
+            if (user->GetTypeId() == TYPEID_PLAYER)
+                if (((Player*)user)->InBattleGround())
+                    if (BattleGround *bg = ((Player*)user)->GetBattleGround())
+                        ((BattleGroundIC*)bg)->EventPlayerUsedGO(((Player*)user), this);
             break;
         }
         case GAMEOBJECT_TYPE_MEETINGSTONE:                  //23
@@ -1945,16 +1951,7 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
 
     Player* pWho = NULL;
     if (pDoneBy && pDoneBy->GetTypeId() == TYPEID_PLAYER)
-    {
         pWho = (Player*)pDoneBy;
-        //this is damage from bomb on SA (need x2 damage)
-        if (BattleGround *bg = pWho->GetBattleGround())
-            if(bg->GetTypeID(true) == BATTLEGROUND_SA)
-            {
-                damage = 2*damage;
-                pWho->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
-            }
-    }
 
     if(pDoneBy && ((Creature*)pDoneBy)->GetVehicleKit())
         pWho = (Player*)pDoneBy->GetCharmerOrOwner();
@@ -1986,7 +1983,11 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
                 //sScriptMgr.OnGameObjectDestroyed(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
 
                 if (BattleGround *bg = pWho->GetBattleGround())
+                {
                     bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                    ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                }
+
             }
         }
     }
@@ -2010,7 +2011,10 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
 
             if (pWho)
                 if (BattleGround *bg = pWho->GetBattleGround())
+                {
                     bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damagedEvent);
+                    ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                }
          }
     }
     SetGoAnimProgress(m_health * 255 / GetMaxHealth());
