@@ -12,14 +12,6 @@ INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
 ;
 
 -- by Antimozg
-DELETE FROM `spell_patch` WHERE `dbc` = 'Achievement_Criteria.dbc' AND `entry` IN (
-    8758
-);
-INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
-    ( '8758','Achievement_Criteria.dbc','2 1 3 607 26 2','BG Strand of the Ancients - Storm the Beach achievement requirements correction')
-;
-
--- by Antimozg
 DELETE FROM `spell_patch` WHERE `dbc` = 'Spell.dbc' AND `entry` IN (
     65635, 67441
 );
