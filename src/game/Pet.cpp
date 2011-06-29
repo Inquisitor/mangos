@@ -2604,6 +2604,7 @@ void Pet::ApplyAllScalingBonuses(bool apply)
     ApplySpellHitScalingBonus(apply);
     ApplyExpertizeScalingBonus(apply);
     ApplyPowerregenScalingBonus(apply);
+    ApplyHasteScalingBonus(apply);
 }
 
 void Pet::ApplyHitScalingBonus(bool apply)
@@ -2763,7 +2764,6 @@ void Pet::ApplyExpertizeScalingBonus(bool apply)
             break;
         }
     }
-
 }
 
 void Pet::ApplyPowerregenScalingBonus(bool apply)
@@ -2820,6 +2820,60 @@ void Pet::ApplyPowerregenScalingBonus(bool apply)
 
     if(needRecalculateStat)
         UpdateManaRegen();
+}
+
+void Pet::ApplyHasteScalingBonus(bool apply)
+{
+    Unit* owner = GetOwner();
+
+    // Don't apply scaling bonuses if no owner or owner is not player
+    if (!owner || owner->GetTypeId() != TYPEID_PLAYER || m_removed)
+        return;
+
+    int32 m_AttackSpeed = owner->GetTotalAuraModifier(SPELL_AURA_HASTE_ALL);
+    m_AttackSpeed +=  ((Player*)owner)->GetRatingBonusValue(CR_HASTE_MELEE);
+
+    if (m_baseBonusData->attackspeedScale == m_AttackSpeed && !apply)
+        return;
+
+    m_baseBonusData->attackspeedScale = m_AttackSpeed;
+
+    int32 basePoints = int32(m_baseBonusData->attackspeedScale * (CalculateScalingData()->attackspeedScale / 100.0f));
+
+    bool needRecalculateStat = false;
+
+    if (basePoints == 0)
+        needRecalculateStat = true;
+
+    AuraList const& scalingAuras = GetAurasByType(SPELL_AURA_HASTE_ALL);
+
+    for(AuraList::const_iterator itr = scalingAuras.begin(); itr != scalingAuras.end(); ++itr)
+    {
+        Aura* _aura = (*itr);
+        if (!_aura || _aura->IsInUse())
+            continue;
+
+        SpellAuraHolder* holder = _aura->GetHolder();
+
+        if (!holder || holder->IsDeleted() || holder->IsEmptyHolder() || holder->GetCasterGuid() != GetObjectGuid())
+            continue;
+
+        SpellEntry const *spellproto = holder->GetSpellProto();
+
+        if (!spellproto)
+            continue;
+
+        SpellEffectIndex i = _aura->GetEffIndex();
+
+        if (spellproto->AttributesEx4 & SPELL_ATTR_EX4_PET_SCALING_AURA)
+        {
+            SetCanModifyStats(false);
+            if (ReapplyScalingAura(holder, spellproto, i, basePoints))
+                needRecalculateStat = true;
+            SetCanModifyStats(true);
+            break;
+        }
+    }
 }
 
 bool Pet::Summon()
@@ -3303,6 +3357,8 @@ void Pet::ApplyScalingBonus(ScalingAction* action)
             break;
         case SCALING_TARGET_POWERREGEN:
             ApplyPowerregenScalingBonus(action->apply);
+        case SCALING_TARGET_ATTACKSPEED:
+            ApplyHasteScalingBonus(action->apply);
             break;
         case SCALING_TARGET_MAX:
         default:

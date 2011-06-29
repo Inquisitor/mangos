@@ -133,6 +133,7 @@ enum ScalingTarget
     SCALING_TARGET_SPELLHIT,
     SCALING_TARGET_EXPERTIZE,
     SCALING_TARGET_POWERREGEN,
+    SCALING_TARGET_ATTACKSPEED,
     SCALING_TARGET_MAX
 };
 
@@ -243,6 +244,7 @@ class MANGOS_DLL_SPEC Pet : public Creature
         void ApplySpellHitScalingBonus(bool apply);
         void ApplyExpertizeScalingBonus(bool apply);
         void ApplyPowerregenScalingBonus(bool apply);
+        void ApplyHasteScalingBonus(bool apply);
         bool ReapplyScalingAura(SpellAuraHolder* holder, SpellEntry const *spellproto, SpellEffectIndex index, int32 basePoints);
         PetScalingData* CalculateScalingData( bool recalculate = false );
         void AddScalingAction(ScalingTarget target, uint32 stat, bool apply);

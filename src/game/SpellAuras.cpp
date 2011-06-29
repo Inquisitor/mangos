@@ -6874,6 +6874,9 @@ void Aura::HandleModCombatSpeedPct(bool apply, bool /*Real*/)
     target->ApplyAttackTimePercentMod(BASE_ATTACK, float(m_modifier.m_amount), apply);
     target->ApplyAttackTimePercentMod(OFF_ATTACK, float(m_modifier.m_amount), apply);
     target->ApplyAttackTimePercentMod(RANGED_ATTACK, float(m_modifier.m_amount), apply);
+
+    if (target->IsInWorld())
+        target->CallForAllControlledUnits(ApplyScalingBonusWithHelper(SCALING_TARGET_ATTACKSPEED, 0, false),CONTROLLED_PET|CONTROLLED_GUARDIANS);
 }
 
 void Aura::HandleModAttackSpeed(bool apply, bool /*Real*/)

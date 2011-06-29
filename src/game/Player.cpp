@@ -5445,6 +5445,7 @@ void Player::ApplyRatingMod(CombatRating cr, int32 value, bool apply)
             float RatingChange = value * GetRatingMultiplier(cr);
             ApplyAttackTimePercentMod(BASE_ATTACK,RatingChange,apply);
             ApplyAttackTimePercentMod(OFF_ATTACK,RatingChange,apply);
+            CallForAllControlledUnits(ApplyScalingBonusWithHelper(SCALING_TARGET_ATTACKSPEED, 0, false),CONTROLLED_PET|CONTROLLED_GUARDIANS);
             break;
         }
         case CR_HASTE_RANGED:
