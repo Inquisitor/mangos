@@ -1293,7 +1293,7 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket *data, BattleGround *bg)
 
             *data << uint32(pointsLost);                        // Rating Lost
             *data << uint32(pointsGained);                      // Rating gained
-            *data << uint32(0);                                 // Matchmaking Value
+            *data << uint32(bg->m_ArenaTeamMMRChanges[i]);      // Matchmaking Value
             DEBUG_LOG("rating change: %d", bg->m_ArenaTeamRatingChanges[i]);
         }
         for(int i = 1; i >= 0; --i)

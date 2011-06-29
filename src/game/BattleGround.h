@@ -545,6 +545,8 @@ class BattleGround
         uint32 GetArenaTeamIdForTeam(Team team) const             { return m_ArenaTeamIds[GetTeamIndexByTeamId(team)]; }
         void SetArenaTeamRatingChangeForTeam(Team team, int32 RatingChange) { m_ArenaTeamRatingChanges[GetTeamIndexByTeamId(team)] = RatingChange; }
         int32 GetArenaTeamRatingChangeForTeam(Team team) const    { return m_ArenaTeamRatingChanges[GetTeamIndexByTeamId(team)]; }
+        void SetArenaTeamMMRChangeForTeam(Team team, int32 MMRChange) { m_ArenaTeamMMRChanges[GetTeamIndexByTeamId(team)] = MMRChange; }
+        int32 GetArenaTeamMMRChangeForTeam(Team team) const    { return m_ArenaTeamMMRChanges[GetTeamIndexByTeamId(team)]; }
         void CheckArenaWinConditions();
 
         /* Triggers handle */
@@ -712,6 +714,7 @@ class BattleGround
         uint32 m_ArenaTeamIds[BG_TEAMS_COUNT];
 
         int32 m_ArenaTeamRatingChanges[BG_TEAMS_COUNT];
+        int32 m_ArenaTeamMMRChanges[BG_TEAMS_COUNT];
 
         /* Limits */
         uint32 m_LevelMin;

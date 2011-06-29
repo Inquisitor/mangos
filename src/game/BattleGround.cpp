@@ -297,8 +297,11 @@ BattleGround::BattleGround()
     m_ArenaTeamIds[BG_TEAM_ALLIANCE]   = 0;
     m_ArenaTeamIds[BG_TEAM_HORDE]      = 0;
 
-    m_ArenaTeamRatingChanges[BG_TEAM_ALLIANCE]   = 0;
-    m_ArenaTeamRatingChanges[BG_TEAM_HORDE]      = 0;
+    m_ArenaTeamRatingChanges[BG_TEAM_ALLIANCE]  = 0;
+    m_ArenaTeamRatingChanges[BG_TEAM_HORDE]     = 0;
+
+    m_ArenaTeamMMRChanges[BG_TEAM_ALLIANCE]     = 0;
+    m_ArenaTeamMMRChanges[BG_TEAM_HORDE]        = 0;
 
     m_BgRaids[BG_TEAM_ALLIANCE]         = NULL;
     m_BgRaids[BG_TEAM_HORDE]            = NULL;
@@ -930,6 +933,8 @@ void BattleGround::EndBattleGround(Team winner)
         {
             SetArenaTeamRatingChangeForTeam(ALLIANCE, 0);
             SetArenaTeamRatingChangeForTeam(HORDE, 0);
+            SetArenaTeamMMRChangeForTeam(ALLIANCE, 0);
+            SetArenaTeamMMRChangeForTeam(HORDE, 0);
         }
     }
 
