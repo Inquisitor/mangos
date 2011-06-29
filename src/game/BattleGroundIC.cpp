@@ -25,6 +25,7 @@
 #include "ObjectMgr.h"
 #include "Vehicle.h"
 #include "Transports.h"
+#include "Map.h"
 
 BattleGroundIC::BattleGroundIC()
 {
@@ -921,49 +922,15 @@ WorldSafeLocsEntry const* BattleGroundIC::GetClosestGraveYard(Player* player)
 
 Transport* BattleGroundIC::CreateTransport(uint32 goEntry, uint32 period)
 {
-    Transport* t = new Transport;
+    Transport* trans = GetBgMap()->LoadTransportInMap(goEntry, 0, period);
 
-    const GameObjectInfo* goinfo = sObjectMgr.GetGameObjectInfo(goEntry);
-
-    if (!goinfo)
-    {
-        sLog.outErrorDb("Transport ID: %u will not be loaded, gameobject_template missing", goEntry);
-        delete t;
+    if (!trans)
         return NULL;
-    }
-
-    std::set<uint32> mapsUsed;
-    t->m_period = period;
-
-    if (!t->GenerateWaypoints(goinfo->moTransport.taxiPathId, mapsUsed))
-        // skip transports with empty waypoints list
-    {
-        sLog.outErrorDb("Transport (path id %u) path size = 0. Transport ignored, check DBC files or transport GO data0 field.",goinfo->moTransport.taxiPathId);
-        delete t;
-        return NULL;
-    }
-
-    uint32 mapid = t->m_WayPoints[0].mapid;
-
-    float x = t->m_WayPoints[0].x;
-    float y = t->m_WayPoints[0].y;
-    float z =  t->m_WayPoints[0].z;
-    float o = 1;
-
-    // creates the Gameobject
-    if (!t->Create(goEntry, mapid, x, y, z, o, GO_ANIMPROGRESS_DEFAULT, 0))
-    {
-        delete t;
-        return NULL;
-    }
-
-    //If we someday decide to use the grid to track transports, here:
-    t->SetMap(GetBgMap());
 
     for (uint8 i = 0; i < 5; i++)
-        t->AddNPCPassenger((goEntry == GO_HORDE_GUNSHIP ? NPC_HORDE_GUNSHIP_CANNON : NPC_ALLIANCE_GUNSHIP_CANNON), (goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][0] : allianceGunshipPassengers[i][0]) , (goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][1] : allianceGunshipPassengers[i][1]),(goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][2] : allianceGunshipPassengers[i][2]), (goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][3] : allianceGunshipPassengers[i][3]));
+        trans->AddNPCPassenger((goEntry == GO_HORDE_GUNSHIP ? NPC_HORDE_GUNSHIP_CANNON : NPC_ALLIANCE_GUNSHIP_CANNON), (goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][0] : allianceGunshipPassengers[i][0]) , (goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][1] : allianceGunshipPassengers[i][1]),(goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][2] : allianceGunshipPassengers[i][2]), (goEntry == GO_HORDE_GUNSHIP ? hordeGunshipPassengers[i][3] : allianceGunshipPassengers[i][3]));
 
-    return t;
+    return trans;
 }
 
 void BattleGroundIC::HandleParachutes()
