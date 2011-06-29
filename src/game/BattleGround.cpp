@@ -1300,10 +1300,11 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
 
             if (!team) team = plr->GetTeam();
 
+            plr->RemoveArenaAuras(true);                // removes debuffs / dots etc., we don't want the player to die after porting out
+
             // if arena, remove the specific arena auras
             if (isArena())
             {
-                plr->RemoveArenaAuras(true);                // removes debuffs / dots etc., we don't want the player to die after porting out
                 bgTypeId=BATTLEGROUND_AA;                   // set the bg type to all arenas (it will be used for queue refreshing)
 
                 // unsummon current and summon old pet if there was one and there isn't a current pet
@@ -1458,7 +1459,7 @@ void BattleGround::AddPlayer(Player *plr)
     {
         plr->RemoveArenaSpellCooldowns();
         plr->RemoveArenaAuras();
-        plr->RemoveAllEnchantments(TEMP_ENCHANTMENT_SLOT);
+        plr->RemoveAllEnchantments(TEMP_ENCHANTMENT_SLOT, true);
         if (team == ALLIANCE)                               // gold
         {
             if (plr->GetTeam() == HORDE)
