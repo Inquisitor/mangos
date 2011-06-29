@@ -1177,8 +1177,12 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             if (count)
             {
                 int32 bp = count * CalculateDamage(EFFECT_INDEX_2, unitTarget) * damageInfo.damage / 100;
-                if (bp)
+                {
+                    if(caster->HasAura(48266, EFFECT_INDEX_)) // If Blood Presence is active, additional damage from Scourge Strike gains bonus too.
+                        bp *= 1.15;
+
                     caster->CastCustomSpell(unitTarget, 70890, &bp, NULL, NULL, true);
+                }
             }
         }
     }
