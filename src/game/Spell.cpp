@@ -1664,6 +1664,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
                 case 63018:                                 // Searing Light (10 man)
                 case 65121:                                 // Searing Light (25 man)
+                case 63713:                                 // Dominate Mind (Yogg-Saron)
+                case 63830:                                 // Malady of the Mind (Yogg-Saron)
                 case 63024:                                 // Gravity Bomb (10 man)
                 case 64234:                                 // Gravity Bomb (25 man)
                 case 66336:                                 // Mistress' Kiss (Trial of the Crusader, ->
@@ -1697,6 +1699,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 71336:                                 // Pact of the Darkfallen
                 case 71390:                                 // Pact of the Darkfallen
                 case 63476:                                 // Icicle (Hodir 10man)
+                case 63802:                                 // Brain Link (Yogg-Saron)
                     unMaxTargets = 2;
                     break;
                 case 28796:                                 // Poison Bolt Volley

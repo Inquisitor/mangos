@@ -9683,6 +9683,7 @@ m_permanent(false), m_isRemovedOnShapeLost(true), m_deleted(false), m_in_use(0)
         case 55166:                                         // Tidal Force
         case 58914:                                         // Kill Command (pet part)
         case 62519:                                         // Attuned to Nature
+        case 63050:                                         // Sanity (Yogg-Saron)
         case 64455:                                         // Feral Essence
         case 71564:                                         // Deadly Precision
             m_stackAmount = m_spellProto->StackAmount;
