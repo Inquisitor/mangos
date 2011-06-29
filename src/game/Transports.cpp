@@ -531,7 +531,7 @@ void Transport::TeleportTransport(uint32 newMapid, float x, float y, float z)
         else
         {
             Creature* pCreature = ((Creature*)(*itr));
-            UpdateCreaturePositions(pCreature, newMap, x, y, z, GetOrientation(), true);
+            UpdateCreaturePositions(pCreature, newMap, x, y, z, pCreature->GetOrientation(), true);
         }
     }
 
@@ -691,8 +691,10 @@ void Transport::UpdateCreaturePositions(Creature* npc, Map* map, float second_x,
     }
     else
     {
+        npc->RemoveAllAuras();
         npc->CombatStop(true);
         npc->ClearComboPointHolders();
+        npc->LoadCreatureAddon();
         npc->DeleteThreatList();
         npc->GetMap()->Remove(npc, false);
 
