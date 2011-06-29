@@ -352,6 +352,10 @@ void BattleGroundAB::EventPlayerClickedOnFlag(Player *source, GameObject* target
     if (!(m_Nodes[node] == 0 || teamIndex == m_Nodes[node] % 2))
         return;
 
+    // not allow using banner if player has Hex aura
+    if (source->HasAura(51514))
+        return;
+
     source->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
     uint32 sound = 0;
 
