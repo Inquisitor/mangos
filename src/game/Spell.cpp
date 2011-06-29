@@ -396,6 +396,7 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
     // AoE spells, spells with non-magic DmgClass or SchoolMask or with SPELL_ATTR_EX2_CANT_REFLECTED cannot be reflected
     if (m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC &&
         m_spellInfo->SchoolMask != SPELL_SCHOOL_MASK_NORMAL &&
+        !(m_spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER && m_spellInfo->SpellFamilyFlags.test<CF_HUNTER_FREEZING_TRAP_EFFECT>()) &&
         !(m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_IGNORE_LOS) &&
         !IsAreaOfEffectSpell(m_spellInfo)){
         for(int j = 0; j < MAX_EFFECT_INDEX; ++j)
@@ -1178,7 +1179,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             {
                 int32 bp = count * CalculateDamage(EFFECT_INDEX_2, unitTarget) * damageInfo.damage / 100;
                 {
-                    if(caster->HasAura(48266, EFFECT_INDEX_)) // If Blood Presence is active, additional damage from Scourge Strike gains bonus too.
+                    if(caster->HasAura(48266, EFFECT_INDEX_0)) // If Blood Presence is active, additional damage from Scourge Strike gains bonus too.
                         bp *= 1.15;
 
                     caster->CastCustomSpell(unitTarget, 70890, &bp, NULL, NULL, true);
