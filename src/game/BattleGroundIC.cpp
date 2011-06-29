@@ -922,7 +922,7 @@ WorldSafeLocsEntry const* BattleGroundIC::GetClosestGraveYard(Player* player)
 
 Transport* BattleGroundIC::CreateTransport(uint32 goEntry, uint32 period)
 {
-    Transport* trans = GetBgMap()->LoadTransportInMap(goEntry, 0, period);
+    Transport* trans = GetBgMap()->LoadTransportInMap(goEntry, 0, period, false);
 
     if (!trans)
         return NULL;
