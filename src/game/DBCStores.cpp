@@ -681,6 +681,10 @@ void LoadDBCStores(const std::string& dataPath)
     for(int i = 0; i < 2; ++i)
          sfix9->EffectImplicitTargetA[i] = TARGET_SELF;
 
+    // Charge Orb
+    SpellEntry *sfix27 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(62016));
+    sfix27->EffectRadiusIndex[EFFECT_INDEX_0] = 9;
+
     // Epidemic rank1
     SpellEntry *sfix28 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49036));
     sfix28->EffectSpellClassMask[EFFECT_INDEX_0] = ClassFamilyMask(sfix28->EffectSpellClassMask[EFFECT_INDEX_0].Flags, 0x50);
