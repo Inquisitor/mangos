@@ -681,6 +681,14 @@ void LoadDBCStores(const std::string& dataPath)
     for(int i = 0; i < 2; ++i)
          sfix9->EffectImplicitTargetA[i] = TARGET_SELF;
 
+    // Epidemic rank1
+    SpellEntry *sfix28 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49036));
+    sfix28->EffectSpellClassMask[EFFECT_INDEX_0] = ClassFamilyMask(sfix28->EffectSpellClassMask[EFFECT_INDEX_0].Flags, 0x50);
+
+    // Epidemic rank2
+    SpellEntry *sfix29 = const_cast<SpellEntry*>(sSpellStore.LookupEntry(49562));
+    sfix29->EffectSpellClassMask[EFFECT_INDEX_0] = ClassFamilyMask(sfix29->EffectSpellClassMask[EFFECT_INDEX_0].Flags, 0x50);
+
     for (uint32 j = 0; j < sSkillLineAbilityStore.GetNumRows(); ++j)
     {
         SkillLineAbilityEntry const *skillLine = sSkillLineAbilityStore.LookupEntry(j);
