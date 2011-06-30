@@ -53,6 +53,7 @@
 #include "Util.h"
 #include "TemporarySummon.h"
 #include "ScriptMgr.h"
+#include "PossessedSummon.h"
 #include "SkillDiscovery.h"
 #include "Formulas.h"
 #include "GridNotifiers.h"
@@ -5799,7 +5800,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
             {
                 case 65:
                 case 428:
-                    EffectSummonPossessed(eff_idx);
+                    DoSummonPossessed(eff_idx);
                     break;
                 default:
                     DoSummonGuardian(eff_idx, summon_prop->FactionId);
@@ -5938,55 +5939,6 @@ void Spell::DoSummonGroupPets(SpellEffectIndex eff_idx)
         }
         DEBUG_LOG("New Pet (guidlow %d, entry %d) summoned (default). Counter is %d ", pet->GetGUIDLow(), pet->GetEntry(), pet->GetPetCounter());
     }
-
-}
-
-void Spell::EffectSummonPossessed(SpellEffectIndex eff_idx)
-{
-    if (!m_caster || m_caster->GetTypeId() != TYPEID_PLAYER)
-        return;
-
-    uint32 creature_entry = m_spellInfo->EffectMiscValue[eff_idx];
-    if(!creature_entry)
-        return;
-
-    int32 duration = GetSpellDuration(m_spellInfo);
-
-        float px, py, pz;
-    // If dest location if present
-    if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
-    {
-        // Summon 1 unit in dest location
-        px = m_targets.m_destX;
-        py = m_targets.m_destY;
-        pz = m_targets.m_destZ;
-    }
-    // Summon if dest location not present near caster
-    else
-        m_caster->GetClosePoint(px,py,pz,1.0f);
-
-
-    TempSummonType summonType = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
-    Creature* summon = m_caster->SummonCreature(creature_entry,px,py,pz,m_caster->GetOrientation(),summonType,duration,true);
-
-    if (summon)
-    {
-        summon->SetLevel(m_caster->getLevel());
-
-        if(CreatureAI* scriptedAI = sScriptMgr.GetCreatureAI(summon))
-        {
-            // Prevent from ScriptedAI reinitialized
-            summon->LockAI(true);
-            m_caster->CastSpell(summon, 530, true);
-            summon->LockAI(false);
-        }
-        else
-            m_caster->CastSpell(summon, 530, true);
-
-        DEBUG_LOG("New possessed creature (guidlow %d, entry %d) summoned. Owner is %d ", summon->GetGUIDLow(), summon->GetEntry(), m_caster->GetGUIDLow());
-    }
-    else
-        sLog.outError("New possessed creature (entry %d) NOT summoned. Owner is %d ", summon->GetEntry(), m_caster->GetGUIDLow());
 
 }
 
@@ -6866,6 +6818,51 @@ void Spell::EffectTameCreature(SpellEffectIndex /*eff_idx*/)
 
     // visual effect for levelup
     pet->SetLevel(level);
+}
+
+void Spell::DoSummonPossessed(SpellEffectIndex eff_idx, uint32 forceFaction)
+{
+    if (m_caster->GetTypeId() != TYPEID_PLAYER)
+        return;
+    Player* p_caster = (Player*)m_caster;
+
+    uint32 creature_entry = m_spellInfo->EffectMiscValue[eff_idx];
+    if (!creature_entry)
+        return;
+
+    // possessed summons are always bound to an aura
+    if (!m_spellAuraHolder)
+    {
+        sLog.outDebug("Spell %i summons a possessed summon but has no aura it can be bound to.", m_spellInfo->Id);
+        return;
+    }
+
+    PossessedSummon* pCreature = new PossessedSummon();
+
+    // Summon in dest location
+    CreatureCreatePos pos(p_caster->GetMap(), m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, p_caster->GetOrientation(), p_caster->GetPhaseMask());
+
+    if (!(m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION))
+        pos = CreatureCreatePos(m_caster, m_caster->GetOrientation());
+
+    Team p_team = p_caster->GetTeam();
+    const CreatureInfo* creature_info = sCreatureStorage.LookupEntry<CreatureInfo>(creature_entry);
+    if(creature_info)
+    {
+        if (!pCreature->Create(p_caster->GetMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, creature_info, p_team))
+        {
+            delete pCreature;
+            return;
+        }
+    }
+
+    pCreature->SetSummonPoint(pos);
+
+    // initialize all stuff (owner, camera, etc...)
+    pCreature->Summon(p_caster, m_spellInfo->Id);
+
+    if(forceFaction)
+        pCreature->setFaction(forceFaction);
 }
 
 void Spell::EffectSummonPet(SpellEffectIndex eff_idx)

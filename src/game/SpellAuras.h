@@ -56,6 +56,8 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         void BuildUpdatePacket(WorldPacket& data) const;
         void SendAuraUpdate(bool remove) const;
         void HandleSpellSpecificBoosts(bool apply);
+        void HandleBoundUnit(bool apply);
+        void SetBoundUnit(ObjectGuid objectGUID) {m_boundUnitGuid = objectGUID;}
         void HandleSpellSpecificBoostsForward(bool apply);
         void CleanupTriggeredSpells();
 
@@ -188,6 +190,8 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         bool m_deleted:1;
 
         uint32 m_in_use;                                    // > 0 while in SpellAuraHolder::ApplyModifiers call/SpellAuraHolder::Update/etc
+
+        ObjectGuid m_boundUnitGuid;
 };
 
 typedef void(Aura::*pAuraHandler)(bool Apply, bool Real);

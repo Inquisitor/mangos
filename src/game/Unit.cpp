@@ -4618,6 +4618,7 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder *holder)
         return false;
 
     holder->HandleSpellSpecificBoosts(true);
+    holder->HandleBoundUnit(true);
 
     return true;
 }
@@ -5230,6 +5231,8 @@ void Unit::RemoveSpellAuraHolder(SpellAuraHolder *holder, AuraRemoveMode mode)
 
     if (mode != AURA_REMOVE_BY_DELETE)
         holder->HandleSpellSpecificBoosts(false);
+
+    holder ->HandleBoundUnit(false);
 
     if(statue)
         statue->UnSummon();
@@ -12033,6 +12036,13 @@ void Unit::EnterVehicle(VehicleKit *vehicle, int8 seatId)
     InterruptNonMeleeSpells(false);
     RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
+    if (Transport* pTransport = GetTransport())
+    {
+        pTransport->RemovePassenger(this);
+        SetTransport(NULL);
+        m_movementInfo.ClearTransportData();
+    }
+
     if (!vehicle->AddPassenger(this, seatId))
         return;
 
@@ -12055,14 +12065,6 @@ void Unit::EnterVehicle(VehicleKit *vehicle, int8 seatId)
         data << vehicle->GetBase()->GetPackGUID();
         player->GetSession()->SendPacket(&data);
     }
-
-    if (Transport* pTransport = GetTransport())
-    {
-        if (GetTypeId() == TYPEID_PLAYER)
-            pTransport->RemovePassenger((Player*)this);
-
-        SetTransport(NULL);
-    }
 }
 
 void Unit::ExitVehicle()
@@ -12070,18 +12072,42 @@ void Unit::ExitVehicle()
     if(!m_pVehicle)
         return;
 
-    m_pVehicle->RemovePassenger(this);
-    m_pVehicle = NULL;
+    if (Transport* trans = m_pVehicle->GetBase()->GetTransport())
+    {
+        float trans_x = m_pVehicle->GetBase()->GetTransOffsetX();
+        float trans_y = m_pVehicle->GetBase()->GetTransOffsetY();
+        float trans_z = m_pVehicle->GetBase()->GetTransOffsetZ() + 2.0f;
 
-    if (GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+        m_pVehicle->RemovePassenger(this);
+        m_pVehicle = NULL;
 
-    float x = GetPositionX();
-    float y = GetPositionY();
-    float z = GetPositionZ() + 2.0f;
-    GetClosePoint(x, y, z, 2.0f);
-    UpdateAllowedPositionZ(x, y, z);
-    SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
+        if (GetTypeId() == TYPEID_PLAYER)
+            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+
+        float x = GetPositionX() + trans_x;
+        float y = GetPositionY() + trans_y;
+        float z = GetPositionZ() + trans_z;
+        GetClosePoint(x, y, z, 2.0f);
+        SetTransport(trans);
+        trans->AddPassenger(this);
+        SetLocationMapId(trans->GetMapId());
+        SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
+    }
+    else
+    {
+        m_pVehicle->RemovePassenger(this);
+        m_pVehicle = NULL;
+
+        if (GetTypeId() == TYPEID_PLAYER)
+            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+
+        float x = GetPositionX();
+        float y = GetPositionY();
+        float z = GetPositionZ() + 2.0f;
+        GetClosePoint(x, y, z, 2.0f);
+        UpdateAllowedPositionZ(x, y, z);
+        SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
+    }
 }
 
 void Unit::SetPvP( bool state )

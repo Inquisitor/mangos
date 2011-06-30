@@ -691,10 +691,8 @@ void Transport::UpdateCreaturePositions(Creature* npc, Map* map, float second_x,
     }
     else
     {
-        npc->RemoveAllAuras();
         npc->CombatStop(true);
         npc->ClearComboPointHolders();
-        npc->LoadCreatureAddon();
         npc->DeleteThreatList();
         npc->GetMap()->Remove(npc, false);
 

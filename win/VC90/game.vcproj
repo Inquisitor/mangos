@@ -955,6 +955,14 @@
 				>
 			</File>
 			<File
+			RelativePath="..\..\src\game\PossessedSummon.cpp"
+			    >
+			</File>
+			<File
+			RelativePath="..\..\src\game\PossessedSummon.h"
+			    >
+			</File>
+			<File
 				RelativePath="..\..\src\game\QueryHandler.cpp"
 				>
 			</File>

@@ -442,6 +442,7 @@ enum CreatureSubtype
     CREATURE_SUBTYPE_PET,                                   // new Pet
     CREATURE_SUBTYPE_TOTEM,                                 // new Totem
     CREATURE_SUBTYPE_TEMPORARY_SUMMON,                      // new TemporarySummon
+    CREATURE_SUBTYPE_POSSESSED_SUMMON,                      // new PossessedSummon
 };
 
 enum TemporaryFactionFlags                                  // Used at real faction changes
@@ -484,6 +485,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         bool IsPet() const { return m_subtype == CREATURE_SUBTYPE_PET; }
         bool IsTotem() const { return m_subtype == CREATURE_SUBTYPE_TOTEM; }
         bool IsTemporarySummon() const { return m_subtype == CREATURE_SUBTYPE_TEMPORARY_SUMMON; }
+        bool isPossessedSummmon() const {return m_subtype == CREATURE_SUBTYPE_POSSESSED_SUMMON; }
 
         bool IsCorpse() const { return getDeathState() ==  CORPSE; }
         bool IsDespawned() const { return getDeathState() ==  DEAD; }

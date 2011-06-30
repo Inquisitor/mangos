@@ -45,6 +45,7 @@
 #include "GridNotifiersImpl.h"
 #include "Vehicle.h"
 #include "CellImpl.h"
+#include "PossessedSummon.h"
 #include "InstanceData.h"
 
 #define NULL_AURA_SLOT 0xFF
@@ -11178,6 +11179,47 @@ void SpellAuraHolder::HandleSpellSpecificBoostsForward(bool apply)
             return;
     }
 
+}
+
+void SpellAuraHolder::HandleBoundUnit(bool apply)
+{
+    if (m_boundUnitGuid.IsEmpty())
+        return;
+
+    if (apply)
+        return;
+
+    // Some spell effects have aura-like character (duration) and are always bound
+    // to an aura. Handle those special effects here.
+    for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        switch (SpellEffects(GetSpellProto()->Effect[i]))
+        {
+            case SPELL_EFFECT_SUMMON:
+            {
+                // possesed summons need to be unsummoned if aura is cancelled
+                uint32 prop_id = GetSpellProto()->EffectMiscValueB[i];
+                SummonPropertiesEntry const *summon_prop = sSummonPropertiesStore.LookupEntry(prop_id);
+                if(!summon_prop || summon_prop->Group != SUMMON_PROP_GROUP_CONTROLLABLE)
+                    return;
+
+                Unit* boundUnit = m_target->GetMap()->GetUnit(m_boundUnitGuid);
+
+                if (!boundUnit)
+                    return;
+                MANGOS_ASSERT((boundUnit->GetTypeId() == TYPEID_UNIT && ((Creature*)boundUnit)->isPossessedSummmon()));
+                ((PossessedSummon*)boundUnit)->UnSummon();
+                return;
+            }
+            case SPELL_EFFECT_REDIRECT_THREAT:
+            {
+                // TODO: implement :-P
+                return;
+            }
+            default:
+                break;
+        }
+    }
 }
 
 SpellAuraHolder::~SpellAuraHolder()
