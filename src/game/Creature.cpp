@@ -47,6 +47,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "TemporarySummon.h"
 
 // apply implementation of the singletons
 #include "Policies/SingletonImp.h"
@@ -1626,6 +1627,9 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn)
 
     RemoveCorpse();
     SetHealth(0);                                           // just for nice GM-mode view
+
+     if (IsTemporarySummon())
+         ((TemporarySummon*)this)->UnSummon();
 }
 
 bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo)
