@@ -337,11 +337,46 @@ void WorldSession::HandleNpcTextQueryOpcode( WorldPacket & recv_data )
 
     if (!pGossip)
     {
-        for(uint32 i = 0; i < 8; ++i)
+        // multi-language support
+        std::string Text_0[8],Text_1[8];
+        int loc_idx = GetSessionDbLocaleIndex();
+        if (loc_idx >= 0)
+        {
+            NpcTextLocale const *nl = sObjectMgr.GetNpcTextLocale(68); // standard text
+            if (nl)
+            {
+                for (int i = 0; i < 8; ++i)
+                {
+                    if (nl->Text_0[i].size() > size_t(loc_idx) && !nl->Text_0[i][loc_idx].empty())
+                        Text_0[i]=nl->Text_0[i][loc_idx];
+                    if (nl->Text_1[i].size() > size_t(loc_idx) && !nl->Text_1[i][loc_idx].empty())
+                        Text_1[i]=nl->Text_1[i][loc_idx];
+                }
+            }
+        }
+        else // no locales
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                Text_0[i] = "Greetings, $N";
+                Text_1[i] = "Greetings, $N";
+            }
+        }
+
+        for (int i = 0; i < 8; ++i)
         {
             data << float(0);
-            data << "Greetings $N";
-            data << "Greetings $N";
+
+            if ( Text_0[i].empty() )
+                data << Text_1[i];
+            else
+                data << Text_0[i];
+
+            if ( Text_1[i].empty() )
+                data << Text_0[i];
+            else
+                data << Text_1[i];
+
             data << uint32(0);
             data << uint32(0);
             data << uint32(0);
