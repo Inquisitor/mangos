@@ -1680,7 +1680,7 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
 {
     damageInfo->attacker         = this;
     damageInfo->target           = pVictim;
-    damageInfo->damageSchoolMask = GetMeleeDamageSchoolMask();
+    damageInfo->damageSchoolMask = GetSchoolMaskForAttackType(attackType);
     damageInfo->attackType       = attackType;
     damageInfo->damage           = 0;
     damageInfo->cleanDamage      = 0;
@@ -6870,11 +6870,11 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
     AuraList const& mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
     for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
     {
-        if( ((*i)->GetModifier()->m_miscvalue & GetSpellSchoolMask(spellProto)) &&
-            (*i)->GetSpellProto()->EquippedItemClass == -1 &&
-                                                            // -1 == any item class (not wand then)
-            (*i)->GetSpellProto()->EquippedItemInventoryTypeMask == 0 )
-                                                            // 0 == any inventory type (not wand then)
+        if( (*i)->GetModifier()->m_miscvalue & GetSpellSchoolMask(spellProto) &&                // school check
+            ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+            (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR weapon dependent with attribute
+            GetTypeId() == TYPEID_PLAYER &&                                                     // and player has correct weapon equipped for aura
+            ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto())) )
         {
             // bonus stored in another auras basepoints
             if ((*i)->GetModifier()->m_amount == 0)
@@ -7360,10 +7360,14 @@ int32 Unit::SpellBaseDamageBonusDone(SpellSchoolMask schoolMask)
         if (!(*i)->GetHolder() || (*i)->GetHolder()->IsDeleted())
             continue;
 
-        if (((*i)->GetModifier()->m_miscvalue & schoolMask) != 0 &&
-            (*i)->GetSpellProto()->EquippedItemClass == -1 &&                   // -1 == any item class (not wand then)
-            (*i)->GetSpellProto()->EquippedItemInventoryTypeMask == 0)          //  0 == any inventory type (not wand then)
-                DoneAdvertisedBenefit += (*i)->GetModifier()->m_amount;
+        if( (*i)->GetModifier()->m_miscvalue & schoolMask &&                                    // school check
+            ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+            (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR weapon dependent with attribute
+            GetTypeId() == TYPEID_PLAYER &&                                                     // and player has correct weapon equipped for aura
+            ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto())) )
+        {
+            DoneAdvertisedBenefit += (*i)->GetModifier()->m_amount;
+        }
     }
 
     if (GetTypeId() == TYPEID_PLAYER)
@@ -8079,7 +8083,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
     Item*  pWeapon          = GetTypeId() == TYPEID_PLAYER ? ((Player*)this)->GetWeaponForAttack(attType,true,false) : NULL;
     uint32 creatureTypeMask = pVictim->GetCreatureTypeMask();
-    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask();
+    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetSchoolMaskForAttackType(attType);
 
     // FLAT damage bonus auras
     // =======================
@@ -8092,13 +8096,13 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
         AuraList const& mModDamageDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_DONE);
         for(AuraList::const_iterator i = mModDamageDone.begin(); i != mModDamageDone.end(); ++i)
         {
-            if (((*i)->GetModifier()->m_miscvalue & schoolMask ||                        // schoolmask has to fit with the intrinsic spell school
-                (*i)->GetSpellProto()->AttributesEx4 & SPELL_ATTR_EX4_PET_SCALING_AURA) &&  // completely schoolmask-independend: pet scaling auras
-                                                                                            // Those auras have SPELL_SCHOOL_MASK_MAGIC, but anyway should also affect
-                                                                                            // physical damage from non-weapon-damage-based spells (claw, swipe etc.)
-                (*i)->GetModifier()->m_miscvalue & GetMeleeDamageSchoolMask() &&         // AND schoolmask has to fit with weapon damage school (essential for non-physical spells)
-                (((*i)->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
-                (pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()))))  // OR used weapon fits aura requirements
+            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                                    // schoolmask has to fit with the intrinsic spell school...
+                (*i)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL &&                      // ...AND schoolmask has to contain physical spell school (seems to be the most logic sollution)
+                ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+                pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()) ||              // OR used weapon fits aura requirements
+                (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR aura affects ALL damage...
+                GetTypeId() == TYPEID_PLAYER &&
+                ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto()) ))             // ...AND the player has a weapon that fullfills requirements
             {
                 DoneFlat += (*i)->GetModifier()->m_amount;
             }
@@ -8130,10 +8134,13 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
         AuraList const& mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
         for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
         {
-            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                         // schoolmask has to fit with the intrinsic spell school
-                (*i)->GetModifier()->m_miscvalue & GetMeleeDamageSchoolMask() &&         // AND schoolmask has to fit with weapon damage school (essential for non-physical spells)
-                (((*i)->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
-                (pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()))))  // OR used weapon fits aura requirements
+            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                                    // schoolmask has to fit with the intrinsic spell school...
+                (*i)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL &&                      // ...AND schoolmask has to contain physical spell school (seems to be the most logic sollution)
+                ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+                pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()) ||              // OR used weapon fits aura requirements
+                (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR aura affects ALL damage...
+                GetTypeId() == TYPEID_PLAYER &&
+                ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto()) ))             // ...AND the player has a weapon that fullfills requirements
             {
                 DonePercent *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
             }
@@ -8331,7 +8338,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit *pCaster, uint32 pdamage,WeaponAttackTyp
 
     // differentiate for weapon damage based spells
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
-    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask();
+    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetSchoolMaskForAttackType(attType);
     uint32 mechanicMask     = spellProto ? GetAllSpellMechanicMask(spellProto) : 0;
 
     // Shred and Maul also have bonus as MECHANIC_BLEED damages
@@ -11158,7 +11165,7 @@ void Unit::ProcDamageAndSpellFor( bool isVictim, Unit * pTarget, uint32 procFlag
     }
 }
 
-SpellSchoolMask Unit::GetMeleeDamageSchoolMask() const
+SpellSchoolMask Unit::GetSchoolMaskForAttackType(WeaponAttackType attType) const
 {
     return SPELL_SCHOOL_MASK_NORMAL;
 }
