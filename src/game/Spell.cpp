@@ -4196,7 +4196,7 @@ void Spell::finish(bool ok)
         m_caster->DealHeal(m_caster, uint32(m_healthLeech) - absorb, m_spellInfo, false, absorb);
     }
 
-    if (IsMeleeAttackResetSpell())
+    if (IsMeleeAttackResetSpell() && !(m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_RESET_AUTOATTACK))
     {
         m_caster->resetAttackTimer(BASE_ATTACK);
         if(m_caster->haveOffhandWeapon())
