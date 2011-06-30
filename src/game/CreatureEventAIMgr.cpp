@@ -245,12 +245,13 @@ void CreatureEventAIMgr::LoadCreatureEventAI_Scripts()
     m_CreatureEventAI_Event_Map.clear();
 
     // Gather event data
-    QueryResult *result = WorldDatabase.Query("SELECT id, creature_id, event_type, event_inverse_phase_mask, event_chance, event_requirement_type, event_requirement_value, event_flags, "
-        "event_param1, event_param2, event_param3, event_param4, "
-        "action1_type, action1_param1, action1_param2, action1_param3, "
-        "action2_type, action2_param1, action2_param2, action2_param3, "
-        "action3_type, action3_param1, action3_param2, action3_param3 "
-        "FROM creature_ai_scripts");
+    QueryResult *result = WorldDatabase.Query("SELECT A.id, A.creature_id, A.event_type, A.event_inverse_phase_mask, A.event_chance, B.event_requirement_type, B.event_requirement_value, A.event_flags, "
+        "A.event_param1, A.event_param2, A.event_param3, A.event_param4, "
+        "A.action1_type, A.action1_param1, A.action1_param2, A.action1_param3, "
+        "A.action2_type, A.action2_param1, A.action2_param2, A.action2_param3, "
+        "A.action3_type, A.action3_param1, A.action3_param2, A.action3_param3 "
+        "FROM creature_ai_scripts AS A "
+        "LEFT JOIN creature_ai_scripts_addition AS B ON A.id = B.id");
     if (result)
     {
         BarGoLink bar(result->GetRowCount());

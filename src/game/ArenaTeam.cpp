@@ -31,11 +31,11 @@ void ArenaTeamMember::ModifyMatchmakerRating(Player* plr, int32 mod, ArenaType t
         matchmaker_rating += mod;
 
     if (type == ARENA_TYPE_2v2)
-        CharacterDatabase.PExecute("UPDATE arena_hidden_rating SET rating2 = '%u' WHERE guid = '%u'", matchmaker_rating, plr->GetObjectGuid().GetCounter());
+        CharacterDatabase.PExecute("UPDATE hidden_rating SET rating2 = '%u' WHERE guid = '%u'", matchmaker_rating, plr->GetObjectGuid().GetCounter());
     else if (type == ARENA_TYPE_3v3)
-        CharacterDatabase.PExecute("UPDATE arena_hidden_rating SET rating3 = '%u' WHERE guid = '%u'", matchmaker_rating, plr->GetObjectGuid().GetCounter());
+        CharacterDatabase.PExecute("UPDATE hidden_rating SET rating3 = '%u' WHERE guid = '%u'", matchmaker_rating, plr->GetObjectGuid().GetCounter());
     else if (type == ARENA_TYPE_5v5)
-        CharacterDatabase.PExecute("UPDATE arena_hidden_rating SET rating5 = '%u' WHERE guid = '%u'", matchmaker_rating, plr->GetObjectGuid().GetCounter());
+        CharacterDatabase.PExecute("UPDATE hidden_rating SET rating5 = '%u' WHERE guid = '%u'", matchmaker_rating, plr->GetObjectGuid().GetCounter());
 }
 
 void ArenaTeamMember::ModifyPersonalRating(Player* plr, int32 mod, uint32 slot)
@@ -318,7 +318,7 @@ bool ArenaTeam::LoadMembersFromDB(QueryResult *arenaTeamMembersResult)
         newmember.name            = fields[7].GetCppString();
         newmember.Class           = fields[8].GetUInt8();
 
-        QueryResult *result = CharacterDatabase.PQuery("SELECT rating2, rating3, rating5 FROM arena_hidden_rating WHERE guid='%u'", fields[1].GetUInt32());
+        QueryResult *result = CharacterDatabase.PQuery("SELECT rating2, rating3, rating5 FROM hidden_rating WHERE guid='%u'", fields[1].GetUInt32());
         if(result)
         {
             switch(GetType())
@@ -332,7 +332,7 @@ bool ArenaTeam::LoadMembersFromDB(QueryResult *arenaTeamMembersResult)
         else // MMR not found
         {
             newmember.matchmaker_rating = newmember.personal_rating;
-            CharacterDatabase.PExecute("INSERT INTO arena_hidden_rating (guid, rating2, rating3, rating5) VALUES""('%u', '%u', '%u', '%u')", fields[1].GetUInt32(), newmember.matchmaker_rating, newmember.matchmaker_rating, newmember.matchmaker_rating);
+            CharacterDatabase.PExecute("INSERT INTO hidden_rating (guid, rating2, rating3, rating5) VALUES""('%u', '%u', '%u', '%u')", fields[1].GetUInt32(), newmember.matchmaker_rating, newmember.matchmaker_rating, newmember.matchmaker_rating);
         }
 
         //check if member exists in characters table
