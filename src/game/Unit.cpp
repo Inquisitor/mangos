@@ -1680,7 +1680,7 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
 {
     damageInfo->attacker         = this;
     damageInfo->target           = pVictim;
-    damageInfo->damageSchoolMask = GetMeleeDamageSchoolMask();
+    damageInfo->damageSchoolMask = GetMeleeDamageSchoolMask(attackType);
     damageInfo->attackType       = attackType;
     damageInfo->damage           = 0;
     damageInfo->cleanDamage      = 0;
@@ -4116,14 +4116,17 @@ bool Unit::IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skip
         (m_currentSpells[CURRENT_GENERIC_SPELL]->getState() != SPELL_STATE_FINISHED) &&
         (withDelayed || m_currentSpells[CURRENT_GENERIC_SPELL]->getState() != SPELL_STATE_DELAYED))
     {
-        if (!(m_currentSpells[CURRENT_GENERIC_SPELL]->m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_RESET_AUTOSHOT))
+        if (!(m_currentSpells[CURRENT_GENERIC_SPELL]->m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_RESET_AUTOATTACK))
             return true;
     }
 
     // channeled spells may be delayed, but they are still considered casted
     else if (!skipChanneled && m_currentSpells[CURRENT_CHANNELED_SPELL] &&
         (m_currentSpells[CURRENT_CHANNELED_SPELL]->getState() != SPELL_STATE_FINISHED))
-        return true;
+        {
+            if (!(m_currentSpells[CURRENT_CHANNELED_SPELL]->m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_RESET_AUTOATTACK))
+                return(true);
+        }
 
     // autorepeat spells may be finished or delayed, but they are still considered casted
     else if (!skipAutorepeat && m_currentSpells[CURRENT_AUTOREPEAT_SPELL])
@@ -4618,6 +4621,7 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder *holder)
         return false;
 
     holder->HandleSpellSpecificBoosts(true);
+    holder->HandleBoundUnit(true);
 
     return true;
 }
@@ -5230,6 +5234,8 @@ void Unit::RemoveSpellAuraHolder(SpellAuraHolder *holder, AuraRemoveMode mode)
 
     if (mode != AURA_REMOVE_BY_DELETE)
         holder->HandleSpellSpecificBoosts(false);
+
+    holder ->HandleBoundUnit(false);
 
     if(statue)
         statue->UnSummon();
@@ -6867,11 +6873,11 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
     AuraList const& mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
     for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
     {
-        if( ((*i)->GetModifier()->m_miscvalue & GetSpellSchoolMask(spellProto)) &&
-            (*i)->GetSpellProto()->EquippedItemClass == -1 &&
-                                                            // -1 == any item class (not wand then)
-            (*i)->GetSpellProto()->EquippedItemInventoryTypeMask == 0 )
-                                                            // 0 == any inventory type (not wand then)
+        if( (*i)->GetModifier()->m_miscvalue & GetSpellSchoolMask(spellProto) &&                // school check
+            ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+            (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR weapon dependent with attribute
+            GetTypeId() == TYPEID_PLAYER &&                                                     // and player has correct weapon equipped for aura
+            ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto())) )
         {
             // bonus stored in another auras basepoints
             if ((*i)->GetModifier()->m_amount == 0)
@@ -7363,10 +7369,14 @@ int32 Unit::SpellBaseDamageBonusDone(SpellSchoolMask schoolMask)
         if (!(*i)->GetHolder() || (*i)->GetHolder()->IsDeleted())
             continue;
 
-        if (((*i)->GetModifier()->m_miscvalue & schoolMask) != 0 &&
-            (*i)->GetSpellProto()->EquippedItemClass == -1 &&                   // -1 == any item class (not wand then)
-            (*i)->GetSpellProto()->EquippedItemInventoryTypeMask == 0)          //  0 == any inventory type (not wand then)
-                DoneAdvertisedBenefit += (*i)->GetModifier()->m_amount;
+        if( (*i)->GetModifier()->m_miscvalue & schoolMask &&                                    // school check
+            ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+            (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR weapon dependent with attribute
+            GetTypeId() == TYPEID_PLAYER &&                                                     // and player has correct weapon equipped for aura
+            ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto())) )
+        {
+            DoneAdvertisedBenefit += (*i)->GetModifier()->m_amount;
+        }
     }
 
     if (GetTypeId() == TYPEID_PLAYER)
@@ -8082,7 +8092,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
     Item*  pWeapon          = GetTypeId() == TYPEID_PLAYER ? ((Player*)this)->GetWeaponForAttack(attType,true,false) : NULL;
     uint32 creatureTypeMask = pVictim->GetCreatureTypeMask();
-    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask();
+    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask(attType);
 
     // FLAT damage bonus auras
     // =======================
@@ -8095,13 +8105,13 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
         AuraList const& mModDamageDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_DONE);
         for(AuraList::const_iterator i = mModDamageDone.begin(); i != mModDamageDone.end(); ++i)
         {
-            if (((*i)->GetModifier()->m_miscvalue & schoolMask ||                        // schoolmask has to fit with the intrinsic spell school
-                (*i)->GetSpellProto()->AttributesEx4 & SPELL_ATTR_EX4_PET_SCALING_AURA) &&  // completely schoolmask-independend: pet scaling auras
-                                                                                            // Those auras have SPELL_SCHOOL_MASK_MAGIC, but anyway should also affect
-                                                                                            // physical damage from non-weapon-damage-based spells (claw, swipe etc.)
-                (*i)->GetModifier()->m_miscvalue & GetMeleeDamageSchoolMask() &&         // AND schoolmask has to fit with weapon damage school (essential for non-physical spells)
-                (((*i)->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
-                (pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()))))  // OR used weapon fits aura requirements
+            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                                    // schoolmask has to fit with the intrinsic spell school...
+                (*i)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL &&                      // ...AND schoolmask has to contain physical spell school (seems to be the most logic sollution)
+                ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+                pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()) ||              // OR used weapon fits aura requirements
+                (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR aura affects ALL damage...
+                GetTypeId() == TYPEID_PLAYER &&
+                ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto()) ))             // ...AND the player has a weapon that fullfills requirements
             {
                 DoneFlat += (*i)->GetModifier()->m_amount;
             }
@@ -8133,10 +8143,13 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
         AuraList const& mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
         for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
         {
-            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                         // schoolmask has to fit with the intrinsic spell school
-                (*i)->GetModifier()->m_miscvalue & GetMeleeDamageSchoolMask() &&         // AND schoolmask has to fit with weapon damage school (essential for non-physical spells)
-                (((*i)->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
-                (pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()))))  // OR used weapon fits aura requirements
+            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                                    // schoolmask has to fit with the intrinsic spell school...
+                (*i)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL &&                      // ...AND schoolmask has to contain physical spell school (seems to be the most logic sollution)
+                ((*i)->GetSpellProto()->EquippedItemClass == -1 ||                                  // general, weapon independent
+                pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()) ||              // OR used weapon fits aura requirements
+                (*i)->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE &&  // OR aura affects ALL damage...
+                GetTypeId() == TYPEID_PLAYER &&
+                ((Player*)this)->HasItemFitToSpellReqirements((*i)->GetSpellProto()) ))             // ...AND the player has a weapon that fullfills requirements
             {
                 DonePercent *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
             }
@@ -8334,7 +8347,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit *pCaster, uint32 pdamage,WeaponAttackTyp
 
     // differentiate for weapon damage based spells
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
-    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask();
+    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask(attType);
     uint32 mechanicMask     = spellProto ? GetAllSpellMechanicMask(spellProto) : 0;
 
     // Shred and Maul also have bonus as MECHANIC_BLEED damages
@@ -11154,7 +11167,7 @@ void Unit::ProcDamageAndSpellFor( bool isVictim, Unit * pTarget, uint32 procFlag
     }
 }
 
-SpellSchoolMask Unit::GetMeleeDamageSchoolMask() const
+SpellSchoolMask Unit::GetMeleeDamageSchoolMask(WeaponAttackType attType) const
 {
     return SPELL_SCHOOL_MASK_NORMAL;
 }
@@ -12032,6 +12045,13 @@ void Unit::EnterVehicle(VehicleKit *vehicle, int8 seatId)
     InterruptNonMeleeSpells(false);
     RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
+    if (Transport* pTransport = GetTransport())
+    {
+        pTransport->RemovePassenger(this);
+        SetTransport(NULL);
+        m_movementInfo.ClearTransportData();
+    }
+
     if (!vehicle->AddPassenger(this, seatId))
         return;
 
@@ -12054,14 +12074,6 @@ void Unit::EnterVehicle(VehicleKit *vehicle, int8 seatId)
         data << vehicle->GetBase()->GetPackGUID();
         player->GetSession()->SendPacket(&data);
     }
-
-    if (Transport* pTransport = GetTransport())
-    {
-        if (GetTypeId() == TYPEID_PLAYER)
-            pTransport->RemovePassenger((Player*)this);
-
-        SetTransport(NULL);
-    }
 }
 
 void Unit::ExitVehicle()
@@ -12069,18 +12081,42 @@ void Unit::ExitVehicle()
     if(!m_pVehicle)
         return;
 
-    m_pVehicle->RemovePassenger(this);
-    m_pVehicle = NULL;
+    if (Transport* trans = m_pVehicle->GetBase()->GetTransport())
+    {
+        float trans_x = m_pVehicle->GetBase()->GetTransOffsetX();
+        float trans_y = m_pVehicle->GetBase()->GetTransOffsetY();
+        float trans_z = m_pVehicle->GetBase()->GetTransOffsetZ() + 2.0f;
 
-    if (GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+        m_pVehicle->RemovePassenger(this);
+        m_pVehicle = NULL;
 
-    float x = GetPositionX();
-    float y = GetPositionY();
-    float z = GetPositionZ() + 2.0f;
-    GetClosePoint(x, y, z, 2.0f);
-    UpdateAllowedPositionZ(x, y, z);
-    SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
+        if (GetTypeId() == TYPEID_PLAYER)
+            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+
+        float x = GetPositionX() + trans_x;
+        float y = GetPositionY() + trans_y;
+        float z = GetPositionZ() + trans_z;
+        GetClosePoint(x, y, z, 2.0f);
+        SetTransport(trans);
+        trans->AddPassenger(this);
+        SetLocationMapId(trans->GetMapId());
+        SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
+    }
+    else
+    {
+        m_pVehicle->RemovePassenger(this);
+        m_pVehicle = NULL;
+
+        if (GetTypeId() == TYPEID_PLAYER)
+            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+
+        float x = GetPositionX();
+        float y = GetPositionY();
+        float z = GetPositionZ() + 2.0f;
+        GetClosePoint(x, y, z, 2.0f);
+        UpdateAllowedPositionZ(x, y, z);
+        SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
+    }
 }
 
 void Unit::SetPvP( bool state )

@@ -343,15 +343,9 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
 
     m_spellSchoolMask = GetSpellSchoolMask(info);           // Can be override for some spell (wand shoot for example)
 
-    if(m_attackType == RANGED_ATTACK)
-    {
-        // wand case
-        if((m_caster->getClassMask() & CLASSMASK_WAND_USERS) != 0 && m_caster->GetTypeId() == TYPEID_PLAYER)
-        {
-            if(Item* pItem = ((Player*)m_caster)->GetWeaponForAttack(RANGED_ATTACK))
-                m_spellSchoolMask = SpellSchoolMask(1 << pItem->GetProto()->Damage[0].DamageType);
-        }
-    }
+    if(IsSpellHaveEffect(m_spellInfo, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL))
+        m_spellSchoolMask = m_caster->GetMeleeDamageSchoolMask(m_attackType);
+
     // Set health leech amount to zero
     m_healthLeech = 0;
 
@@ -396,6 +390,7 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
     // AoE spells, spells with non-magic DmgClass or SchoolMask or with SPELL_ATTR_EX2_CANT_REFLECTED cannot be reflected
     if (m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC &&
         m_spellInfo->SchoolMask != SPELL_SCHOOL_MASK_NORMAL &&
+        !(m_spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER && m_spellInfo->SpellFamilyFlags.test<CF_HUNTER_FREEZING_TRAP_EFFECT>()) &&
         !(m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_IGNORE_LOS) &&
         !IsAreaOfEffectSpell(m_spellInfo)){
         for(int j = 0; j < MAX_EFFECT_INDEX; ++j)
@@ -1180,8 +1175,12 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             if (count)
             {
                 int32 bp = count * CalculateDamage(EFFECT_INDEX_2, unitTarget) * damageInfo.damage / 100;
-                if (bp)
+                {
+                    if(caster->HasAura(48266, EFFECT_INDEX_0)) // If Blood Presence is active, additional damage from Scourge Strike gains bonus too.
+                        bp *= 1.15;
+
                     caster->CastCustomSpell(unitTarget, 70890, &bp, NULL, NULL, true);
+                }
             }
         }
     }
@@ -1669,6 +1668,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
                 case 63018:                                 // Searing Light (10 man)
                 case 65121:                                 // Searing Light (25 man)
+                case 63713:                                 // Dominate Mind (Yogg-Saron)
+                case 63830:                                 // Malady of the Mind (Yogg-Saron)
                 case 63024:                                 // Gravity Bomb (10 man)
                 case 64234:                                 // Gravity Bomb (25 man)
                 case 66336:                                 // Mistress' Kiss (Trial of the Crusader, ->
@@ -1704,6 +1705,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 71336:                                 // Pact of the Darkfallen
                 case 71390:                                 // Pact of the Darkfallen
                 case 63476:                                 // Icicle (Hodir 10man)
+                case 63802:                                 // Brain Link (Yogg-Saron)
                     unMaxTargets = 2;
                     break;
                 case 28796:                                 // Poison Bolt Volley
@@ -2442,9 +2444,11 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             }
             else
             {
-                MaNGOS::GameObjectInRangeCheck check(m_caster, x, y, z, radius + 15.0f);
+                float fMaxDist = GetSpellMaxRange(sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex));
+
+                MaNGOS::GameObjectInRangeCheck check(m_caster, x, y, z, radius + 5.0f);
                 MaNGOS::GameObjectListSearcher<MaNGOS::GameObjectInRangeCheck> searcher(tempTargetGOList, check);
-                Cell::VisitAllObjects(m_caster, searcher, radius);
+                Cell::VisitAllObjects(m_caster, searcher, radius + fMaxDist);
             }
 
             if (!tempTargetGOList.empty())
@@ -4229,7 +4233,7 @@ void Spell::finish(bool ok)
         m_caster->DealHeal(m_caster, uint32(m_healthLeech) - absorb, m_spellInfo, false, absorb);
     }
 
-    if (IsMeleeAttackResetSpell())
+    if (IsMeleeAttackResetSpell() && !(m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_RESET_AUTOATTACK))
     {
         m_caster->resetAttackTimer(BASE_ATTACK);
         if(m_caster->haveOffhandWeapon())

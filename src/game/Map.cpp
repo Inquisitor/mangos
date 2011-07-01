@@ -901,11 +901,11 @@ void Map::SendInitSelf( Player * player )
     player->BuildCreateUpdateBlockForPlayer(&data, player);
 
     // build other passengers at transport also (they always visible and marked as visible and will not send at visibility update at add to map
-    if(Transport* transport = player->GetTransport())
+    if (Transport* transport = player->GetTransport())
     {
-        for(Transport::PlayerSet::const_iterator itr = transport->GetPassengers().begin();itr!=transport->GetPassengers().end();++itr)
+        for(Transport::UnitSet::const_iterator itr = transport->GetUnitPassengers().begin(); itr != transport->GetUnitPassengers().end(); ++itr)
         {
-            if(player!=(*itr) && player->HaveAtClient(*itr))
+            if (player != (*itr) && player->HaveAtClient(*itr))
             {
                 (*itr)->BuildCreateUpdateBlockForPlayer(&data, player);
             }
@@ -3160,6 +3160,16 @@ DynamicObject* Map::GetDynamicObject(ObjectGuid guid)
 }
 
 /**
+ * Function return transport object that in world at CURRENT map
+ *
+ * @param guid must be transport object guid (HIGHGUID_MOTRANSPORT)
+ */
+Transport* Map::getTransport(ObjectGuid guid)
+{
+    return m_objectsStore.find<Transport>(guid, (Transport*)NULL);
+}
+
+/**
  * Function return unit in world at CURRENT map
  *
  * Note: in case player guid not always expected need player at current map only.
@@ -3358,4 +3368,45 @@ void Map::PlayDirectSoundToMap(uint32 soundId)
     Map::PlayerList const& pList = GetPlayers();
     for (PlayerList::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
         itr->getSource()->SendDirectMessage(&data);
+}
+
+Transport* Map::LoadTransportInMap(uint32 transportEntry, uint32 transportPosition/*=0*/, uint32 transportPeriod /*= 0*/, bool IsStoped /* = false*/)
+{
+    Transport* trans = new Transport;
+    const GameObjectInfo *goinfo = ObjectMgr::GetGameObjectInfo(transportEntry);
+    if (!goinfo)
+        return NULL;
+
+    std::set<uint32> mapsUse;
+    trans->m_period = transportPeriod;
+    if (!trans->GenerateWaypoints(goinfo->moTransport.taxiPathId, mapsUse))
+    {
+        delete trans;
+        return NULL;
+    }
+
+    uint32 mapid = trans->m_WayPoints[transportPosition].mapid;
+    float x = trans->m_WayPoints[transportPosition].x;
+    float y = trans->m_WayPoints[transportPosition].y;
+    float z = trans->m_WayPoints[transportPosition].z;
+    float o = 1.0f;
+
+    if (!trans->Create(transportEntry, mapid, x, y, z, o, GO_ANIMPROGRESS_DEFAULT, 0))
+    {
+        delete trans;
+        return NULL;
+    }
+
+    sMapMgr.m_Transports.insert(trans);
+
+    for (std::set<uint32>::const_iterator i = mapsUse.begin(); i != mapsUse.end(); ++i)
+        sMapMgr.m_TransportsByMap[*i].insert(trans);
+
+    trans->SetMap(this);
+    if (!IsStoped)
+        trans->BuildMovementPacket(this, true);
+    else
+        trans->BuildMovementPacket(this);
+
+    return trans;
 }

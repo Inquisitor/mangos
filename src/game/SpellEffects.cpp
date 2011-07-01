@@ -53,6 +53,7 @@
 #include "Util.h"
 #include "TemporarySummon.h"
 #include "ScriptMgr.h"
+#include "PossessedSummon.h"
 #include "SkillDiscovery.h"
 #include "Formulas.h"
 #include "GridNotifiers.h"
@@ -338,8 +339,20 @@ void Spell::EffectEnvironmentalDMG(SpellEffectIndex eff_idx)
 
 void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
 {
-    if( unitTarget && unitTarget->isAlive())
+    if (unitTarget && unitTarget->isAlive())
     {
+        if (unitTarget->GetEntry() == 26125 && m_caster->GetObjectGuid().IsCreature() && IsAreaOfEffectSpell(m_spellInfo)) // Ghoul
+        {
+            if (Player * pOwner = unitTarget->GetCharmerOrOwnerPlayerOrPlayerItself())
+            {
+                // Night of the Dead avoidance
+                Aura * pAura = pOwner->GetAura(55620, effect_idx); // Rank 1
+                if (!pAura)
+                    pAura = pOwner->GetAura(55623, effect_idx); // Rank 2
+                if (pAura)
+                    damage -= damage * pAura->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_2)/100;
+            }
+        }
         switch(m_spellInfo->SpellFamilyName)
         {
             case SPELLFAMILY_GENERIC:
@@ -2845,6 +2858,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 58418:                                 // Portal to Orgrimmar
                 case 58420:                                 // Portal to Stormwind
                     return;                                 // implemented in EffectScript[0]
+                case 66218:
                 case 62324: // Throw Passenger
                 {
                     if (VehicleKit *vehicle = m_caster->GetVehicleKit())
@@ -4662,6 +4676,32 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
     if(!unitTarget || unitTarget->IsTaxiFlying())
         return;
 
+    switch (m_spellInfo->Id)
+    {
+        case 66550: // teleports outside (Isle of Conquest)
+        {
+            if (Player* pTarget = ((Player*)unitTarget))
+            {
+                if (pTarget->GetTeamId() == TEAM_ALLIANCE)
+                    m_targets.setDestination(442.24f, -835.25f, 44.30f);
+                else
+                    m_targets.setDestination(1120.43f, -762.11f, 47.92f);
+            }
+            break;
+        }
+        case 66551: // teleports inside (Isle of Conquest)
+        {
+            if (Player* pTarget = ((Player*)unitTarget))
+            {
+                if (pTarget->GetTeamId() == TEAM_ALLIANCE)
+                    m_targets.setDestination(389.57f, -832.38f, 48.65f);
+                else
+                    m_targets.setDestination(1174.85f, -763.24f, 48.72f);
+            }
+            break;
+        }
+    }
+
     switch (m_spellInfo->EffectImplicitTargetB[eff_idx])
     {
         case TARGET_INNKEEPER_COORDINATES:
@@ -5587,7 +5627,7 @@ void Spell::EffectOpenLock(SpellEffectIndex eff_idx)
             if (BattleGround *bg = player->GetBattleGround())
             {
                 // check if it's correct bg
-                if (bg->GetTypeID(true) == BATTLEGROUND_AB || bg->GetTypeID(true) == BATTLEGROUND_AV || bg->GetTypeID(true) == BATTLEGROUND_SA)
+                if (bg->GetTypeID(true) == BATTLEGROUND_AB || bg->GetTypeID(true) == BATTLEGROUND_AV || bg->GetTypeID(true) == BATTLEGROUND_SA || bg->GetTypeID(true) == BATTLEGROUND_IC)
                     bg->EventPlayerClickedOnFlag(player, gameObjTarget);
                 return;
             }
@@ -5831,7 +5871,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
             {
                 case 65:
                 case 428:
-                    EffectSummonPossessed(eff_idx);
+                    DoSummonPossessed(eff_idx);
                     break;
                 default:
                     DoSummonGuardian(eff_idx, summon_prop->FactionId);
@@ -5970,55 +6010,6 @@ void Spell::DoSummonGroupPets(SpellEffectIndex eff_idx)
         }
         DEBUG_LOG("New Pet (guidlow %d, entry %d) summoned (default). Counter is %d ", pet->GetGUIDLow(), pet->GetEntry(), pet->GetPetCounter());
     }
-
-}
-
-void Spell::EffectSummonPossessed(SpellEffectIndex eff_idx)
-{
-    if (!m_caster || m_caster->GetTypeId() != TYPEID_PLAYER)
-        return;
-
-    uint32 creature_entry = m_spellInfo->EffectMiscValue[eff_idx];
-    if(!creature_entry)
-        return;
-
-    int32 duration = GetSpellDuration(m_spellInfo);
-
-        float px, py, pz;
-    // If dest location if present
-    if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
-    {
-        // Summon 1 unit in dest location
-        px = m_targets.m_destX;
-        py = m_targets.m_destY;
-        pz = m_targets.m_destZ;
-    }
-    // Summon if dest location not present near caster
-    else
-        m_caster->GetClosePoint(px,py,pz,1.0f);
-
-
-    TempSummonType summonType = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
-    Creature* summon = m_caster->SummonCreature(creature_entry,px,py,pz,m_caster->GetOrientation(),summonType,duration,true);
-
-    if (summon)
-    {
-        summon->SetLevel(m_caster->getLevel());
-
-        if(CreatureAI* scriptedAI = sScriptMgr.GetCreatureAI(summon))
-        {
-            // Prevent from ScriptedAI reinitialized
-            summon->LockAI(true);
-            m_caster->CastSpell(summon, 530, true);
-            summon->LockAI(false);
-        }
-        else
-            m_caster->CastSpell(summon, 530, true);
-
-        DEBUG_LOG("New possessed creature (guidlow %d, entry %d) summoned. Owner is %d ", summon->GetGUIDLow(), summon->GetEntry(), m_caster->GetGUIDLow());
-    }
-    else
-        sLog.outError("New possessed creature (entry %d) NOT summoned. Owner is %d ", summon->GetEntry(), m_caster->GetGUIDLow());
 
 }
 
@@ -6898,6 +6889,51 @@ void Spell::EffectTameCreature(SpellEffectIndex /*eff_idx*/)
 
     // visual effect for levelup
     pet->SetLevel(level);
+}
+
+void Spell::DoSummonPossessed(SpellEffectIndex eff_idx, uint32 forceFaction)
+{
+    if (m_caster->GetTypeId() != TYPEID_PLAYER)
+        return;
+    Player* p_caster = (Player*)m_caster;
+
+    uint32 creature_entry = m_spellInfo->EffectMiscValue[eff_idx];
+    if (!creature_entry)
+        return;
+
+    // possessed summons are always bound to an aura
+    if (!m_spellAuraHolder)
+    {
+        sLog.outDebug("Spell %i summons a possessed summon but has no aura it can be bound to.", m_spellInfo->Id);
+        return;
+    }
+
+    PossessedSummon* pCreature = new PossessedSummon();
+
+    // Summon in dest location
+    CreatureCreatePos pos(p_caster->GetMap(), m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, p_caster->GetOrientation(), p_caster->GetPhaseMask());
+
+    if (!(m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION))
+        pos = CreatureCreatePos(m_caster, m_caster->GetOrientation());
+
+    Team p_team = p_caster->GetTeam();
+    const CreatureInfo* creature_info = sCreatureStorage.LookupEntry<CreatureInfo>(creature_entry);
+    if(creature_info)
+    {
+        if (!pCreature->Create(p_caster->GetMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, creature_info, p_team))
+        {
+            delete pCreature;
+            return;
+        }
+    }
+
+    pCreature->SetSummonPoint(pos);
+
+    // initialize all stuff (owner, camera, etc...)
+    pCreature->Summon(p_caster, m_spellInfo->Id);
+
+    if(forceFaction)
+        pCreature->setFaction(forceFaction);
 }
 
 void Spell::EffectSummonPet(SpellEffectIndex eff_idx)
@@ -10765,7 +10801,8 @@ void Spell::EffectCharge2(SpellEffectIndex /*eff_idx*/)
     unitTarget->UpdateGroundPositionZ(x, y, z);
 
     // Only send MOVEMENTFLAG_WALK_MODE, client has strange issues with other move flags
-    m_caster->MonsterMove(x, y, z, 1);
+    if (!(m_spellInfo->Id == 67797))   //dont move for "Taran" (bug: ignoring vmaps);
+        m_caster->MonsterMove(x, y, z, 1);
 
     // not all charge effects used in negative spells
     if (unitTarget && unitTarget != m_caster && !IsPositiveSpell(m_spellInfo->Id))
@@ -11092,9 +11129,9 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
                 if (m_caster->GetTypeId()==TYPEID_PLAYER)
                 {
                     if (((Player*)m_caster)->GetTeam() == HORDE)
-                        team = BG_IC_TEAM[1];
+                        team = 83;
                     if (((Player*)m_caster)->GetTeam() == ALLIANCE)
-                        team = BG_IC_TEAM[0];
+                        team = 84;
                 }
                 float fx, fy, fz;
                 m_caster->GetPosition(fx, fy, fz);
@@ -11641,6 +11678,31 @@ void Spell::EffectWMODamage(SpellEffectIndex eff_idx)
 
     if (!caster)
         return;
+
+    Player* plr = NULL;
+    if (caster && caster->GetTypeId() == TYPEID_PLAYER)
+    {
+        plr = (Player*)caster;
+        //this is damage from bomb
+        if (BattleGround *bg = plr->GetBattleGround())
+            // on SA need x2 damage
+            if(bg->GetTypeID(true) == BATTLEGROUND_SA)
+            {
+                damage = 2*damage;
+                plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+            }
+            // on IC need x5 damage
+            else if(bg->GetTypeID(true) == BATTLEGROUND_IC)
+            {
+                damage = 5*damage;
+            }
+    }
+
+    if (caster->HasAura(68719))
+        damage = 1.15*damage;
+
+    if (caster->HasAura(68720))
+        damage = 1.15*damage;
 
     DEBUG_LOG( "Spell::EffectWMODamage,  spell ID %u, object %u, damage %u", m_spellInfo->Id,gameObjTarget->GetEntry(),uint32(damage));
 

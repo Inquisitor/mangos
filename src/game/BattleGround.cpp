@@ -297,8 +297,11 @@ BattleGround::BattleGround()
     m_ArenaTeamIds[BG_TEAM_ALLIANCE]   = 0;
     m_ArenaTeamIds[BG_TEAM_HORDE]      = 0;
 
-    m_ArenaTeamRatingChanges[BG_TEAM_ALLIANCE]   = 0;
-    m_ArenaTeamRatingChanges[BG_TEAM_HORDE]      = 0;
+    m_ArenaTeamRatingChanges[BG_TEAM_ALLIANCE]  = 0;
+    m_ArenaTeamRatingChanges[BG_TEAM_HORDE]     = 0;
+
+    m_ArenaTeamMMRChanges[BG_TEAM_ALLIANCE]     = 0;
+    m_ArenaTeamMMRChanges[BG_TEAM_HORDE]        = 0;
 
     m_BgRaids[BG_TEAM_ALLIANCE]         = NULL;
     m_BgRaids[BG_TEAM_HORDE]            = NULL;
@@ -685,6 +688,29 @@ void BattleGround::CastSpellOnTeam(uint32 SpellID, Team teamId)
     }
 }
 
+void BattleGround::RemoveAuraOnTeam(uint32 SpellID, Team team)
+{
+    for (BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+    {
+        if (itr->second.OfflineRemoveTime)
+            continue;
+        Player *plr = sObjectMgr.GetPlayer(itr->first);
+
+        if (!plr)
+        {
+            sLog.outError("Battleground:RemoveAuraOnTeam: Player not found!");
+            continue;
+        }
+
+        Team pTeam = itr->second.PlayerTeam;
+        if (!pTeam)
+            team = plr->GetTeam();
+
+        if (team == pTeam)
+            plr->RemoveAurasDueToSpell(SpellID);
+    }
+}
+
 void BattleGround::RewardHonorToTeam(uint32 Honor, Team teamId)
 {
     for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
@@ -909,6 +935,8 @@ void BattleGround::EndBattleGround(Team winner)
         {
             SetArenaTeamRatingChangeForTeam(ALLIANCE, 0);
             SetArenaTeamRatingChangeForTeam(HORDE, 0);
+            SetArenaTeamMMRChangeForTeam(ALLIANCE, 0);
+            SetArenaTeamMMRChangeForTeam(HORDE, 0);
         }
     }
 
@@ -1274,10 +1302,11 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
 
             if (!team) team = plr->GetTeam();
 
+            plr->RemoveArenaAuras(true);                // removes debuffs / dots etc., we don't want the player to die after porting out
+
             // if arena, remove the specific arena auras
             if (isArena())
             {
-                plr->RemoveArenaAuras(true);                // removes debuffs / dots etc., we don't want the player to die after porting out
                 bgTypeId=BATTLEGROUND_AA;                   // set the bg type to all arenas (it will be used for queue refreshing)
 
                 // unsummon current and summon old pet if there was one and there isn't a current pet
@@ -1432,7 +1461,7 @@ void BattleGround::AddPlayer(Player *plr)
     {
         plr->RemoveArenaSpellCooldowns();
         plr->RemoveArenaAuras();
-        plr->RemoveAllEnchantments(TEMP_ENCHANTMENT_SLOT);
+        plr->RemoveAllEnchantments(TEMP_ENCHANTMENT_SLOT, true);
         if (team == ALLIANCE)                               // gold
         {
             if (plr->GetTeam() == HORDE)
@@ -1464,6 +1493,12 @@ void BattleGround::AddPlayer(Player *plr)
             plr->CastSpell(plr, SPELL_PREPARATION, true);   // reduces all mana cost of spells.
 
         plr->CastSpell(plr, SPELL_BATTLEGROUND_DAMPENING, true);
+
+        BattleGround* bg = plr->GetBattleGround();
+        //start time achievement
+        for (uint32 i = 0; i < MAX_BG_START_ACHI; ++i)
+            if(BG_ACHI_START[i][0] == bg->GetTypeID(true))
+                plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_ACHI_START[i][1]);
     }
 
     plr->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, ACHIEVEMENT_CRITERIA_CONDITION_MAP, GetMapId());
@@ -1723,6 +1758,77 @@ bool BattleGround::AddObject(uint32 type, uint32 entry, float x, float y, float 
     return true;
 }
 
+Creature* BattleGround::AddCreature(uint32 entry, uint32 type, uint32 teamval, float x, float y, float z, float o, uint32 respawntime)
+{
+    // If the assert is called, means that m_BgCreatures must be resized!
+    MANGOS_ASSERT(type < m_BgCreatures.size());
+
+    Map * map = GetBgMap();
+    if (!map)
+        return NULL;
+
+    Creature* pCreature = new Creature;
+    CreatureCreatePos pos(map, x, y, z, o, PHASEMASK_NORMAL);
+    CreatureInfo const *cinfo = ObjectMgr::GetCreatureTemplate(entry);
+
+    if (!cinfo)
+    {
+        sLog.outErrorDb("Battleground::AddCreature: entry %u does not exist.", entry);
+        return NULL;
+    }
+
+    if (!pCreature->Create(GetBgMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, cinfo, TEAM_NONE))
+    {
+        sLog.outError("Can't create creature entry: %u",entry);
+        delete pCreature;
+        return NULL;
+    }
+
+    //force using DB speeds
+    pCreature->SetSpeedRate(MOVE_WALK,  cinfo->speed_walk);
+    pCreature->SetSpeedRate(MOVE_RUN,   cinfo->speed_run);
+
+    map->Add(pCreature);
+    m_BgCreatures[type] = pCreature->GetGUID();
+    pCreature->SetPosition(x, y, z, o);
+    if (respawntime)
+        pCreature->SetRespawnDelay(respawntime);
+
+    return pCreature;
+}
+
+bool BattleGround::AddSpiritGuide(uint32 type, float x, float y, float z, float o, uint32 team)
+{
+    uint32 entry = 0;
+
+    if (team == ALLIANCE)
+        entry = BG_CREATURE_ENTRY_A_SPIRITGUIDE;
+    else
+        entry = BG_CREATURE_ENTRY_H_SPIRITGUIDE;
+
+    Creature* pCreature = AddCreature(entry,type,team,x,y,z,o);
+    if (!pCreature)
+    {
+        sLog.outError("Can't create Spirit guide. Battleground not created!");
+        EndNow();
+        return false;
+    }
+    pCreature->SetDeathState(DEAD);
+
+    pCreature->SetUInt64Value(UNIT_FIELD_CHANNEL_OBJECT, pCreature->GetGUID());
+    // aura
+    //TODO: Fix display here
+    //pCreature->SetVisibleAura(0, SPELL_SPIRIT_HEAL_CHANNEL);
+    // casting visual effect
+    pCreature->SetUInt32Value(UNIT_CHANNEL_SPELL, SPELL_SPIRIT_HEAL_CHANNEL);
+    // correct cast speed
+    pCreature->SetFloatValue(UNIT_MOD_CAST_SPEED, 1.0f);
+
+    pCreature->CastSpell(pCreature, SPELL_SPIRIT_HEAL_CHANNEL, true);
+
+    return true;
+}
+
 //some doors aren't despawned so we cannot handle their closing in gameobject::update()
 //it would be nice to correctly implement GO_ACTIVATED state and open/close doors in gameobject code
 void BattleGround::DoorClose(ObjectGuid guid)
@@ -1820,6 +1926,19 @@ void BattleGround::OpenDoorEvent(uint8 event1, uint8 event2 /*=0*/)
     BGObjects::const_iterator itr = m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.begin();
     for(; itr != m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.end(); ++itr)
         DoorOpen(*itr);
+
+    //start time achievement
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+        {
+            BattleGround* bg = plr->GetBattleGround();
+
+            for (uint32 i = 0; i < MAX_BG_START_ACHI; ++i)
+                if(BG_ACHI_START[i][0] == bg->GetTypeID(true))
+                    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_ACHI_START[i][1]);
+        }
+    }
 }
 
 void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
@@ -1845,6 +1964,22 @@ void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
     BGObjects::const_iterator itr2 = m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.begin();
     for(; itr2 != m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.end(); ++itr2)
         SpawnBGObject(*itr2, (spawn) ? RESPAWN_IMMEDIATELY : RESPAWN_ONE_DAY);
+
+    //start time achievement
+    if (event1 == BG_EVENT_DOOR && spawn == false)
+    {
+        for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+        {
+            if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+            {
+                BattleGround* bg = plr->GetBattleGround();
+
+                for (uint32 i = 0; i < MAX_BG_START_ACHI; ++i)
+                    if(BG_ACHI_START[i][0] == bg->GetTypeID(true))
+                        plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_ACHI_START[i][1]);
+            }
+        }
+    }
 }
 
 void BattleGround::SpawnBGObject(ObjectGuid guid, uint32 respawntime)
@@ -1895,6 +2030,22 @@ void BattleGround::SpawnBGCreature(ObjectGuid guid, uint32 respawntime)
     }
 }
 
+bool BattleGround::DelCreature(uint32 type)
+{
+    if (m_BgCreatures[type].IsEmpty())
+        return true;
+
+    Creature *cr = GetBgMap()->GetCreature(m_BgCreatures[type]);
+    if (!cr)
+    {
+        sLog.outError("Can't find creature guid: %u", uint64((m_BgCreatures[type]).GetHigh()));
+        return false;
+    }
+    cr->AddObjectToRemoveList();
+    m_BgCreatures[type].Clear();
+    return true;
+}
+
 bool BattleGround::DelObject(uint32 type)
 {
     if (!m_BgObjects[type])
@@ -1940,6 +2091,14 @@ void BattleGround::PSendMessageToAll(int32 entry, ChatMsg type, Player const* so
     BroadcastWorker(bg_do);
 
     va_end(ap);
+}
+
+Creature* BattleGround::GetBGCreature(uint32 type)
+{
+    Creature *creature = GetBgMap()->GetCreature(m_BgCreatures[type]);
+    if (!creature)
+        sLog.outError("Could not get BG creature %i (BG: %s Instance: %u)", type, GetBgMap()->GetBG()->GetName(), GetBgMap()->GetInstanceId());
+    return creature;
 }
 
 void BattleGround::SendMessage2ToAll(int32 entry, ChatMsg type, Player const* source, int32 arg1, int32 arg2)

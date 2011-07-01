@@ -56,6 +56,8 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         void BuildUpdatePacket(WorldPacket& data) const;
         void SendAuraUpdate(bool remove) const;
         void HandleSpellSpecificBoosts(bool apply);
+        void HandleBoundUnit(bool apply);
+        void SetBoundUnit(ObjectGuid objectGUID) {m_boundUnitGuid = objectGUID;}
         void HandleSpellSpecificBoostsForward(bool apply);
         void CleanupTriggeredSpells();
 
@@ -188,6 +190,8 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         bool m_deleted:1;
 
         uint32 m_in_use;                                    // > 0 while in SpellAuraHolder::ApplyModifiers call/SpellAuraHolder::Update/etc
+
+        ObjectGuid m_boundUnitGuid;
 };
 
 typedef void(Aura::*pAuraHandler)(bool Apply, bool Real);
@@ -425,7 +429,6 @@ class MANGOS_DLL_SPEC Aura
         bool IsAreaAura() const { return m_isAreaAura; }
         bool IsPeriodic() const { return m_isPeriodic; }
         bool IsInUse() const { return m_in_use; }
-        bool IsStacking() const { return m_stacking;}
 
         void SetInUse(bool state)
         {
@@ -456,7 +459,6 @@ class MANGOS_DLL_SPEC Aura
         ClassFamilyMask const& GetAuraSpellClassMask() const { return  m_spellAuraHolder->GetSpellProto()->GetEffectSpellClassMask(m_effIndex); }
         bool isAffectedOnSpell(SpellEntry const *spell) const;
         bool CanProcFrom(SpellEntry const *spell, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
-        bool IsEffectStacking();
 
         //SpellAuraHolder const* GetHolder() const { return m_spellHolder; }
         SpellAuraHolder* GetHolder() { return m_spellAuraHolder; }
@@ -495,7 +497,6 @@ class MANGOS_DLL_SPEC Aura
         bool m_isPeriodic:1;
         bool m_isAreaAura:1;
         bool m_isPersistent:1;
-        bool m_stacking:1;                                  // Aura is not overwritten, but effects are not cumulative with similar effects
 
         uint32 m_in_use;                                    // > 0 while in Aura::ApplyModifier call/Aura::Update/etc
 

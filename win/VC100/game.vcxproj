@@ -490,6 +490,7 @@
     <ClCompile Include="..\..\src\game\PlayerDump.cpp" />
     <ClCompile Include="..\..\src\game\PointMovementGenerator.cpp" />
     <ClCompile Include="..\..\src\game\PoolManager.cpp" />
+	<ClCompile Include="..\..\src\game\PossessedSummon.cpp" />
     <ClCompile Include="..\..\src\game\QueryHandler.cpp" />
     <ClCompile Include="..\..\src\game\QuestDef.cpp" />
     <ClCompile Include="..\..\src\game\QuestHandler.cpp" />
@@ -662,6 +663,7 @@
     <ClInclude Include="..\..\src\game\PlayerDump.h" />
     <ClInclude Include="..\..\src\game\PointMovementGenerator.h" />
     <ClInclude Include="..\..\src\game\PoolManager.h" />
+	<ClInclude Include="..\..\src\game\PossessedSummon.h" />
     <ClInclude Include="..\..\src\game\QuestDef.h" />
     <ClInclude Include="..\..\src\game\RandomMovementGenerator.h" />
     <ClInclude Include="..\..\src\game\ReactorAI.h" />

@@ -1122,6 +1122,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         bool IsInWater() const { return m_isInWater; }
         bool IsUnderWater() const;
+        bool IsFalling() { return GetPositionZ() < m_lastFallZ; }
 
         void SendInitialPacketsBeforeAddToMap();
         void SendInitialPacketsAfterAddToMap();
@@ -1359,7 +1360,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void UpdateItemDuration(uint32 time, bool realtimeonly = false);
         void AddEnchantmentDurations(Item *item);
         void RemoveEnchantmentDurations(Item *item);
-        void RemoveAllEnchantments(EnchantmentSlot slot);
+        void RemoveAllEnchantments(EnchantmentSlot slot, bool isArenaRemove = false);
         void AddEnchantmentDuration(Item *item,EnchantmentSlot slot,uint32 duration);
         void ApplyEnchantment(Item *item,EnchantmentSlot slot,bool apply, bool apply_dur = true, bool ignore_condition = false);
         void ApplyEnchantment(Item *item,bool apply);
@@ -1984,6 +1985,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         static Team TeamForRace(uint8 race);
         Team GetTeam() const { return m_team; }
+        TeamId GetTeamId() const { return m_team == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE; }
         static uint32 getFactionForRace(uint8 race);
         void setFactionForRace(uint8 race);
 
@@ -2039,7 +2041,15 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SetCanBlock(bool value);
         bool CanDualWield() const { return m_canDualWield; }
         void SetCanDualWield(bool value) { m_canDualWield = value; }
-        bool CanTitanGrip() const { return m_canTitanGrip; }
+        bool CanTitanGrip() const
+        {
+            Item *mainItem = GetItemByPos( INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND );
+
+            if (mainItem && ( mainItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM || mainItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_STAFF ))
+                return false;
+
+            return m_canTitanGrip ;
+        }
         void SetCanTitanGrip(bool value) { m_canTitanGrip = value; }
         bool CanTameExoticPets() const { return isGameMaster() || HasAuraType(SPELL_AURA_ALLOW_TAME_PET_TYPE); }
 
@@ -2053,6 +2063,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void _RemoveAllStatBonuses();
         float GetArmorPenetrationPct() const { return m_armorPenetrationPct; }
         int32 GetSpellPenetrationItemMod() const { return m_spellPenetrationItemMod; }
+        SpellSchoolMask GetMeleeDamageSchoolMask(WeaponAttackType type = BASE_ATTACK) const;
 
         void _ApplyWeaponDependentAuraMods(Item *item, WeaponAttackType attackType, bool apply);
         void _ApplyWeaponDependentAuraCritMod(Item *item, WeaponAttackType attackType, Aura* aura, bool apply);

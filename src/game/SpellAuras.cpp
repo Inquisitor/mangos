@@ -45,6 +45,7 @@
 #include "GridNotifiersImpl.h"
 #include "Vehicle.h"
 #include "CellImpl.h"
+#include "PossessedSummon.h"
 #include "InstanceData.h"
 
 #define NULL_AURA_SLOT 0xFF
@@ -440,8 +441,6 @@ m_isPersistent(false), m_in_use(0), m_spellAuraHolder(holder)
     // Start periodic on next tick or at aura apply
     if (!(spellproto->AttributesEx5 & SPELL_ATTR_EX5_START_PERIODIC_AT_APPLY))
         m_periodicTimer = m_modifier.periodictime;
-
-    m_stacking = IsEffectStacking();
 }
 
 Aura::~Aura()
@@ -6926,6 +6925,9 @@ void Aura::HandleModCombatSpeedPct(bool apply, bool /*Real*/)
     target->ApplyAttackTimePercentMod(BASE_ATTACK, float(m_modifier.m_amount), apply);
     target->ApplyAttackTimePercentMod(OFF_ATTACK, float(m_modifier.m_amount), apply);
     target->ApplyAttackTimePercentMod(RANGED_ATTACK, float(m_modifier.m_amount), apply);
+
+    if (target->IsInWorld())
+        target->CallForAllControlledUnits(ApplyScalingBonusWithHelper(SCALING_TARGET_ATTACKSPEED, 0, false),CONTROLLED_PET|CONTROLLED_GUARDIANS);
 }
 
 void Aura::HandleModAttackSpeed(bool apply, bool /*Real*/)
@@ -7023,14 +7025,15 @@ void Aura::HandleModDamageDone(bool apply, bool Real)
 {
     Unit *target = GetTarget();
 
-    // apply item specific bonuses for already equipped weapon
-    if(Real && target->GetTypeId() == TYPEID_PLAYER)
+    // the weapon specific case: apply for already equipped weapon
+    if (Real && target->GetTypeId() == TYPEID_PLAYER)
     {
-        for(int i = 0; i < MAX_ATTACK; ++i)
-            if(Item* pItem = ((Player*)target)->GetWeaponForAttack(WeaponAttackType(i),true,false))
+        for (uint8 i = 0; i < MAX_ATTACK; ++i)
+            if (Item* pItem = ((Player*)target)->GetWeaponForAttack(WeaponAttackType(i),true,false))
                 ((Player*)target)->_ApplyWeaponDependentAuraDamageMod(pItem, WeaponAttackType(i), this, apply);
     }
 
+    // ===========================================================================================
     // m_modifier.m_miscvalue is bitmask of spell schools
     // 1 ( 0-bit ) - normal school damage (SPELL_SCHOOL_MASK_NORMAL)
     // 126 - full bitmask all magic damages (SPELL_SCHOOL_MASK_MAGIC) including wands
@@ -7038,68 +7041,36 @@ void Aura::HandleModDamageDone(bool apply, bool Real)
     //
     // mods must be applied base at equipped weapon class and subclass comparison
     // with spell->EquippedItemClass and  EquippedItemSubClassMask and EquippedItemInventoryTypeMask
-    // m_modifier.m_miscvalue comparison with item generated damage types
+    // ===========================================================================================
 
-    if((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_NORMAL) != 0)
+    // the general case, without specific requirements
+    if (GetSpellProto()->EquippedItemClass != -1 && target->GetTypeId() == TYPEID_PLAYER)
+        return;
+
+    if (m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_NORMAL)
     {
-        // apply generic physical damage bonuses including wand case
-        if (GetSpellProto()->EquippedItemClass == -1 || target->GetTypeId() != TYPEID_PLAYER)
-        {
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_VALUE, float(m_modifier.m_amount), apply);
-        }
-        else
-        {
-            // done in Player::_ApplyWeaponDependentAuraMods
-        }
+        // apply generic physical damage bonuses to weapons, independend from their real damage school
+        // this seems to be the most correct handling here
+        target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
+        target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
+        target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_VALUE, float(m_modifier.m_amount), apply);
 
-        if(target->GetTypeId() == TYPEID_PLAYER)
-        {
-            if(m_positive)
-                target->ApplyModUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS, m_modifier.m_amount, apply);
-            else
-                target->ApplyModUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG, m_modifier.m_amount, apply);
-        }
+        // send info to client
+        // note: physical bonuses are displayed at the weapon damage at the client, independend from their real damage school
+        if (target->GetTypeId() == TYPEID_PLAYER)
+            target->ApplyModUInt32Value(m_positive ? PLAYER_FIELD_MOD_DAMAGE_DONE_POS : PLAYER_FIELD_MOD_DAMAGE_DONE_NEG, m_modifier.m_amount, apply);
     }
 
     // Skip non magic case for speedup
-    if((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_MAGIC) == 0)
+    if (!(m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_MAGIC))
         return;
-
-    if( GetSpellProto()->EquippedItemClass != -1 || GetSpellProto()->EquippedItemInventoryTypeMask != 0 )
-    {
-        // wand magic case (skip generic to all item spell bonuses)
-        // done in Player::_ApplyWeaponDependentAuraMods
-
-        // Skip item specific requirements for not wand magic damage
-        return;
-    }
 
     // Magic damage modifiers implemented in Unit::SpellDamageBonusDone
     // This information for client side use only
-    if(target->GetTypeId() == TYPEID_PLAYER)
-    {
-        if(m_positive)
-        {
-            for(int i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
-            {
-                if((m_modifier.m_miscvalue & (1<<i)) != 0)
-                    target->ApplyModUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + i, m_modifier.m_amount, apply);
-            }
-        }
-        else
-        {
-            for(int i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
-            {
-                if((m_modifier.m_miscvalue & (1<<i)) != 0)
-                    target->ApplyModUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + i, m_modifier.m_amount, apply);
-            }
-        }
-        Pet* pet = target->GetPet();
-        if(pet)
-            pet->UpdateAttackPowerAndDamage();
-    }
+    if (target->GetTypeId() == TYPEID_PLAYER)
+        for(uint8 i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
+            if(m_modifier.m_miscvalue & (1<<i))
+                target->ApplyModUInt32Value(m_positive ? PLAYER_FIELD_MOD_DAMAGE_DONE_POS + i : PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + i, m_modifier.m_amount, apply);
 }
 
 void Aura::HandleModDamagePercentDone(bool apply, bool Real)
@@ -7107,59 +7078,52 @@ void Aura::HandleModDamagePercentDone(bool apply, bool Real)
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "AURA MOD DAMAGE type:%u negative:%u", m_modifier.m_miscvalue, m_positive ? 0 : 1);
     Unit *target = GetTarget();
 
-    // apply item specific bonuses for already equipped weapon
-    if(Real && target->GetTypeId() == TYPEID_PLAYER)
+    // the weapon specific case: apply for already equipped weapon
+    if (Real && target->GetTypeId() == TYPEID_PLAYER)
     {
-        for(int i = 0; i < MAX_ATTACK; ++i)
-            if(Item* pItem = ((Player*)target)->GetWeaponForAttack(WeaponAttackType(i),true,false))
+         for (uint8 i = 0; i < MAX_ATTACK; ++i)
+            if (Item* pItem = ((Player*)target)->GetWeaponForAttack(WeaponAttackType(i),true,false))
                 ((Player*)target)->_ApplyWeaponDependentAuraDamageMod(pItem, WeaponAttackType(i), this, apply);
     }
 
+    // ===========================================================================================
     // m_modifier.m_miscvalue is bitmask of spell schools
     // 1 ( 0-bit ) - normal school damage (SPELL_SCHOOL_MASK_NORMAL)
-    // 126 - full bitmask all magic damages (SPELL_SCHOOL_MASK_MAGIC) including wand
+    // 126 - full bitmask all magic damages (SPELL_SCHOOL_MASK_MAGIC) including wands
     // 127 - full bitmask any damages
     //
     // mods must be applied base at equipped weapon class and subclass comparison
     // with spell->EquippedItemClass and  EquippedItemSubClassMask and EquippedItemInventoryTypeMask
-    // m_modifier.m_miscvalue comparison with item generated damage types
+    // ===========================================================================================
 
-    if((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_NORMAL) != 0)
+    // the general case, without specific requirements
+    if (GetSpellProto()->EquippedItemClass != -1 && target->GetTypeId() == TYPEID_PLAYER)
+        return;
+
+    if (m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_NORMAL)
     {
-        // apply generic physical damage bonuses including wand case
-        if (GetSpellProto()->EquippedItemClass == -1 || target->GetTypeId() != TYPEID_PLAYER)
-        {
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, float(m_modifier.m_amount), apply);
-        }
-        else
-        {
-            // done in Player::_ApplyWeaponDependentAuraMods
-        }
-        // For show in client
-        if(target->GetTypeId() == TYPEID_PLAYER)
-            target->ApplyModSignedFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT, m_modifier.m_amount/100.0f, apply);
+        // apply generic physical damage bonuses to weapons, independend from their real damage school
+        // this seems to be the most correct handling here
+        target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
+        target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
+        target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, float(m_modifier.m_amount), apply);
+
+        // send info to client
+        // note: physical bonuses are displayed at the weapon damage at the client, independend from their real damage school
+        if (target->GetTypeId() == TYPEID_PLAYER)
+             target->ApplyModSignedFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT, m_modifier.m_amount/100.0f, apply);
     }
 
     // Skip non magic case for speedup
-    if((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_MAGIC) == 0)
+    if (!(m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_MAGIC))
         return;
 
-    if( GetSpellProto()->EquippedItemClass != -1 || GetSpellProto()->EquippedItemInventoryTypeMask != 0 )
-    {
-        // wand magic case (skip generic to all item spell bonuses)
-        // done in Player::_ApplyWeaponDependentAuraMods
-
-        // Skip item specific requirements for not wand magic damage
-        return;
-    }
-
-    // Magic damage percent modifiers implemented in Unit::SpellDamageBonusDone
-    // Send info to client
-    if(target->GetTypeId() == TYPEID_PLAYER)
-        for(int i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
-            target->ApplyModSignedFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT + i, m_modifier.m_amount/100.0f, apply);
+    // Magic damage percent modifiers implemented in Unit::SpellDamageBonus
+    // Send info to client (in fact this information is shown nowhere)
+    if (target->GetTypeId() == TYPEID_PLAYER)
+        for (uint8 i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
+            if (m_modifier.m_miscvalue & (1 << i))
+                target->ApplyModSignedFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT + i, m_modifier.m_amount/100.0f, apply);
 }
 
 void Aura::HandleModOffhandDamagePercent(bool apply, bool Real)
@@ -9395,76 +9359,6 @@ void Aura::HandleAuraOpenStable(bool apply, bool Real)
     // client auto close stable dialog at !apply aura
 }
 
-bool Aura::IsEffectStacking()
-{
-    // Flametongue Totem / Totem of Wrath / Strength of Earth Totem / Fel Intelligence / Leader of the Pack
-    // Moonkin Aura / Mana Spring Totem / Tree of Life Aura / Improved Devotion Aura / Improved Icy Talons / Trueshot Aura
-    // Improved Moonkin Form / Sanctified Retribution Aura / Blood Pact
-    if (GetSpellProto()->Effect[m_effIndex] == SPELL_EFFECT_APPLY_AREA_AURA_RAID)
-        return false;
-
-    if (GetSpellSpecific(GetSpellProto()->Id) == SPELL_SCROLL)
-        return false;
-
-    switch(GetModifier()->m_auraname)
-    {
-        case SPELL_AURA_MOD_HEALING_DONE:                               // Demonic Pact
-        case SPELL_AURA_MOD_DAMAGE_DONE:                                // Demonic Pact
-        case SPELL_AURA_HASTE_ALL:                                      // Imp. Moonkin Aur / Swift Retribution
-        case SPELL_AURA_MOD_MELEE_HASTE:                                // Improved Icy Talons
-        case SPELL_AURA_MOD_ATTACK_POWER_PCT:                           // Abomination's Might / Unleashed Rage
-        case SPELL_AURA_MOD_RANGED_ATTACK_POWER_PCT:
-        case SPELL_AURA_MOD_ATTACK_POWER:                               // (Greater) Blessing of Might / Battle Shout
-        case SPELL_AURA_MOD_RANGED_ATTACK_POWER:
-        case SPELL_AURA_MOD_POWER_REGEN:                                // (Greater) Blessing of Wisdom
-        case SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN:                       // Renewed Hope / (Greater) Blessing of Sanctuary / Vigilance // Glyph of Salvation / Pain Suppression / Safeguard ?
-            if (GetSpellProto()->AttributesEx6 & SPELL_ATTR_EX6_UNK26)
-                return false;
-            break;
-        case SPELL_AURA_MOD_STAT:
-            // Horn of Winter / Arcane Intellect / Divine Spirit
-            if (GetSpellProto()->AttributesEx6 & SPELL_ATTR_EX6_UNK26 &&
-                (GetSpellProto()->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT ||
-                GetSpellProto()->SpellFamilyName == SPELLFAMILY_MAGE ||
-                GetSpellProto()->SpellFamilyName == SPELLFAMILY_PRIEST) )
-                return false;
-            break;
-        case SPELL_AURA_MOD_CRIT_PERCENT:
-            // Rampage
-            if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_WARRIOR && GetSpellProto()->SpellIconID == 2006)
-                return false;
-            break;
-        case SPELL_AURA_MOD_SPELL_CRIT_CHANCE:
-            // Elemental Oath
-            if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_SHAMAN && GetSpellProto()->AttributesEx6 & SPELL_ATTR_EX6_UNK26)
-                return false;
-            break;
-        case SPELL_AURA_MOD_ATTACKER_SPELL_CRIT_CHANCE:                 // Winter's Chill / Improved Scorch
-            if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_MAGE)
-                return false;
-            break;
-        case SPELL_AURA_MOD_RESISTANCE_PCT:
-            // Ancestral Healing / Inspiration
-            if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_SHAMAN ||
-                GetSpellProto()->SpellFamilyName == SPELLFAMILY_PRIEST)
-                return false;
-            break;
-        case SPELL_AURA_MOD_RESISTANCE_EXCLUSIVE:
-            return false;
-        case SPELL_AURA_230:
-            // Commanding Shout
-            return false;
-        case SPELL_AURA_MOD_HEALING_PCT:                                // Mortal Strike / Wound Poison / Aimed Shot / Furious Attacks
-            // Healing debuffs
-            if (GetSpellProto()->EffectBasePoints[m_effIndex] < 0)
-                return false;
-
-        default:
-            return true;
-    }
-    return true;
-}
-
 void Aura::HandleAuraMirrorImage(bool apply, bool Real)
 {
     if (!Real)
@@ -9728,6 +9622,7 @@ m_permanent(false), m_isRemovedOnShapeLost(true), m_deleted(false), m_in_use(0)
         case 55166:                                         // Tidal Force
         case 58914:                                         // Kill Command (pet part)
         case 62519:                                         // Attuned to Nature
+        case 63050:                                         // Sanity (Yogg-Saron)
         case 64455:                                         // Feral Essence
         case 71564:                                         // Deadly Precision
             m_stackAmount = m_spellProto->StackAmount;
@@ -11234,6 +11129,47 @@ void SpellAuraHolder::HandleSpellSpecificBoostsForward(bool apply)
             return;
     }
 
+}
+
+void SpellAuraHolder::HandleBoundUnit(bool apply)
+{
+    if (m_boundUnitGuid.IsEmpty())
+        return;
+
+    if (apply)
+        return;
+
+    // Some spell effects have aura-like character (duration) and are always bound
+    // to an aura. Handle those special effects here.
+    for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        switch (SpellEffects(GetSpellProto()->Effect[i]))
+        {
+            case SPELL_EFFECT_SUMMON:
+            {
+                // possesed summons need to be unsummoned if aura is cancelled
+                uint32 prop_id = GetSpellProto()->EffectMiscValueB[i];
+                SummonPropertiesEntry const *summon_prop = sSummonPropertiesStore.LookupEntry(prop_id);
+                if(!summon_prop || summon_prop->Group != SUMMON_PROP_GROUP_CONTROLLABLE)
+                    return;
+
+                Unit* boundUnit = m_target->GetMap()->GetUnit(m_boundUnitGuid);
+
+                if (!boundUnit)
+                    return;
+                MANGOS_ASSERT((boundUnit->GetTypeId() == TYPEID_UNIT && ((Creature*)boundUnit)->isPossessedSummmon()));
+                ((PossessedSummon*)boundUnit)->UnSummon();
+                return;
+            }
+            case SPELL_EFFECT_REDIRECT_THREAT:
+            {
+                // TODO: implement :-P
+                return;
+            }
+            default:
+                break;
+        }
+    }
 }
 
 SpellAuraHolder::~SpellAuraHolder()

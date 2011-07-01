@@ -405,6 +405,7 @@ class Spell
         void DoSummonCritter(SpellEffectIndex eff_idx, uint32 forceFaction = 0);
         void DoSummonSnakes(SpellEffectIndex eff_idx);
         void DoSummonVehicle(SpellEffectIndex eff_idx, uint32 forceFaction = 0);
+        void DoSummonPossessed(SpellEffectIndex eff_idx, uint32 forceFaction = 0);
 
         void WriteSpellGoTargets(WorldPacket* data);
         void WriteAmmoToPacket(WorldPacket* data);

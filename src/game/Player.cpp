@@ -618,8 +618,8 @@ Player::~Player ()
 
     delete PlayerTalkClass;
 
-    if (m_transport)
-        m_transport->RemovePassenger(this);
+    if (GetTransport())
+        GetTransport()->RemovePassenger(this);
 
     for(size_t x = 0; x < ItemSetEff.size(); x++)
         if(ItemSetEff[x])
@@ -1805,7 +1805,11 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         DEBUG_LOG("Player %s using client without required expansion tried teleport to non accessible map %u", GetName(), mapid);
 
         if(GetTransport())
+        {
+            GetTransport()->RemovePassenger(this);
+            m_movementInfo.SetTransportData(ObjectGuid(), 0.0f, 0.0f, 0.0f, 0.0f, 0, -1);
             RepopAtGraveyard();                             // teleport to near graveyard if on transport, looks blizz like :)
+        }
 
         SendTransferAborted(mapid, TRANSFER_ABORT_INSUF_EXPAN_LVL, mEntry->Expansion());
 
@@ -1817,9 +1821,9 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     }
 
     // if we were on a transport, leave
-    if (!(options & TELE_TO_NOT_LEAVE_TRANSPORT) && m_transport)
+    if (!(options & TELE_TO_NOT_LEAVE_TRANSPORT) && GetTransport())
     {
-        m_transport->RemovePassenger(this);
+        GetTransport()->RemovePassenger(this);
         SetTransport(NULL);
         m_movementInfo.ClearTransportData();
     }
@@ -1839,7 +1843,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     // reset movement flags at teleport, because player will continue move with these flags after teleport
     m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
 
-    if (GetMapId() == mapid && !m_transport)
+    if (GetMapId() == mapid && !GetTransport())
     {
         //lets reset far teleport flag if it wasn't reset during chained teleports
         SetSemaphoreTeleportFar(false);
@@ -1947,9 +1951,9 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
                 // send transfer packet to display load screen
                 WorldPacket data(SMSG_TRANSFER_PENDING, (4+4+4));
                 data << uint32(mapid);
-                if (m_transport)
+                if (GetTransport())
                 {
-                    data << uint32(m_transport->GetEntry());
+                    data << uint32(GetTransport()->GetEntry());
                     data << uint32(GetMapId());
                 }
                 GetSession()->SendPacket(&data);
@@ -1965,7 +1969,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             float final_z = z;
             float final_o = orientation;
 
-            if (m_transport)
+            if (GetTransport())
             {
                 final_x += m_movementInfo.GetTransportPos()->x;
                 final_y += m_movementInfo.GetTransportPos()->y;
@@ -1987,7 +1991,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
                 // transfer finished, inform client to start load
                 WorldPacket data(SMSG_NEW_WORLD, (20));
                 data << uint32(mapid);
-                if (m_transport)
+                if (GetTransport())
                 {
                     data << float(m_movementInfo.GetTransportPos()->x);
                     data << float(m_movementInfo.GetTransportPos()->y);
@@ -2353,7 +2357,7 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
 
     // not allow interaction under control, but allow with own pets
     if (!unit->GetCharmerGuid().IsEmpty())
-        if(unit->GetEntry() != 28781)
+        if(!unit->GetVehicleKit())
             return NULL;
 
     // not enemy
@@ -2368,7 +2372,7 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
                     return NULL;
 
     // not too far
-    if(!unit->IsWithinDistInMap(this,INTERACTION_DISTANCE))
+    if(!unit->IsWithinDistInMap(this,INTERACTION_DISTANCE, unit, this))
         return NULL;
 
     return unit;
@@ -4693,6 +4697,12 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     // update visibility of player for nearby cameras
     UpdateObjectVisibility();
 
+    if (InBattleGround())
+    {
+        if (BattleGround* bg = GetBattleGround())
+            bg->HandlePlayerResurrect(this);
+    }
+
     if(!applySickness)
         return;
 
@@ -4739,6 +4749,12 @@ void Player::KillPlayer()
     UpdateCorpseReclaimDelay();                             // dependent at use SetDeathPvP() call before kill
 
     // don't create corpse at this moment, player might be falling
+
+    if (InBattleGround())
+    {
+        if (BattleGround* bg = GetBattleGround())
+            bg->HandlePlayerResurrect(this);
+    }
 
     // update visibility
     UpdateObjectVisibility();
@@ -5429,6 +5445,7 @@ void Player::ApplyRatingMod(CombatRating cr, int32 value, bool apply)
             float RatingChange = value * GetRatingMultiplier(cr);
             ApplyAttackTimePercentMod(BASE_ATTACK,RatingChange,apply);
             ApplyAttackTimePercentMod(OFF_ATTACK,RatingChange,apply);
+            CallForAllControlledUnits(ApplyScalingBonusWithHelper(SCALING_TARGET_ATTACKSPEED, 0, false),CONTROLLED_PET|CONTROLLED_GUARDIANS);
             break;
         }
         case CR_HASTE_RANGED:
@@ -7660,14 +7677,14 @@ void Player::_ApplyWeaponDependentAuraCritMod(Item *item, WeaponAttackType attac
 
 void Player::_ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType attackType, Aura* aura, bool apply)
 {
-    // ignore spell mods for not wands
-    Modifier const* modifier = aura->GetModifier();
-    if((modifier->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL)==0 && (getClassMask() & CLASSMASK_WAND_USERS)==0)
-        return;
-
     // generic not weapon specific case processes in aura code
     if(aura->GetSpellProto()->EquippedItemClass == -1)
         return;
+
+    if (item->IsBroken())
+        return;
+
+    Modifier const* modifier = aura->GetModifier();
 
     UnitMods unitMod = UNIT_MOD_END;
     switch(attackType)
@@ -7686,9 +7703,35 @@ void Player::_ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType att
         default: return;
     }
 
-    if (!item->IsBroken()&&item->IsFitToSpellRequirements(aura->GetSpellProto()))
+    // no school check of item dmg school here
+    if (item->IsFitToSpellRequirements(aura->GetSpellProto()))
     {
         HandleStatModifier(unitMod, unitModType, float(modifier->m_amount),apply);
+
+        // aura affects all damage
+        if (aura->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE)
+        {
+            // workaround to prevent double applying:
+            if (attackType != BASE_ATTACK)
+                return;
+
+            // apply bonus to weapons, that don't fit requirements themselves
+            for (uint8 i = OFF_ATTACK; i < MAX_ATTACK; i++)
+                if (Item* pItem = GetWeaponForAttack(WeaponAttackType(i),true,false))
+                    if (!pItem->IsFitToSpellRequirements(aura->GetSpellProto()))
+                        HandleStatModifier(UnitMods(UNIT_MOD_DAMAGE_MAINHAND + i), unitModType, float(modifier->m_amount),apply);
+
+            // send info to client
+            uint32 playerField;
+            if (unitModType == TOTAL_VALUE)
+                playerField = aura->IsPositive() ? PLAYER_FIELD_MOD_DAMAGE_DONE_POS : PLAYER_FIELD_MOD_DAMAGE_DONE_NEG;
+            else
+                playerField = PLAYER_FIELD_MOD_DAMAGE_DONE_PCT;
+
+            for (uint8 i = SPELL_SCHOOL_NORMAL; i < MAX_SPELL_SCHOOL; ++i)
+                if (modifier->m_miscvalue & (1 << i))
+                    ApplyModSignedFloatValue(playerField + i, modifier->m_amount/100.0f, apply);
+        }
     }
 }
 
@@ -9130,6 +9173,31 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
                 // and many unks...
             }
             break;
+        case 4710:
+            if (bg && bg->GetTypeID(true) == BATTLEGROUND_IC)
+                bg->FillInitialWorldStates(data, count);
+            else
+            {
+                data << uint32(4221) << uint32(1); // 7
+                data << uint32(4222) << uint32(1); // 8
+                data << uint32(4226) << uint32(300); // 9
+                data << uint32(4227) << uint32(300); // 10
+                data << uint32(4322) << uint32(1); // 11
+                data << uint32(4321) << uint32(1); // 12
+                data << uint32(4320) << uint32(1); // 13
+                data << uint32(4323) << uint32(1); // 14
+                data << uint32(4324) << uint32(1); // 15
+                data << uint32(4325) << uint32(1); // 16
+                data << uint32(4317) << uint32(1); // 17
+                data << uint32(4301) << uint32(1); // 18
+                data << uint32(4296) << uint32(1); // 19
+                data << uint32(4306) << uint32(1); // 20
+                data << uint32(4311) << uint32(1); // 21
+                data << uint32(4294) << uint32(1); // 22
+                data << uint32(4243) << uint32(1); // 23
+                data << uint32(4345) << uint32(1); // 24
+            }
+            break;
         default:
             FillInitialWorldState(data,count, 0x914, 0x0);  // 2324 7
             FillInitialWorldState(data,count, 0x913, 0x0);  // 2323 8
@@ -9336,7 +9404,7 @@ uint8 Player::FindEquipSlot( ItemPrototype const* proto, uint32 slot, bool swap 
             break;
         case INVTYPE_2HWEAPON:
             slots[0] = EQUIPMENT_SLOT_MAINHAND;
-            if (CanDualWield() && CanTitanGrip())
+            if (CanDualWield() && CanTitanGrip() && proto && proto->SubClass != ITEM_SUBCLASS_WEAPON_POLEARM && proto->SubClass != ITEM_SUBCLASS_WEAPON_STAFF)
                 slots[1] = EQUIPMENT_SLOT_OFFHAND;
             break;
         case INVTYPE_TABARD:
@@ -9628,6 +9696,9 @@ Item* Player::GetItemByLimitedCategory(uint32 limitedCategory) const
 
 Item* Player::GetItemByGuid(ObjectGuid guid) const
 {
+    if (guid.IsEmpty())
+        return NULL;
+
     for(int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
         if (Item *pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->GetObjectGuid() == guid)
@@ -9739,6 +9810,16 @@ uint32 Player::GetAttackBySlot( uint8 slot )
         case EQUIPMENT_SLOT_RANGED:   return RANGED_ATTACK;
         default:                      return MAX_ATTACK;
     }
+}
+
+SpellSchoolMask Player::GetMeleeDamageSchoolMask(WeaponAttackType type) const
+{
+    // Weapons can have different spell schools,
+    // in fact only wands have non-physical schools (at least damage[0]...)
+    if(Item* pItem = GetWeaponForAttack(type))
+        return SpellSchoolMask(1 << pItem->GetProto()->Damage[0].DamageType);
+
+    return SPELL_SCHOOL_MASK_NONE;
 }
 
 bool Player::IsInventoryPos( uint8 bag, uint8 slot )
@@ -13014,7 +13095,7 @@ void Player::RemoveEnchantmentDurations(Item *item)
     }
 }
 
-void Player::RemoveAllEnchantments(EnchantmentSlot slot)
+void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool isArenaRemove)
 {
     // remove enchantments from equipped items first to clean up the m_enchantDuration list
     for(EnchantDurationList::iterator itr = m_enchantDuration.begin(), next; itr != m_enchantDuration.end(); itr = next)
@@ -13022,6 +13103,20 @@ void Player::RemoveAllEnchantments(EnchantmentSlot slot)
         next = itr;
         if (itr->slot == slot)
         {
+            if(isArenaRemove && itr->item) // Do not remove poisons at arenas
+            {
+                uint32 enchant_id = itr->item->GetEnchantmentId(slot);
+                if(enchant_id)
+                {
+                    SpellItemEnchantmentEntry const *pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+                    if(pEnchant && pEnchant->aura_id == 26) // 26 is poison
+                    {
+                        ++next;
+                        continue;
+                    }
+                }
+            }
+
             if (itr->item && itr->item->GetEnchantmentId(slot))
             {
                 // remove from stats
@@ -13817,25 +13912,14 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             GetSession()->SendTrainerList(guid);
             break;
         case GOSSIP_OPTION_LEARNDUALSPEC:
-            if(GetSpecsCount() == 1 && !(getLevel() < MIN_DUALSPEC_LEVEL))
             {
-                if (GetMoney() < 10000000)
-                {
-                    SendBuyError( BUY_ERR_NOT_ENOUGHT_MONEY, 0, 0, 0);
-                    PlayerTalkClass->CloseGossip();
-                    break;
-                }
-                else
-                {
-                    ModifyMoney(-10000000);
+                // Conditions are in gossip_menu_option, for better confirmation box
+                // Cast spells that teach dual spec
+                // Both are also ImplicitTarget self and must be cast by player
+                this->CastSpell(this,63624,true); // This will also learn 63680 in its dummy effect
 
-                    // Cast spells that teach dual spec
-                    // Both are also ImplicitTarget self and must be cast by player
-                    this->CastSpell(this,63624,true); // This will also learn 63680 in its dummy effect
-
-                    // Should show another Gossip text with "Congratulations..."
-                    PlayerTalkClass->CloseGossip();
-                }
+                // Should show another Gossip text with "Congratulations..."
+                PlayerTalkClass->CloseGossip();
             }
             break;
         case GOSSIP_OPTION_UNLEARNTALENTS:
@@ -16244,7 +16328,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             GetPositionX() + m_movementInfo.GetTransportPos()->x, GetPositionY() + m_movementInfo.GetTransportPos()->y,
             GetPositionZ() + m_movementInfo.GetTransportPos()->z, GetOrientation() + m_movementInfo.GetTransportPos()->o) ||
             // transport size limited
-            m_movementInfo.GetTransportPos()->x > 50 || m_movementInfo.GetTransportPos()->y > 50 || m_movementInfo.GetTransportPos()->z > 50 )
+            m_movementInfo.GetTransportPos()->x > 250 || m_movementInfo.GetTransportPos()->y > 250 || m_movementInfo.GetTransportPos()->z > 250 )
         {
             sLog.outError("%s have invalid transport coordinates (X: %f Y: %f Z: %f O: %f). Teleport to default race/class locations.",
                 guid.GetString().c_str(), GetPositionX() + m_movementInfo.GetTransportPos()->x, GetPositionY() + m_movementInfo.GetTransportPos()->y,
@@ -17987,8 +18071,8 @@ void Player::SaveToDB()
     uberInsert.addFloat(finiteAlways(m_movementInfo.GetTransportPos()->y));
     uberInsert.addFloat(finiteAlways(m_movementInfo.GetTransportPos()->z));
     uberInsert.addFloat(finiteAlways(m_movementInfo.GetTransportPos()->o));
-    if (m_transport)
-        uberInsert.addUInt32(m_transport->GetGUIDLow());
+    if (GetTransport())
+        uberInsert.addUInt32(GetTransport()->GetGUIDLow());
     else
         uberInsert.addUInt32(0);
 

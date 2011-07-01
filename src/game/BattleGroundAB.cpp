@@ -180,12 +180,6 @@ void BattleGroundAB::StartingEventOpenDoors()
         SpawnBGObject(m_BgObjects[BG_AB_OBJECT_SPEEDBUFF_STABLES + buff + i * 3], RESPAWN_IMMEDIATELY);
     }
     OpenDoorEvent(BG_EVENT_DOOR);
-
-    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-    {
-        if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-            plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9158);
-    }
 }
 
 void BattleGroundAB::AddPlayer(Player *plr)
@@ -195,7 +189,6 @@ void BattleGroundAB::AddPlayer(Player *plr)
     BattleGroundABScore* sc = new BattleGroundABScore;
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
-    plr->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, 9158);
 }
 
 void BattleGroundAB::RemovePlayer(Player * /*plr*/, ObjectGuid /*guid*/)
@@ -357,6 +350,10 @@ void BattleGroundAB::EventPlayerClickedOnFlag(Player *source, GameObject* target
 
     // Check if player really could use this banner, not cheated
     if (!(m_Nodes[node] == 0 || teamIndex == m_Nodes[node] % 2))
+        return;
+
+    // not allow using banner if player has Hex aura
+    if (source->HasAura(51514))
         return;
 
     source->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);

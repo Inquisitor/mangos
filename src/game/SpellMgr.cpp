@@ -27,6 +27,7 @@
 #include "BattleGroundMgr.h"
 #include "MapManager.h"
 #include "Unit.h"
+#include "BattleGroundIC.h"
 
 SpellMgr::SpellMgr()
 {
@@ -424,9 +425,6 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
                 // SpellIcon 2560 is Spell 46687, does not have this flag
                 if ((spellInfo->AttributesEx2 & SPELL_ATTR_EX2_FOOD_BUFF) || spellInfo->SpellIconID == 2560)
                     return SPELL_WELL_FED;
-                else if (spellInfo->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_STAT &&  spellInfo->Attributes & SPELL_ATTR_NOT_SHAPESHIFT &&
-                     spellInfo->SchoolMask & SPELL_SCHOOL_MASK_NATURE && spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE)
-                     return SPELL_SCROLL;
             }
             break;
         }
@@ -4941,6 +4939,26 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
         else
             // not have expected aura
             return !player->HasAura(-auraSpell, EFFECT_INDEX_0);
+    }
+
+    // Extra conditions -- leaving the possibility add extra conditions...
+    switch(spellId)
+    {
+        case 68719: // Oil Refinery - Isle of Conquest.
+        case 68720: // Quarry - Isle of Conquest.
+        {
+            if (player->GetBattleGroundTypeId() != BATTLEGROUND_IC || !player->GetBattleGround())
+                return false;
+
+            uint8 nodeType = spellId == 68719 ? NODE_TYPE_REFINERY : NODE_TYPE_QUARRY;
+            uint8 nodeState = player->GetTeamId() == TEAM_ALLIANCE ? NODE_STATE_CONTROLLED_A : NODE_STATE_CONTROLLED_H;
+
+            BattleGroundIC* pIC = static_cast<BattleGroundIC*>(player->GetBattleGround());
+            if (pIC->GetNodeState(nodeType) == nodeState)
+                return true;
+
+            return false;
+        }
     }
 
     return true;

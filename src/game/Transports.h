@@ -20,12 +20,13 @@
 #define TRANSPORTS_H
 
 #include "GameObject.h"
+#include "Common.h"
 
 #include <map>
 #include <set>
 #include <string>
 
-class Transport : public GameObject
+class MANGOS_DLL_SPEC Transport : public GameObject
 {
     public:
         explicit Transport();
@@ -33,11 +34,26 @@ class Transport : public GameObject
         bool Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint8 animprogress, uint16 dynamicHighValue);
         bool GenerateWaypoints(uint32 pathid, std::set<uint32> &mapids);
         void Update(uint32 update_diff, uint32 p_time) override;
-        bool AddPassenger(Player* passenger);
-        bool RemovePassenger(Player* passenger);
+        void UpdateNPCPositions();
+        bool AddPassenger(Unit* passenger);
+        bool RemovePassenger(Unit* passenger);
 
-        typedef std::set<Player*> PlayerSet;
-        PlayerSet const& GetPassengers() const { return m_passengers; }
+        typedef std::set<Unit*> UnitSet;
+        UnitSet const& GetUnitPassengers() const { return _passengers; }
+
+        Creature* AddNPCPassenger(uint32 entry, float x, float y, float z, float o, Team team = TEAM_NONE);
+        void UpdateCreaturePositions(Creature* npc, Map* map, float second_x, float second_y, float second_z, float second_o, bool teleport = false);
+
+        void BuildCreateUpdateBlockForPlayer(UpdateData* data, Player* target);
+        void BuildMovementPacket(Map const* targetMap, bool isMoving = false);
+        bool GetStopped() const { return isStopped; }
+        void SetStopped(bool values) { isStopped = values; }
+
+        //void BuildStartMovePacket(Map const *targetMap);
+        //void BuildStopMovePacket(Map const *targetMap);
+
+        bool IsTransportMap(uint32 mapid);
+        Transport* GetTransportByGOMapId(uint32 mapid);
 
     private:
         struct WayPoint
@@ -65,7 +81,8 @@ class Transport : public GameObject
         uint32 m_pathTime;
         uint32 m_timer;
 
-        PlayerSet m_passengers;
+        UnitSet _passengers;
+        bool isStopped;
 
     public:
         WayPointMap m_WayPoints;

@@ -1024,12 +1024,6 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
-                        case 1310:             // SA, win under 4 minutes
-                        {
-                            if(((BattleGroundSA*)bg)->Round_timer > (4 * MINUTE * IN_MILLISECONDS))
-                                continue;
-                            break;
-                        }
                         case 1164:             // AV, own both mines (horde)
                         case 225:              // AV, own both mines (alliance)
                         {
@@ -1089,8 +1083,6 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     }
                 }
 
-                if(miscvalue1 == 2 && bg->GetTypeID(true) == BATTLEGROUND_SA && achievementCriteria->referredAchievement != 1310)
-                    continue;                            // Need to stop if not Storm the Beach
                 change = miscvalue1;
                 progressType = PROGRESS_ACCUMULATE;
                 break;
@@ -1428,6 +1420,17 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                         }
                         else
                             continue;
+                    case 1310:                                         // SA, win under 4 minutes
+                        if(miscvalue1 == 65246)
+                        {
+                            BattleGround* bg = GetPlayer()->GetBattleGround();
+                            if (!bg)
+                                continue;
+
+                            if(((BattleGroundSA*)bg)->Round_timer > (4 * MINUTE * IN_MILLISECONDS))
+                                continue;
+                            break;
+                        }
                     default:
                         {
                             // those requirements couldn't be found in the dbc

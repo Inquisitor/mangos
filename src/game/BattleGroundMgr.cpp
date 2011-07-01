@@ -1293,7 +1293,7 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket *data, BattleGround *bg)
 
             *data << uint32(pointsLost);                        // Rating Lost
             *data << uint32(pointsGained);                      // Rating gained
-            *data << uint32(0);                                 // Matchmaking Value
+            *data << uint32(bg->m_ArenaTeamMMRChanges[i]);      // Matchmaking Value
             DEBUG_LOG("rating change: %d", bg->m_ArenaTeamRatingChanges[i]);
         }
         for(int i = 1; i >= 0; --i)
@@ -1375,9 +1375,13 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket *data, BattleGround *bg)
                 *data << (uint32)((BattleGroundSAScore*)itr->second)->DemolishersDestroyed; // demolishers destroyed
                 *data << (uint32)((BattleGroundSAScore*)itr->second)->GatesDestroyed;       // gates destroyed
                 break;
+            case BATTLEGROUND_IC:                           // wotlk
+                *data << uint32(0x00000002);                // count of next fields
+                *data << uint32(((BattleGroundICScore*)itr->second)->BasesAssaulted);       // bases asssulted
+                *data << uint32(((BattleGroundICScore*)itr->second)->BasesDefended);        // bases defended
+                 break;
             case BATTLEGROUND_DS:                           // wotlk
             case BATTLEGROUND_RV:                           // wotlk
-            case BATTLEGROUND_IC:                           // wotlk
             case BATTLEGROUND_RB:                           // wotlk
                 *data << (int32)0;                          // 0
                 break;
