@@ -221,7 +221,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS]=
     &Aura::HandleAuraModRangedAttackPowerPercent,           //167 SPELL_AURA_MOD_RANGED_ATTACK_POWER_PCT
     &Aura::HandleNoImmediateEffect,                         //168 SPELL_AURA_MOD_DAMAGE_DONE_VERSUS            implemented in Unit::SpellDamageBonusDone, Unit::MeleeDamageBonusDone
     &Aura::HandleNoImmediateEffect,                         //169 SPELL_AURA_MOD_CRIT_PERCENT_VERSUS           implemented in Unit::DealDamageBySchool, Unit::DoAttackDamage, Unit::SpellCriticalBonus
-    &Aura::HandleNULL,                                      //170 SPELL_AURA_DETECT_AMORE       different spells that ignore transformation effects
+    &Aura::HandleDetectAmore,                               //170 SPELL_AURA_DETECT_AMORE       different spells that ignore transformation effects
     &Aura::HandleAuraModIncreaseSpeed,                      //171 SPELL_AURA_MOD_SPEED_NOT_STACK
     &Aura::HandleAuraModIncreaseMountedSpeed,               //172 SPELL_AURA_MOD_MOUNTED_SPEED_NOT_STACK
     &Aura::HandleUnused,                                    //173 unused (3.0.8a-3.2.2a) no spells, old SPELL_AURA_ALLOW_CHAMPION_SPELLS  only for Proclaim Champion spell
@@ -1239,8 +1239,27 @@ void Aura::TriggerSpell()
 //                    case 24379: break;
 //                    // Happy Pet
 //                    case 24716: break;
-//                    // Dream Fog
-//                    case 24780: break;
+                    case 24780:                             // Dream Fog
+                    {
+                        // Note: In 1.12 triggered spell 24781 still exists, need to script dummy effect for this spell then
+                        // Select an unfriendly enemy in 100y range and attack it
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        ThreatList const& tList = target->getThreatManager().getThreatList();
+                        for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
+                        {
+                            Unit* pUnit = target->GetMap()->GetUnit((*itr)->getUnitGuid());
+
+                            if (pUnit && target->getThreatManager().getThreat(pUnit))
+                                target->getThreatManager().modifyThreatPercent(pUnit, -100);
+                        }
+
+                        if (Unit* pEnemy = target->SelectRandomUnfriendlyTarget(target->getVictim(), 100.0f))
+                            ((Creature*)target)->AI()->AttackStart(pEnemy);
+
+                        return;
+                    }
 //                    // Cannon Prep
 //                    case 24832: break;
                     case 24834:                             // Shadow Bolt Whirl
@@ -1296,8 +1315,17 @@ void Aura::TriggerSpell()
                         triggerTarget->CastCustomSpell(triggerTarget, 29879, &bpDamage, NULL, NULL, true, NULL, this, casterGUID);
                         return;
                     }
-//                    // Detonate Mana
-//                    case 27819: break;
+                    case 27819:                             // Detonate Mana (Naxxramas: Kel'Thuzad)
+                    {
+                        if (!target->GetMaxPower(POWER_MANA))
+                            return;
+
+                        uint32 uiBurnMana = urand(1800, 2200);
+                        uint32 uiCurrMana = target->GetPower(POWER_MANA);
+                        target->SetPower(POWER_MANA, uiBurnMana > uiCurrMana ? 0 : uiCurrMana - uiBurnMana);
+                        target->CastSpell(target, 27820, true);
+                        return;
+                    }
 //                    // Controller Timer
 //                    case 28095: break;
 //                    // Stalagg Chain
@@ -1312,8 +1340,11 @@ void Aura::TriggerSpell()
 //                    case 28114: break;
 //                    // Communique Timer, camp
 //                    case 28346: break;
-//                    // Icebolt
-//                    case 28522: break;
+                    case 28522:                             // Icebolt (Sapphiron - Naxxramas)
+                        // dunno if triggered spell id is correct
+                        if (!target->HasAura(45776))
+                            trigger_spell_id = 45776;
+                        break;
 //                    // Silithyst
 //                    case 29519: break;
                     case 29528:                             // Inoculate Nestlewood Owlkin
@@ -5155,6 +5186,11 @@ void Aura::HandleInvisibilityDetect(bool apply, bool Real)
         ((Player*)target)->GetCamera().UpdateVisibilityForOwner();
 }
 
+void Aura::HandleDetectAmore(bool apply, bool /*real*/)
+{
+    GetTarget()->ApplyModByteFlag(PLAYER_FIELD_BYTES2, 3, (PLAYER_FIELD_BYTE2_DETECT_AMORE_0 << m_modifier.m_amount), apply);
+}
+
 void Aura::HandleAuraModRoot(bool apply, bool Real)
 {
     // only at real add/remove aura
@@ -5736,6 +5772,12 @@ void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
                     target->CastSpell(target, 32612, true, NULL, this);
 
                 return;
+            case 28522:                                     // Icebolt (Naxxramas: Sapphiron)
+                if (target->HasAura(45776))                 // Should trigger/remove some kind of iceblock
+                    // not sure about ice block spell id
+                    target->RemoveAurasDueToSpell(45776); 
+                
+                return;
             case 42783:                                     // Wrath of the Astrom...
                 if (m_removeMode == AURA_REMOVE_BY_EXPIRE && GetEffIndex() + 1 < MAX_EFFECT_INDEX)
                     target->CastSpell(target, GetSpellProto()->CalculateSimpleValue(SpellEffectIndex(GetEffIndex()+1)), true);
@@ -5784,6 +5826,11 @@ void Aura::HandlePeriodicTriggerSpell(bool apply, bool /*Real*/)
                     if (pCaster->HasAura(GetModifier()->m_amount))
                         pCaster->CastSpell(target, spellId, true);
                 }
+
+                return;
+            case 71441:                                     // Unstable Ooze Explosion (Icecrown Citadel encounter)
+                if (m_removeMode == AURA_REMOVE_BY_EXPIRE)
+                    target->CastSpell(target, 67375, true, NULL, this);
 
                 return;
             default:
@@ -6022,6 +6069,11 @@ void Aura::HandlePeriodicHeal(bool apply, bool /*Real*/)
             m_modifier.m_amount += (GetStackAmount() == 2) ? m_modifier.m_amount : (m_modifier.m_amount / 2);
         else
             m_modifier.m_amount = caster->SpellHealingBonusDone(target, GetSpellProto(), m_modifier.m_amount, DOT, GetStackAmount());
+
+        // Rejuvenation
+        if (GetSpellProto()->IsFitToFamily<SPELLFAMILY_DRUID, CF_DRUID_REJUVENATION>())
+            if (caster->HasAura(64760))                     // Item - Druid T8 Restoration 4P Bonus
+                caster->CastCustomSpell(target, 64801, &m_modifier.m_amount, NULL, NULL, true, NULL);
     }
 }
 
@@ -7644,6 +7696,11 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
             float DoneActualBenefit = 0.0f;
             switch(spellProto->SpellFamilyName)
             {
+                case SPELLFAMILY_GENERIC:
+                    // Stoicism
+                    if (spellProto->Id == 70845)
+                        DoneActualBenefit = caster->GetMaxHealth() * 0.20f;
+                    break;
                 case SPELLFAMILY_PRIEST:
                     // Power Word: Shield
                     if (spellProto->SpellFamilyFlags.test<CF_PRIEST_POWER_WORD_SHIELD>())
@@ -7688,15 +7745,6 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                         // +75% from spell power
                         DoneActualBenefit = caster->SpellBaseHealingBonusDone(GetSpellSchoolMask(spellProto)) * 0.75f;
                     }
-                    break;
-                case SPELLFAMILY_GENERIC:
-                    // Stoicism
-                    if (spellProto->Id==70845)
-                    {
-                        DoneActualBenefit = caster->GetMaxHealth()*0.20f;
-                    }
-                    if (GetId()==70845)
-                        DoneActualBenefit = caster->GetMaxHealth() * 0.2f;
                     break;
                 default:
                     break;
@@ -9821,19 +9869,22 @@ void SpellAuraHolder::_AddSpellAuraHolder()
 
 void SpellAuraHolder::_RemoveSpellAuraHolder()
 {
- // Remove all triggered by aura spells vs unlimited duration
+    // Remove all triggered by aura spells vs unlimited duration
     // except same aura replace case
     if(m_removeMode!=AURA_REMOVE_BY_STACK)
         CleanupTriggeredSpells();
 
     Unit* caster = GetCaster();
 
-    if(caster && IsPersistent())
-    {
-        DynamicObject *dynObj = caster->GetDynObject(GetId());
-        if (dynObj)
+    if (caster && IsPersistent())
+        if (DynamicObject *dynObj = caster->GetDynObject(GetId()))
             dynObj->RemoveAffected(m_target);
-    }
+
+    // remove at-store spell cast items (for all remove modes?)
+    if (m_target->GetTypeId() == TYPEID_PLAYER && m_removeMode != AURA_REMOVE_BY_DEFAULT && m_removeMode != AURA_REMOVE_BY_DELETE)
+        if (ObjectGuid castItemGuid = GetCastItemGuid())
+            if (Item* castItem = ((Player*)m_target)->GetItemByGuid(castItemGuid))
+                ((Player*)m_target)->DestroyItemWithOnStoreSpell(castItem);
 
     //passive auras do not get put in slots - said who? ;)
     // Note: but totem can be not accessible for aura target in time remove (to far for find in grid)
@@ -10390,7 +10441,8 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                 case 48108:                                 // Hot Streak (triggered)
                 case 57761:                                 // Fireball! (Brain Freeze triggered)
                 {
-                    if (!apply)
+                    // consumed aura (at proc charges 0)
+                    if (!apply && m_removeMode == AURA_REMOVE_BY_DEFAULT)
                     {
                         Unit* caster = GetCaster();
                         if (caster && caster->HasAura(70752))   // Item - Mage T10 2P Bonus
@@ -10694,15 +10746,6 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
         {
             switch (GetId())
             {
-                case 34455:          // Ferocious inspiration and ranks
-                    spellId1 = 75593;
-                    break;
-                case 34459:
-                    spellId1 = 75446;
-                    break;
-                case 34460:
-                    spellId1 = 75447;
-                    break;
                 case 19574:                                 // Bestial Wrath - immunity
                 case 34471:                                 // The Beast Within - immunity
                 {
@@ -10733,6 +10776,23 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                     }
                     break;
                 }
+                case 34074:                                 // Aspect of the Viper
+                {
+                    if (!apply || m_target->HasAura(60144)) // Viper Attack Speed
+                        spellId1 = 61609;                   // Vicious Viper
+                    else
+                        return;
+                    break;
+                }
+                case 34455:          // Ferocious inspiration and ranks
+                    spellId1 = 75593;
+                    break;
+                case 34459:
+                    spellId1 = 75446;
+                    break;
+                case 34460:
+                    spellId1 = 75447;
+                    break;
                 case 35029:                                 // Focused Fire, rank 1
                 {
                     if (apply && !m_target->HasAura(34027)) // Kill Command, owner casting aura

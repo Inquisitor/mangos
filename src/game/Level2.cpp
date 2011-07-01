@@ -97,6 +97,17 @@ bool ChatHandler::HandleMuteCommand(char* args)
     std::string nameLink = playerLink(target_name);
 
     PSendSysMessage(LANG_YOU_DISABLE_CHAT, nameLink.c_str(), notspeaktime);
+
+    if (sWorld.getConfig(CONFIG_BOOL_GM_ANNOUNCE_BAN))
+    {
+        std::string GMnameLink;
+        if (m_session)
+            GMnameLink = playerLink(m_session->GetPlayerName());
+        else
+            GMnameLink = "";
+        PSendGlobalSysMessage(LANG_MUTE_ANNOUNCE, GMnameLink.c_str(), nameLink.c_str(), notspeaktime);
+    }
+
     return true;
 }
 
@@ -964,7 +975,7 @@ bool ChatHandler::HandleGameObjectTurnCommand(char* args)
     if (!ExtractFloat(&args, z_rot) || !ExtractOptFloat(&args, y_rot, 0) || !ExtractOptFloat(&args, x_rot, 0))
         return false;         
 
-    obj->SetRotationAngles(z_rot, y_rot, x_rot);
+    obj->SetWorldRotationAngles(z_rot, y_rot, x_rot);
     obj->SaveToDB();
     PSendSysMessage(LANG_COMMAND_TURNOBJMESSAGE, obj->GetGUIDLow(), obj->GetGOInfo()->name, obj->GetGUIDLow());
     return true;

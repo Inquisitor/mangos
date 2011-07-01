@@ -2100,28 +2100,48 @@ Unit* Creature::SelectAttackingTarget(AttackingTarget target, uint32 position, f
         }
         case ATTACKING_TARGET_RANDOM_PLAYER:
         {
-            Unit* pTarget = NULL;
-            std::vector<Player *> target_list;
-
-            for (i; i != threatlist.end(); ++i)
+            std::vector<Unit*> threatPlayers;
+            threatPlayers.reserve(threatlist.size());
+            for (; i != threatlist.end(); ++i)
             {
-                pTarget = GetMap()->GetUnit((*i)->getUnitGuid());
-
-                if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER)
-                    target_list.push_back((Player*)pTarget);
-
-                pTarget = NULL;
+                Unit *target = GetMap()->GetUnit((*i)->getUnitGuid());
+                if (target && target->GetTypeId() == TYPEID_PLAYER)
+                    threatPlayers.push_back(target);
             }
-
-            if (target_list.size())
-            {
-                if (pTarget = *(target_list.begin()+rand()%target_list.size()))
-                    return pTarget;
-            }
+            if (threatPlayers.empty() || position >= threatPlayers.size())
+                return NULL;
+            return threatPlayers[urand(position, threatPlayers.size()-1)];
         }
-        // TODO: implement these
-        //case ATTACKING_TARGET_TOPAGGRO_PLAYER:
-        //case ATTACKING_TARGET_BOTTOMAGGRO_PLAYER:
+        case ATTACKING_TARGET_TOPAGGRO_PLAYER:
+        {
+            for (; i != threatlist.end(); ++i)
+            {
+                Unit *target = GetMap()->GetUnit((*i)->getUnitGuid());
+                if (target && target->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if (!position)
+                        return target;
+                    else
+                        --position;
+                }
+            }
+            return NULL;
+        }
+        case ATTACKING_TARGET_BOTTOMAGGRO_PLAYER:
+        {
+            for (; r != threatlist.rend(); ++r)
+            {
+                Unit *target = GetMap()->GetUnit((*r)->getUnitGuid());
+                if (target && target->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if (!position)
+                        return target;
+                    else
+                        --position;
+                }
+            }
+            return NULL;
+        }
     }
 
     return NULL;

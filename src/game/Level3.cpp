@@ -4119,6 +4119,10 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
     uint32 nativeid = target->GetNativeDisplayId();
     uint32 Entry = target->GetEntry();
     CreatureInfo const* cInfo = target->GetCreatureInfo();
+    uint32 VehicleId = cInfo ? cInfo->vehicleId : 0;
+    uint32 difficulty_entry_1 = cInfo ? cInfo->DifficultyEntry[0] : 0;
+    uint32 difficulty_entry_2 = cInfo ? cInfo->DifficultyEntry[1] : 0;
+    uint32 difficulty_entry_3 = cInfo ? cInfo->DifficultyEntry[2] : 0;
 
     time_t curRespawnDelay = target->GetRespawnTimeEx()-time(NULL);
     if(curRespawnDelay < 0)
@@ -4140,8 +4144,8 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
     else
         PSendSysMessage(LANG_NPCINFO_CHAR, target->GetGuidStr().c_str(), faction, npcflags, Entry, displayid, nativeid);
 
-    if (cInfo->vehicleId)
-        PSendSysMessage("VehicleId: %u", cInfo->vehicleId);
+    PSendSysMessage("VehicleId: %u", cInfo->vehicleId);
+    PSendSysMessage("difficulty_entry_1: %u, difficulty_entry_2: %u, difficulty_entry_3: %u", difficulty_entry_1, difficulty_entry_2, difficulty_entry_3);
 
     PSendSysMessage(LANG_NPCINFO_LEVEL, target->getLevel());
     PSendSysMessage(LANG_NPCINFO_HEALTH,target->GetCreateHealth(), target->GetMaxHealth(), target->GetHealth());
@@ -5374,6 +5378,35 @@ bool ChatHandler::HandleBanHelper(BanMode mode, char* args)
                 PSendSysMessage(LANG_BAN_YOUBANNED, nameOrIP.c_str(), secsToTimeString(duration_secs,true).c_str(), reason);
             else
                 PSendSysMessage(LANG_BAN_YOUPERMBANNED, nameOrIP.c_str(), reason);
+            if (sWorld.getConfig(CONFIG_BOOL_GM_ANNOUNCE_BAN))
+            {
+                std::string GMnameLink;
+                if (m_session)
+                    GMnameLink = playerLink(m_session->GetPlayerName());
+                else
+                    GMnameLink = "";
+                switch(mode)
+                {
+                    case BAN_ACCOUNT:
+                        if (duration_secs > 0)
+                            PSendGlobalSysMessage(LANG_BAN_ACCOUNT_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                        else
+                            PSendGlobalSysMessage(LANG_PERMBAN_ACCOUNT_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                        break;
+                    case BAN_CHARACTER:
+                        if (duration_secs > 0)
+                            PSendGlobalSysMessage(LANG_BAN_CHARACTER_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                        else
+                            PSendGlobalSysMessage(LANG_PERMBAN_CHARACTER_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                       break;
+                    case BAN_IP:
+                        if (duration_secs > 0)
+                            PSendGlobalSysMessage(LANG_BAN_IP_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                        else
+                            PSendGlobalSysMessage(LANG_PERMBAN_IP_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                        break;
+                }
+            }
             break;
         case BAN_SYNTAX_ERROR:
             return false;
