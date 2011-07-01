@@ -9738,7 +9738,7 @@ uint32 Player::GetAttackBySlot( uint8 slot )
     }
 }
 
-SpellSchoolMask Player::GetSchoolMaskForAttackType(WeaponAttackType type) const
+SpellSchoolMask Player::GetMeleeDamageSchoolMask(WeaponAttackType type) const
 {
     // Weapons can have different spell schools,
     // in fact only wands have non-physical schools (at least damage[0]...)

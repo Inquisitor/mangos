@@ -1680,7 +1680,7 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
 {
     damageInfo->attacker         = this;
     damageInfo->target           = pVictim;
-    damageInfo->damageSchoolMask = GetSchoolMaskForAttackType(attackType);
+    damageInfo->damageSchoolMask = GetMeleeDamageSchoolMask(attackType);
     damageInfo->attackType       = attackType;
     damageInfo->damage           = 0;
     damageInfo->cleanDamage      = 0;
@@ -8086,7 +8086,7 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
     Item*  pWeapon          = GetTypeId() == TYPEID_PLAYER ? ((Player*)this)->GetWeaponForAttack(attType,true,false) : NULL;
     uint32 creatureTypeMask = pVictim->GetCreatureTypeMask();
-    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetSchoolMaskForAttackType(attType);
+    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask(attType);
 
     // FLAT damage bonus auras
     // =======================
@@ -8341,7 +8341,7 @@ uint32 Unit::MeleeDamageBonusTaken(Unit *pCaster, uint32 pdamage,WeaponAttackTyp
 
     // differentiate for weapon damage based spells
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
-    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetSchoolMaskForAttackType(attType);
+    uint32 schoolMask       = spellProto ? spellProto->SchoolMask : GetMeleeDamageSchoolMask(attType);
     uint32 mechanicMask     = spellProto ? GetAllSpellMechanicMask(spellProto) : 0;
 
     // Shred and Maul also have bonus as MECHANIC_BLEED damages
@@ -11168,7 +11168,7 @@ void Unit::ProcDamageAndSpellFor( bool isVictim, Unit * pTarget, uint32 procFlag
     }
 }
 
-SpellSchoolMask Unit::GetSchoolMaskForAttackType(WeaponAttackType attType) const
+SpellSchoolMask Unit::GetMeleeDamageSchoolMask(WeaponAttackType attType) const
 {
     return SPELL_SCHOOL_MASK_NORMAL;
 }

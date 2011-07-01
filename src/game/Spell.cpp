@@ -344,7 +344,7 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
     m_spellSchoolMask = GetSpellSchoolMask(info);           // Can be override for some spell (wand shoot for example)
 
     if(IsSpellHaveEffect(m_spellInfo, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL))
-        m_spellSchoolMask = m_caster->GetSchoolMaskForAttackType(m_attackType);
+        m_spellSchoolMask = m_caster->GetMeleeDamageSchoolMask(m_attackType);
 
     // Set health leech amount to zero
     m_healthLeech = 0;
