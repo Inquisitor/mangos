@@ -6793,6 +6793,7 @@ void Player::UpdateHonorFields()
 
     m_lastHonorUpdateTime = now;
 
+    /*
     // START custom PvP Honor Kills Title System
     uint32 HonorKills = GetUInt32Value(PLAYER_FIELD_LIFETIME_HONORBALE_KILLS);
     uint32 victim_rank = 0;
@@ -6853,6 +6854,7 @@ void Player::UpdateHonorFields()
         }
     }
     // END custom PvP Honor Kills Title System
+    */
 }
 
 ///Calculate the amount of honor gained based on the victim
