@@ -30,7 +30,7 @@
 BattleGroundIC::BattleGroundIC()
 {
     m_BgObjects.resize(MAX_NORMAL_GAMEOBJECTS_SPAWNS + MAX_AIRSHIPS_SPAWNS + MAX_HANGAR_TELEPORTERS_SPAWNS + MAX_FORTRESS_TELEPORTERS_SPAWNS);
-    m_BgCreatures.resize(MAX_NORMAL_NPCS_SPAWNS + MAX_WORKSHOP_SPAWNS + MAX_DOCKS_SPAWNS + MAX_SPIRIT_GUIDES_SPAWNS);
+    m_BgCreatures.resize(MAX_NORMAL_NPCS_SPAWNS + MAX_WORKSHOP_SPAWNS + MAX_DOCKS_SPAWNS);
 
     m_StartMessageIds[BG_STARTING_EVENT_FIRST]  = LANG_BG_IC_START_TWO_MINUTES;
     m_StartMessageIds[BG_STARTING_EVENT_SECOND] = LANG_BG_IC_START_ONE_MINUTE;
@@ -42,6 +42,14 @@ BattleGroundIC::BattleGroundIC()
 
     for (uint8 i = 0; i < BG_IC_MAXDOOR; i++)
         GateStatus[i] = BG_IC_GATE_OK;
+
+    for (uint8 i = 0; i < IC_EVENT_ADD_SPIR_DOCKS+1; i++)
+        m_ActiveEvents[i] = BG_EVENT_NONE;
+
+    SpawnEvent(IC_EVENT_ADD_SPIR, 0, true);
+    SpawnEvent(IC_EVENT_ADD_SPIR, 1, true);
+    SpawnEvent(IC_EVENT_ADD_SPIR_HORDE_BASE, 1, true);
+    SpawnEvent(IC_EVENT_ADD_SPIR_ALLY_BASE, 0, true);
 
     closeFortressDoorsTimer = CLOSE_DOORS_TIME; // the doors are closed again... in a special way
     doorsClosed = false;
@@ -286,7 +294,7 @@ void BattleGroundIC::StartingEventOpenDoors()
         if (!AddCreature(BG_IC_NpcSpawnlocs[i].entry,BG_IC_NpcSpawnlocs[i].type,BG_IC_NpcSpawnlocs[i].team,
             BG_IC_NpcSpawnlocs[i].x,BG_IC_NpcSpawnlocs[i].y,
             BG_IC_NpcSpawnlocs[i].z,BG_IC_NpcSpawnlocs[i].o,
-            RESPAWN_ONE_DAY))
+            3))
             sLog.outError("Isle of Conquest: There was an error spawning creature %u",BG_IC_NpcSpawnlocs[i].entry);
         else
             SpawnBGCreature(m_BgCreatures[i], RESPAWN_IMMEDIATELY);
@@ -394,14 +402,6 @@ bool BattleGroundIC::SetupBattleGround()
         }
         else
             SpawnBGObject(m_BgObjects[BG_IC_ObjSpawnlocs[i].type], RESPAWN_IMMEDIATELY);
-    }
-    if (!AddSpiritGuide(BG_IC_NPC_SPIRIT_GUIDE_1+5,BG_IC_SpiritGuidePos[5][0], BG_IC_SpiritGuidePos[5][1],BG_IC_SpiritGuidePos[5][2], BG_IC_SpiritGuidePos[5][3],ALLIANCE)
-        || !AddSpiritGuide(BG_IC_NPC_SPIRIT_GUIDE_1+6,BG_IC_SpiritGuidePos[6][0], BG_IC_SpiritGuidePos[6][1],BG_IC_SpiritGuidePos[6][2], BG_IC_SpiritGuidePos[6][3],HORDE)
-        || !AddSpiritGuide(BG_IC_NPC_SPIRIT_GUIDE_1+3,BG_IC_SpiritGuidePos[7][0], BG_IC_SpiritGuidePos[7][1],BG_IC_SpiritGuidePos[7][2], BG_IC_SpiritGuidePos[7][3],ALLIANCE)
-        || !AddSpiritGuide(BG_IC_NPC_SPIRIT_GUIDE_1+4,BG_IC_SpiritGuidePos[8][0], BG_IC_SpiritGuidePos[8][1],BG_IC_SpiritGuidePos[8][2], BG_IC_SpiritGuidePos[8][3],HORDE))
-    {
-        sLog.outError("Isle of Conquest: Failed to spawn initial spirit guide!");
-        return false;
     }
 
     gunshipHorde = CreateTransport(GO_HORDE_GUNSHIP,TRANSPORT_PERIOD_TIME);
@@ -536,8 +536,26 @@ void BattleGroundIC::EventPlayerClickedOnFlag(Player* player, GameObject* target
                 // if we are here means that the point has been lost, or it is the first capture
 
                 if (nodePoint[i].nodeType != NODE_TYPE_REFINERY && nodePoint[i].nodeType != NODE_TYPE_QUARRY)
-                    if (!m_BgCreatures[BG_IC_NPC_SPIRIT_GUIDE_1+(nodePoint[i].nodeType)-2].IsEmpty())
-                        DelCreature(BG_IC_NPC_SPIRIT_GUIDE_1+(nodePoint[i].nodeType)-2);
+                {
+                    switch(nodePoint[i].nodeType)
+                    {
+                        case NODE_TYPE_DOCKS:
+                            SpawnEvent(IC_EVENT_ADD_SPIR_DOCKS, teamIndex == 0 ? 1 : 0, false);
+                            break;
+                        case NODE_TYPE_HANGAR:
+                            SpawnEvent(IC_EVENT_ADD_SPIR_HANGAR, teamIndex == 0 ? 1 : 0, false);
+                            break;
+                        case NODE_TYPE_WORKSHOP:
+                            SpawnEvent(IC_EVENT_ADD_SPIR_WORKSHOP, teamIndex == 0 ? 1 : 0, false);
+                            break;
+                        case NODE_TYPE_GRAVEYARD_A:
+                            SpawnEvent(IC_EVENT_ADD_SPIR_ALLY_BASE, teamIndex == 0 ? 1 : 0, false);
+                            break;
+                        case NODE_TYPE_GRAVEYARD_H:
+                            SpawnEvent(IC_EVENT_ADD_SPIR_HORDE_BASE, teamIndex == 0 ? 1 : 0, false);
+                            break;
+                    }
+                }
 
                 UpdatePlayerScore(player, SCORE_BASES_ASSAULTED, 1);
 
@@ -644,14 +662,28 @@ void BattleGroundIC::HandleContestedNodes(ICNodePoint* nodePoint)
 
 void BattleGroundIC::HandleCapturedNodes(ICNodePoint* nodePoint, bool recapture)
 {
-    if(nodePoint->nodeType != NODE_TYPE_REFINERY && nodePoint->nodeType != NODE_TYPE_QUARRY)
+    if (nodePoint->nodeType != NODE_TYPE_REFINERY && nodePoint->nodeType != NODE_TYPE_QUARRY)
     {
-        if (!AddSpiritGuide(BG_IC_NPC_SPIRIT_GUIDE_1+nodePoint->nodeType-2,
-            BG_IC_SpiritGuidePos[nodePoint->nodeType][0], BG_IC_SpiritGuidePos[nodePoint->nodeType][1],
-            BG_IC_SpiritGuidePos[nodePoint->nodeType][2], BG_IC_SpiritGuidePos[nodePoint->nodeType][3],
-            (nodePoint->faction == TEAM_ALLIANCE ? ALLIANCE : HORDE)))
-            sLog.outError("Isle of Conquest: Failed to spawn spirit guide! point: %u, team: %u,", nodePoint->nodeType, nodePoint->faction);
+        switch(nodePoint->nodeType)
+        {
+            case NODE_TYPE_DOCKS:
+                SpawnEvent(IC_EVENT_ADD_SPIR_DOCKS, nodePoint->faction, true);
+                break;
+            case NODE_TYPE_HANGAR:
+                SpawnEvent(IC_EVENT_ADD_SPIR_HANGAR, nodePoint->faction, true);
+                break;
+            case NODE_TYPE_WORKSHOP:
+                SpawnEvent(IC_EVENT_ADD_SPIR_WORKSHOP, nodePoint->faction, true);
+                break;
+            case NODE_TYPE_GRAVEYARD_A:
+                SpawnEvent(IC_EVENT_ADD_SPIR_ALLY_BASE, nodePoint->faction, true);
+                break;
+            case NODE_TYPE_GRAVEYARD_H:
+                SpawnEvent(IC_EVENT_ADD_SPIR_HORDE_BASE, nodePoint->faction, true);
+                break;
+        }
     }
+
     switch(nodePoint->gameobject_type)
     {
     case BG_IC_GO_HANGAR_BANNER:

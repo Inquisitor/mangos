@@ -1744,6 +1744,12 @@ Creature* BattleGround::AddCreature(uint32 entry, uint32 type, uint32 teamval, f
     if (!map)
         return NULL;
 
+    Team team = TEAM_NONE;
+    if (teamval == TEAM_HORDE)
+        team = HORDE;
+    else
+        team = ALLIANCE;
+
     Creature* pCreature = new Creature;
     CreatureCreatePos pos(map, x, y, z, o, PHASEMASK_NORMAL);
     CreatureInfo const *cinfo = ObjectMgr::GetCreatureTemplate(entry);
@@ -1754,7 +1760,7 @@ Creature* BattleGround::AddCreature(uint32 entry, uint32 type, uint32 teamval, f
         return NULL;
     }
 
-    if (!pCreature->Create(GetBgMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, cinfo, TEAM_NONE))
+    if (!pCreature->Create(GetBgMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, cinfo, team))
     {
         sLog.outError("Can't create creature entry: %u",entry);
         delete pCreature;
