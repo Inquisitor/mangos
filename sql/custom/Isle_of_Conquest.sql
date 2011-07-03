@@ -184,6 +184,7 @@ INSERT INTO creature VALUES (200106, 34919, 628, 3, 1, 0, 0, 223.969,-822.958,60
 INSERT INTO creature VALUES (200107, 34919, 628, 3, 1, 0, 0, 224.211,-826.952,60.8188,6.25961, 0, 600, 0, 0, 0, 0, 0, 0);
 INSERT INTO creature VALUES (200108, 34919, 628, 3, 1, 0, 0, 223.119,-838.386,60.8145,5.64857, 0, 600, 0, 0, 0, 0, 0, 0);
 INSERT INTO creature VALUES (200109, 34919, 628, 3, 1, 0, 0, 223.889,-835.102,60.8201,6.21642, 0, 600, 0, 0, 0, 0, 0, 0);
+UPdate creature_template set npcflag=1, dmg_multiplier=63.4, unit_flags=4096, type_flags=4, mechanic_immune_mask=650854235 WHERE entry IN (34924,35403,34922,35405,34918,35407,34919,35401);
 
 
 -- Spirit guides (This must be done with BG events - this is hacky way)
