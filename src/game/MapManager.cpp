@@ -45,7 +45,10 @@ MapManager::~MapManager()
         delete iter->second;
 
     for(TransportSet::iterator i = m_Transports.begin(); i != m_Transports.end(); ++i)
+    {
+        (*i)->RemoveFromWorld();
         delete *i;
+    }
 
     DeleteStateMachine();
 }

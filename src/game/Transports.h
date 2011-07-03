@@ -38,6 +38,9 @@ class MANGOS_DLL_SPEC Transport : public GameObject
         bool AddPassenger(Unit* passenger);
         bool RemovePassenger(Unit* passenger);
 
+        // the very special case of removing Transport from world - as it does not exist on map
+        void RemoveFromWorld();
+
         typedef std::set<Unit*> UnitSet;
         UnitSet const& GetUnitPassengers() const { return _passengers; }
 

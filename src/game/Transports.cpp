@@ -765,3 +765,9 @@ void Transport::BuildMovementPacket(Map const* targetMap, bool isMoving /*= fals
         UpdateForMap(targetMap);
     }
 }
+
+void Transport::RemoveFromWorld()
+{
+    // We need to skip removing transport from map as it is not on map actually
+    Object::RemoveFromWorld();
+}
