@@ -463,15 +463,11 @@ Unit *caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, holder,
     {
         case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
             m_areaAuraType = AREA_AURA_PARTY;
-            if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsTotem())
-                m_modifier.m_auraname = SPELL_AURA_NONE;
             break;
         case SPELL_EFFECT_APPLY_AREA_AURA_RAID:
             m_areaAuraType = AREA_AURA_RAID;
-            if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsTotem())
-                m_modifier.m_auraname = SPELL_AURA_NONE;
             // Light's Beacon not applied to caster itself (TODO: more generic check for another similar spell if any?)
-            else if (target == caster_ptr && spellproto->Id == 53651)
+            if (target == caster_ptr && spellproto->Id == 53651)
                 m_modifier.m_auraname = SPELL_AURA_NONE;
             break;
         case SPELL_EFFECT_APPLY_AREA_AURA_FRIEND:
@@ -495,6 +491,10 @@ Unit *caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, holder,
             MANGOS_ASSERT(false);
             break;
     }
+
+    // totems are immune to any kind of area auras
+    if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsTotem())
+        m_modifier.m_auraname = SPELL_AURA_NONE;
 }
 
 AreaAura::~AreaAura()
@@ -5959,9 +5959,38 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
 
                     break;
                 }
+                case 63050:                                   // Sanity (Yogg Saron - Ulduar)
+                {
+                                                              // here is the special handling of Sanity
+                    Unit *caster = GetCaster();
+                    if (!caster)
+                    {
+                        target->RemoveAurasDueToSpell(63050);
+                        return;
+                    }
+
+                    if (!caster->isAlive())
+                    {
+                        target->RemoveAurasDueToSpell(63050);
+                        return;
+                    }
+
+                    uint32 stacks = GetHolder()->GetStackAmount();
+
+                    if ((stacks < 30) && !(target->HasAura(63752)))
+                        target->CastSpell(target, 63752, true);
+
+                    if ((stacks > 30) && (target->HasAura(63752)))
+                        target->RemoveAurasDueToSpell(63752);
+
+                    if (target->HasAura(64169))               // sanity well Aura
+                        GetHolder()->ModStackAmount(20);
+                    return;
+                }
                 case 63276:                                   // Mark of the Faceless (General Vezax - Ulduar)
                 {
                     Unit *caster = GetCaster();
+
                     if (caster && target)
                         caster->CastCustomSpell(target, 63278, 0, &(spell->EffectBasePoints[0]), 0, false, 0, 0, caster->GetObjectGuid() , spell);
                     return;
@@ -7804,6 +7833,16 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                 data << end_time*IN_MILLISECONDS;
                 plr->SendDirectMessage(&data);
             }
+        }
+        // Shield of Runes (normal) (Runemaster Molgeim, Assembly of Iron encounter in Ulduar)
+        else if (target && spellProto->Id == 62274 && m_removeMode == AURA_REMOVE_BY_SHIELD_BREAK)
+        {
+            target->CastSpell(target, 62277, true);
+        }
+        // Shield of Runes (heroic) (Runemaster Molgeim, Assembly of Iron encounter in Ulduar)
+        else if (caster && spellProto->Id == 63489 && m_removeMode == AURA_REMOVE_BY_SHIELD_BREAK)
+        {
+            target->CastSpell(target, 63967, true);
         }
     }
 }
@@ -10233,6 +10272,21 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                     }
                     else
                         return;
+                    break;
+                }
+                case 63120:                                 // Insane
+                {
+                    spellId1 = 64464;
+                    break;
+                }
+                case 63830:                                 // Malady of the Mind
+                case 63881:
+                {
+                    if (!apply)
+                    {
+                        spellId1 = 63881;
+                        cast_at_remove = true;
+                    }
                     break;
                 }
                 case 69674:                                 // Mutated Infection

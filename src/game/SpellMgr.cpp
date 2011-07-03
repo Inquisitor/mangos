@@ -682,13 +682,21 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 37675:                                         // Chaos Blast
         case 56266:                                         // Vortex
         case 74505:                                         // Enervating Brand
+        case 42786:                                         // Echo Of Ymiron
+        case 62470:                                         // Deafening Thunder
+        case 63138:                                         // Sara's Fervor (Ulduar - Yogg Saron encounter)
+        case 63134:                                         // Sara's Blessing (Ulduar - Yogg Saron encounter)
+        case 63355:                                         // Crunch Armor
         case 71010:                                         // Web Wrap (Icecrown Citadel, trash mob Nerub'ar Broodkeeper)
         case 72219:                                         // Gastric Bloat 10 N
         case 72551:                                         // Gastric Bloat 10 H
         case 72552:                                         // Gastric Bloat 25 N
         case 72553:                                         // Gastric Bloat 25 H
             return false;
+        case 552:                                           // Abolish Disease
+        case 12042:                                         // Arcane Power
         case 36032:                                         // Arcane Blast
+        case 59286:                                         // Opening
         case 47540:                                         // Penance start dummy aura - Rank 1
         case 53005:                                         // Penance start dummy aura - Rank 2
         case 53006:                                         // Penance start dummy aura - Rank 3
@@ -700,10 +708,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 642:                                           // Divine Shield
         case 64843:                                         // Divine Hymn
         case 64901:                                         // Hymn of Hope
-        case 552:                                           // Abolish Disease
-        case 59286:                                         // Opening
         case 64343:                                         // Impact
-        case 12042:                                         // Arcane Power
         case 64844:                                         // Divine Hymn
         case 64904:                                         // Hymn of Hope
         case 1008:                                          // Amplify Magic - Rank 1
@@ -714,9 +719,6 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 33946:                                         // Amplify Magic - Rank 6
         case 43017:                                         // Amplify Magic - Rank 7
             return true;
-        case 62470:                                         // Deafening Thunder
-        case 63355:                                         // Crunch Armor
-            return false;
         default:
             break;
     }

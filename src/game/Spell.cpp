@@ -1672,6 +1672,11 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 63830:                                 // Malady of the Mind (Yogg-Saron)
                 case 63024:                                 // Gravity Bomb (10 man)
                 case 64234:                                 // Gravity Bomb (25 man)
+                case 63387:                                 // Rapid Burst
+                case 64531:                                 // Rapid Burst (h)
+                case 64218:                                 // Overcharge
+                case 65301:                                 // Psychosis (Yogg-Saron)
+                case 63795:                                 // Psychosis (Yogg-Saron)
                 case 66336:                                 // Mistress' Kiss (Trial of the Crusader, ->
                 case 67077:                                 // -> Lord Jaraxxus encounter, 10 and 10 heroic)
                 case 68950:                                 // Fear (ICC: Forge of Souls)
@@ -1690,10 +1695,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 72088:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10H)
                 case 62488:                                 // Activate Construct (Ulduar - Ignis encounter)
                 case 71340:                                 // Pact of darkfallen (hack for script work)
-                case 63387:                                 // Rapid Burst
-                case 64531:                                 // Rapid Burst
                 case 62042:                                 // Stormhammer
-                case 64218:                                 // Overcharge
                 case 73142:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10N)
                 case 73144:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10H)
                     unMaxTargets = 1;
@@ -2598,11 +2600,15 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         case TARGET_ALL_FRIENDLY_UNITS_AROUND_CASTER:
             switch (m_spellInfo->Id)
             {
-                case 54171:                                     // Divine Storm
+                case 54171:                                 // Divine Storm
                     FillRaidOrPartyHealthPriorityTargets(targetUnitMap, m_caster, m_caster, radius, 3, true, false, true);
                     break;
                 case 56153:                                 // Guardian Aura - Ahn'Kahet
                     FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_FRIENDLY);
+                    targetUnitMap.remove(m_caster);
+                    break;
+                case 63881:                                 // Malady of the Mind   Ulduar Yogg Saron
+                    FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_FRIENDLY, GetCastingObject());
                     targetUnitMap.remove(m_caster);
                     break;
                 case 64844:                                 // Divine Hymn
@@ -5397,6 +5403,10 @@ SpellCastResult Spell::CheckCast(bool strict)
             if (!foundNeg)
                 return SPELL_FAILED_NOTHING_TO_DISPEL;
         }
+
+        // totem immunity for channeled spells(needs to be before spell cast)
+        if (IsChanneledSpell(m_spellInfo) && target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsTotem())
+            return SPELL_FAILED_IMMUNE;
 
         bool non_caster_target = target != m_caster && !IsSpellWithCasterSourceTargetsOnly(m_spellInfo);
 
@@ -8460,6 +8470,13 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                 targetUnitMap.push_back((Unit*)result);
             else
                 targetUnitMap.push_back((Unit*)m_caster);
+            break;
+        }
+        case 63025:  // Gravity Bomb (XT-002 in Ulduar) - exclude caster from pull and double damage
+        case 64233:
+        {
+            FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_FRIENDLY);
+            targetUnitMap.remove(m_caster);
             break;
         }
         case 65045: // Flame of demolisher
