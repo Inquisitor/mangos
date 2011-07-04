@@ -1660,67 +1660,67 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 804:                                   // Explode Bug
                 case 23138:                                 // Gate of Shazzrah
                 case 28560:                                 // Summon Blizzard
-                case 63545:                                 // Icicle Hodir(trigger spell from 62227)
-                case 48278:                                 // Paralyze (Utgarde Pinnacle)
-                case 62016:                                 // Charge Orb (Thorim)
                 case 31347:                                 // Doom TODO: exclude top threat target from target selection
                 case 33711:                                 // Murmur's Touch
                 case 38794:                                 // Murmur's Touch (h)
-                case 55479:                                 // Forced Obedience (Naxxramas - Razovius encounter)
+                case 48278:                                 // Paralyze (Utgarde Pinnacle)
                 case 50988:                                 // Glare of the Tribunal (Halls of Stone)
+                case 55479:                                 // Forced Obedience (Naxxramas - Razovius encounter)
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
+                case 62016:                                 // Charge Orb (Thorim)
+                case 62042:                                 // Stormhammer
+                case 62488:                                 // Activate Construct (Ulduar - Ignis encounter)
                 case 63018:                                 // Searing Light (10 man)
-                case 65121:                                 // Searing Light (25 man)
-                case 63713:                                 // Dominate Mind (Yogg-Saron)
-                case 63830:                                 // Malady of the Mind (Yogg-Saron)
                 case 63024:                                 // Gravity Bomb (10 man)
-                case 64234:                                 // Gravity Bomb (25 man)
                 case 63387:                                 // Rapid Burst
-                case 64531:                                 // Rapid Burst (h)
-                case 64218:                                 // Overcharge
-                case 65301:                                 // Psychosis (Yogg-Saron)
+                case 63545:                                 // Icicle Hodir(trigger spell from 62227)
+                case 63713:                                 // Dominate Mind (Yogg-Saron)
                 case 63795:                                 // Psychosis (Yogg-Saron)
+                case 63830:                                 // Malady of the Mind (Yogg-Saron)
+                case 64218:                                 // Overcharge
+                case 64234:                                 // Gravity Bomb (25 man)
+                case 64531:                                 // Rapid Burst (h)
+                case 65121:                                 // Searing Light (25 man)
+                case 65301:                                 // Psychosis (Yogg-Saron)
+                case 65950:                                 // Touch of Light
+                case 66001:                                 // Touch of Darkness
                 case 66336:                                 // Mistress' Kiss (Trial of the Crusader, ->
                 case 67077:                                 // -> Lord Jaraxxus encounter, 10 and 10 heroic)
-                case 68950:                                 // Fear (ICC: Forge of Souls)
-                case 66001:                                 // Touch of Darkness
                 case 67281:
                 case 67282:
                 case 67283:
-                case 65950:                                 // Touch of Light
                 case 67296:
                 case 67297:
                 case 67298:
-                case 69140:                                 // Coldflame (Icecrown Citadel, Lord Marrowgar encounter)
-                case 73058:                                 // Blood Nova
-                case 72378:                                 // Blood Nova
+                case 68950:                                 // Fear (ICC: Forge of Souls)
                 case 69057:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10N)
-                case 72088:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10H)
-                case 62488:                                 // Activate Construct (Ulduar - Ignis encounter)
+                case 69140:                                 // Coldflame (Icecrown Citadel, Lord Marrowgar encounter)
                 case 71340:                                 // Pact of darkfallen (hack for script work)
-                case 62042:                                 // Stormhammer
+                case 72088:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10H)
+                case 72378:                                 // Blood Nova
+                case 73058:                                 // Blood Nova
                 case 73142:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10N)
                 case 73144:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10H)
                     unMaxTargets = 1;
                     break;
                 case 28542:                                 // Life Drain
+                case 63476:                                 // Icicle (Hodir 10man)
+                case 63802:                                 // Brain Link (Yogg-Saron)
                 case 66013:                                 // Penetrating Cold (10 man)
                 case 68509:                                 // Penetrating Cold (10 man heroic)
                 case 69278:                                 // Gas spore - 10
                 case 71336:                                 // Pact of the Darkfallen
                 case 71390:                                 // Pact of the Darkfallen
-                case 63476:                                 // Icicle (Hodir 10man)
-                case 63802:                                 // Brain Link (Yogg-Saron)
                     unMaxTargets = 2;
                     break;
                 case 28796:                                 // Poison Bolt Volley
                 case 29213:                                 // Curse of the Plaguebringer
                 case 31298:                                 // Sleep
                 case 39992:                                 // Needle Spine Targeting (Warlord Najentus)
-                case 62477:                                 // Icicle (Hodir 25man)
-                case 61693:                                 // Arcane Storm (Malygos) (N)
-                case 60936:                                 // Surge of Power (h) (Malygos)
                 case 54522:
+                case 60936:                                 // Surge of Power (h) (Malygos)
+                case 61693:                                 // Arcane Storm (Malygos) (N)
+                case 62477:                                 // Icicle (Hodir 25man)
                 case 69055:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, normal)
                 case 70814:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, heroic)
                 case 70826:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 25N)
