@@ -80,13 +80,13 @@ update creature_template set PowerType=3, minmana=100, maxmana=100 where entry i
 
 
 -- Update alliance boss faction 
-UPDATE `creature_template` SET `npcflag`=1, `faction_A`=84, `faction_H`=84, `dmg_multiplier`=21, `minhealth`=1827000, `maxhealth`=1827000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34924, 35403);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=84, `faction_H`=84, `dmg_multiplier`=50, `minhealth`=1827000, `maxhealth`=1827000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34924, 35403);
 -- Update horde boss faction 
-UPDATE `creature_template` SET `npcflag`=1, `faction_A`=83, `faction_H`=83, `dmg_multiplier`=21, `minhealth`=1827000, `maxhealth`=1827000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34922, 35405);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=83, `faction_H`=83, `dmg_multiplier`=50, `minhealth`=1827000, `maxhealth`=1827000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34922, 35405);
 -- Update Kor Kron Guard faction 
-UPDATE `creature_template` SET `npcflag`=1, `faction_A`=83, `faction_H`=83, `dmg_multiplier`=5, `minhealth`=35000, `maxhealth`=35000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34918, 35407);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=83, `faction_H`=83, `dmg_multiplier`=15, `minhealth`=35000, `maxhealth`=35000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34918, 35407);
 -- Update Npc Seven TH Legion Infantry faction 
-UPDATE `creature_template` SET `npcflag`=1, `faction_A`=84, `faction_H`=84, `dmg_multiplier`=5, `minhealth`=35000, `maxhealth`=35000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34919, 35401);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=84, `faction_H`=84, `dmg_multiplier`=15, `minhealth`=35000, `maxhealth`=35000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34919, 35401);
 
 -- those doors are not selectables
 UPDATE `gameobject_template` SET `flags`=0x00000021 WHERE `entry` IN (195223,195703,195491,195451,195452,195437,195436);
@@ -216,3 +216,21 @@ INSERT INTO achievement_criteria_requirement VALUES
 (12179, 1, 34775, 0),
 (12181, 1, 34793, 0),
 (12182, 1, 34776, 0);
+
+DELETE FROM creature_ai_scripts WHERE creature_id in (34924, 35403, 34922, 35405);
+INSERT INTO creature_ai_scripts (id, creature_id, event_type, event_chance, event_flags, event_param1, event_param2, event_param3, event_param4, action1_type, action1_param1, action1_param2, action1_param3) VALUES
+(3492401, 34924, 0, 100, 1, 20000, 21000, 20000, 21000, 11,  68506, 1, 0),
+(3492402, 34924, 0, 100, 1, 15000, 16000, 15000, 16000, 11,  67280, 4, 0),
+(3492403, 34924, 0, 100, 1, 10000, 11000, 10000, 11000, 11,  39171, 1, 0),
+(3540301, 35403, 0, 100, 1, 20000, 21000, 20000, 21000, 11,  68506, 1, 0),
+(3540302, 35403, 0, 100, 1, 15000, 16000, 15000, 16000, 11,  67280, 4, 0),
+(3540303, 35403, 0, 100, 1, 10000, 11000, 10000, 11000, 11,  39171, 1, 0),
+(3492201, 34922, 0, 100, 1, 20000, 21000, 20000, 21000, 11,  68506, 1, 0),
+(3492202, 34922, 0, 100, 1, 15000, 16000, 15000, 16000, 11,  67280, 4, 0),
+(3492203, 34922, 0, 100, 1, 10000, 11000, 10000, 11000, 11,  39171, 1, 0),
+(3540501, 35405, 0, 100, 1, 20000, 21000, 20000, 21000, 11,  68506, 1, 0),
+(3540502, 35405, 0, 100, 1, 15000, 16000, 15000, 16000, 11,  67280, 4, 0),
+(3540503, 35405, 0, 100, 1, 10000, 11000, 10000, 11000, 11,  39171, 1, 0);
+
+UPDATE creature_template SET AIName='EventAI' where entry in (34924, 35403, 34922, 35405);
+
