@@ -1660,6 +1660,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 804:                                   // Explode Bug
                 case 23138:                                 // Gate of Shazzrah
                 case 28560:                                 // Summon Blizzard
+                case 63545:                                 // Icicle Hodir(trigger spell from 62227)
+                case 48278:                                 // Paralyze (Utgarde Pinnacle)
+                case 62016:                                 // Charge Orb (Thorim)
                 case 31347:                                 // Doom TODO: exclude top threat target from target selection
                 case 33711:                                 // Murmur's Touch
                 case 38794:                                 // Murmur's Touch (h)
@@ -1714,9 +1717,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 29213:                                 // Curse of the Plaguebringer
                 case 31298:                                 // Sleep
                 case 39992:                                 // Needle Spine Targeting (Warlord Najentus)
-                case 60936:                                 // Surge of Power (25 man)
-                case 51904:                                 // Limiting the count of Summoned Ghouls
                 case 62477:                                 // Icicle (Hodir 25man)
+                case 61693:                                 // Arcane Storm (Malygos) (N)
+                case 60936:                                 // Surge of Power (h) (Malygos)
                 case 54522:
                 case 69055:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, normal)
                 case 70814:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, heroic)
@@ -1732,6 +1735,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 63482:                                 // Lightning Whirl (25 man)
                     unMaxTargets = urand(3,6);
                     break;
+                case 51904:                                 // Limiting the count of Summoned Ghouls
                 case 71221:                                 // Gas spore - 25
                     unMaxTargets = 4;
                     break;
@@ -1744,6 +1748,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 67700:                                 // Penetrating Cold (25 man)
                 case 68510:                                 // Penetrating Cold (25 man, heroic)
                     unMaxTargets = 5;
+                    break;
+                case 61694:                                 // Arcane Storm(H) (25 man) (Malygos)
+                    unMaxTargets = 7;
+                    break;
+                case 72441:                                 // Boiling Blood (25N)
+                case 72443:                                 // Boiling Blood (25H)
+                    unMaxTargets = 6;
                     break;
                 case 54098:                                 // Poison Bolt Volley (h)
                 case 54835:                                 // Curse of the Plaguebringer (h)
@@ -1782,6 +1793,14 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     if (Unit* realCaster = GetAffectiveCaster())
                         radius = realCaster->GetFloatValue(OBJECT_FIELD_SCALE_X) * 6;
                     break;
+                case 62240:                                 // Solar Flare
+                case 62920:                                 // Solar Flare (h)
+                {
+                    if(Aura *pAura = m_caster->GetAura(62251, EFFECT_INDEX_0))
+                    unMaxTargets = pAura->GetStackAmount();
+                    else unMaxTargets = 1;
+                    break;
+                }
                 default:
                     break;
             }

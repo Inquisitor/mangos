@@ -754,6 +754,9 @@ void Creature::DoFleeToGetAssistance()
         SetNoSearchAssistance(true);
         UpdateSpeed(MOVE_RUN, false);
 
+        // Interrupt spells cause of fleeing movement
+        InterruptNonMeleeSpells(false);
+
         if(!pCreature)
             SetFeared(true, getVictim()->GetObjectGuid(), 0 ,sWorld.getConfig(CONFIG_UINT32_CREATURE_FAMILY_FLEE_DELAY));
         else
@@ -1628,7 +1631,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn)
     RemoveCorpse();
     SetHealth(0);                                           // just for nice GM-mode view
 
-     if (IsTemporarySummon())
+    if (IsTemporarySummon()) 
          ((TemporarySummon*)this)->UnSummon();
 }
 

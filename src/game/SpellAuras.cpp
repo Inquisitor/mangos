@@ -7854,11 +7854,14 @@ void Aura::PeriodicTick()
         case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
         {
             // don't damage target if not alive, possible death persistent effects
-            if (!target->isAlive())
+            if (!target->IsInWorld() ||  !target->isAlive())
                 return;
 
             Unit *pCaster = GetCaster();
             if(!pCaster)
+                return;
+
+            if(!pCaster->IsInWorld() || !pCaster->isAlive())
                 return;
 
             if( spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
@@ -7876,7 +7879,8 @@ void Aura::PeriodicTick()
                 {
                     case 43093: case 31956: case 38801:
                     case 35321: case 38363: case 39215:
-                    case 48920: case 59262: case 58517:
+                    case 59262: case 58517:
+                    case 48920: case 70292:
                     {
                         if(target->GetHealth() == target->GetMaxHealth() )
                         {
@@ -8010,6 +8014,9 @@ void Aura::PeriodicTick()
             // FIXME: need use SpellDamageBonus instead?
             if (pCaster->GetTypeId() == TYPEID_PLAYER)
                 pdamage -= target->GetSpellDamageReduction(pdamage);
+
+            if (GetSpellProto()->Id == 50344) // Dream Funnel Oculus drake spell
+                pdamage = uint32(pCaster->GetMaxHealth()*0.05f);
 
             target->CalculateDamageAbsorbAndResist(pCaster, GetSpellSchoolMask(spellProto), DOT, pdamage, &absorb, &resist, !(GetSpellProto()->AttributesEx & SPELL_ATTR_EX_CANT_REFLECTED));
             cleanDamage.absorb += absorb;
