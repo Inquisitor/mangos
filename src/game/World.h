@@ -27,6 +27,7 @@
 #include "Timer.h"
 #include "Policies/Singleton.h"
 #include "SharedDefines.h"
+#include <ace/RW_Thread_Mutex.h>
 
 #include <map>
 #include <set>
@@ -77,8 +78,18 @@ enum WorldTimers
     WUPDATE_CORPSES     = 3,
     WUPDATE_EVENTS      = 4,
     WUPDATE_DELETECHARS = 5,
-    WUPDATE_AUTOBROADCAST = 6,
-    WUPDATE_COUNT       = 7
+    WUPDATE_AHBOT       = 6,
+    WUPDATE_AUTOBROADCAST = 7,
+    WUPDATE_COUNT       = 8
+};
+
+// World RW locking types for mtmaps
+enum WorldLockType
+{
+    WORLD_LOCK_AURAS,
+    WORLD_LOCK_TARGETS,
+    WORLD_LOCK_THREAT,
+    WORLD_LOCK_MAX,
 };
 
 /// Configuration elements
@@ -152,8 +163,6 @@ enum eConfigUInt32Values
     CONFIG_UINT32_CREATURE_FAMILY_ASSISTANCE_DELAY,
     CONFIG_UINT32_CREATURE_FAMILY_FLEE_DELAY,
     CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF,
-    CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF,
-    CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF,
     CONFIG_UINT32_QUEST_DAILY_RESET_HOUR,
     CONFIG_UINT32_QUEST_WEEKLY_RESET_WEEK_DAY,
     CONFIG_UINT32_QUEST_WEEKLY_RESET_HOUR,
@@ -193,6 +202,8 @@ enum eConfigUInt32Values
     CONFIG_UINT32_ANTICHEAT_ACTION_DELAY,
     CONFIG_UINT32_NUMTHREADS,
     CONFIG_UINT32_RANDOM_BG_RESET_HOUR,
+    CONFIG_UINT32_LOSERNOCHANGE,
+    CONFIG_UINT32_LOSERHALFCHANGE,
     CONFIG_UINT32_RAF_MAXGRANTLEVEL,
     CONFIG_UINT32_RAF_MAXREFERALS,
     CONFIG_UINT32_RAF_MAXREFERERS,
@@ -209,6 +220,8 @@ enum eConfigInt32Values
     CONFIG_INT32_DEATH_SICKNESS_LEVEL = 0,
     CONFIG_INT32_ARENA_STARTRATING,
     CONFIG_INT32_ARENA_STARTPERSONALRATING,
+    CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF,
+    CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF,
     CONFIG_INT32_VALUE_COUNT
 };
 
@@ -613,6 +626,12 @@ class World
         char const* GetDBVersion() { return m_DBVersion.c_str(); }
         char const* GetCreatureEventAIVersion() { return m_CreatureEventAIVersion.c_str(); }
 
+        // World events locking
+        typedef ACE_RW_Thread_Mutex               WorldLock;
+        typedef ACE_Read_Guard<WorldLock>         WorldReadGuard;
+        typedef ACE_Write_Guard<WorldLock>        WorldWriteGuard;
+        WorldLock& GetLock(WorldLockType type)    { return i_worldLock[type]; }
+
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters
@@ -634,7 +653,6 @@ class World
         void setConfig(eConfigInt32Values index, char const* fieldname, int32 defvalue);
         void setConfig(eConfigFloatValues index, char const* fieldname, float defvalue);
         void setConfig(eConfigBoolValues index, char const* fieldname, bool defvalue);
-        void setConfigPos(eConfigUInt32Values index, char const* fieldname, uint32 defvalue);
         void setConfigPos(eConfigFloatValues index, char const* fieldname, float defvalue);
         void setConfigMin(eConfigUInt32Values index, char const* fieldname, uint32 defvalue, uint32 minvalue);
         void setConfigMin(eConfigInt32Values index, char const* fieldname, int32 defvalue, int32 minvalue);
@@ -711,6 +729,9 @@ class World
         //used versions
         std::string m_DBVersion;
         std::string m_CreatureEventAIVersion;
+
+        WorldLock    i_worldLock[WORLD_LOCK_MAX];
+
 };
 
 extern uint32 realmID;

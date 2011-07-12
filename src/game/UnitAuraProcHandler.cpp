@@ -1089,7 +1089,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 {
                     if(GetTypeId() != TYPEID_PLAYER)
                         return SPELL_AURA_PROC_FAILED;
-                    
+
                     if(HasAura(71491) || HasAura(71484) || HasAura(71492) || HasAura(71486) || HasAura(71485))
                         return SPELL_AURA_PROC_FAILED;
 
@@ -1102,26 +1102,26 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
-                        case CLASS_DRUID:                   
+                        case CLASS_DRUID:
                         {
                             uint32 RandomSpell[]={71492,71485,71484};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
-                        case CLASS_ROGUE:    
+                        case CLASS_ROGUE:
                         {
                             uint32 RandomSpell[]={71492,71485,71486};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
-                        case CLASS_WARRIOR:                 
+                        case CLASS_WARRIOR:
                         {
                             uint32 RandomSpell[]={71492,71484,71491};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
                         case CLASS_SHAMAN:
-						{
+                        {
                             uint32 RandomSpell[]={71485,71486,71492};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
@@ -1154,7 +1154,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 {
                     if(GetTypeId() != TYPEID_PLAYER)
                         return SPELL_AURA_PROC_FAILED;
-						
+
                     if(HasAura(71559) || HasAura(71561) || HasAura(71560) || HasAura(71556) || HasAura(71558))
                         return SPELL_AURA_PROC_FAILED;
 
@@ -1167,26 +1167,26 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
-                        case CLASS_DRUID:                   
+                        case CLASS_DRUID:
                         {
                             uint32 RandomSpell[]={71560,71556,71561};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
-                        case CLASS_ROGUE:    
+                        case CLASS_ROGUE:
                         {
                             uint32 RandomSpell[]={71560,71556,71558,};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
-                        case CLASS_WARRIOR:                 
+                        case CLASS_WARRIOR:
                         {
                             uint32 RandomSpell[]={71560,71561,71559,};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
                         }
                         case CLASS_SHAMAN:
-						{
+                        {
                             uint32 RandomSpell[]={71556,71558,71560};
                             triggered_spell_id = RandomSpell[ irand(0, sizeof(RandomSpell)/sizeof(uint32) - 1) ];
                             break;
@@ -2873,6 +2873,19 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     basepoints[0] = int32(triggerAmount * damage / 100) / GetSpellAuraMaxTicks(triggered_spell_id);
                     break;
                 }
+                // Item - Shaman T10 Elemental 2P Bonus
+                case 70811:
+                {
+                    if (GetTypeId() != TYPEID_PLAYER)
+                        return SPELL_AURA_PROC_FAILED;
+
+                    if (procSpell->SpellFamilyFlags.test<CF_SHAMAN_LIGHTNING_BOLT, CF_SHAMAN_CHAIN_LIGHTNING>())
+                    {
+                        ((Player*)this)->SendModifyCooldown(16166,-triggerAmount);
+                        return SPELL_AURA_PROC_OK;
+                    }
+                    return SPELL_AURA_PROC_FAILED;
+                }
                 // Item - Shaman T10 Elemental 4P Bonus
                 case 70817:
                 {
@@ -4221,11 +4234,11 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
             // Item - Death Knight T10 Melee 4P Bonus
             else if (auraSpellInfo->Id == 70656)
             {
-                if (GetTypeId() != TYPEID_PLAYER || getClass() != CLASS_DEATH_KNIGHT)                    
-                    return SPELL_AURA_PROC_FAILED;                
+                if (GetTypeId() != TYPEID_PLAYER || getClass() != CLASS_DEATH_KNIGHT)
+                    return SPELL_AURA_PROC_FAILED;
 
-                for(uint32 i = 0; i < MAX_RUNES; ++i)                    
-                    if (((Player*)this)->GetRuneCooldown(i) == 0)                        
+                for(uint32 i = 0; i < MAX_RUNES; ++i)
+                    if (((Player*)this)->GetRuneCooldown(i) == 0)
                         return SPELL_AURA_PROC_FAILED;
             }
             // Blade Barrier
@@ -4242,18 +4255,6 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                     return SPELL_AURA_PROC_FAILED;
                 basepoints[0] = triggerAmount * damage / 100;
                 trigger_spell_id = 50475;
-            }
-            // Bloodworms 
-            else if (auraSpellInfo->Id == 49543) 
-            { 
-                if (GetTypeId() != TYPEID_PLAYER) 
-                    return SPELL_AURA_PROC_FAILED; 
-                // HACK: Remove cooldown of proc spell, for some reason it has a 300s cd 
-                ((Player*)this)->RemoveSpellCooldown(trigger_spell_id); 
-                // HACK: Random basepoints. Probably the basepoints of 
-                // SPELL_AURA_PROC_TRIGGER_SPELL_WITH_VALUE have to be randomized on every proc 
-                basepoints[0] = urand(2, 4); 
-                break; 
             }
             break;
         }
@@ -4756,19 +4757,12 @@ SpellAuraProcResult Unit::HandleModDamageFromCasterAuraProc(Unit* pVictim, uint3
     return triggeredByAura->GetCasterGuid() == pVictim->GetObjectGuid() ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }
 
-SpellAuraProcResult Unit::HandleAddFlatModifierAuraProc(Unit* pVictim, uint32 /*damage*/, Aura* triggeredByAura, SpellEntry const * /*procSpell*/, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
+SpellAuraProcResult Unit::HandleAddFlatModifierAuraProc(Unit* pVictim, uint32 /*damage*/, Aura* triggeredByAura, SpellEntry const * procSpell, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
 {
     SpellEntry const *spellInfo = triggeredByAura->GetSpellProto();
 
     switch (spellInfo->Id)
     {
-        case 55166:                             // Tidal Force
-    {
-        // Remove only single aura from stack
-        if (triggeredByAura->GetStackAmount() > 1 && !triggeredByAura->GetHolder()->ModStackAmount(-1))
-            return SPELL_AURA_PROC_CANT_TRIGGER;
-            break;
-        }
         case 31656:                             // Empowered Fire
         case 31657:
         case 31658:
@@ -4787,6 +4781,26 @@ SpellAuraProcResult Unit::HandleAddFlatModifierAuraProc(Unit* pVictim, uint32 /*
             }
             return SPELL_AURA_PROC_FAILED;
         }
+        case 53257:                             // Cobra strike
+        case 55166:                             // Tidal Force
+            // Remove only single aura from stack
+            if (triggeredByAura->GetStackAmount() > 1 && !triggeredByAura->GetHolder()->ModStackAmount(-1))
+                return SPELL_AURA_PROC_CANT_TRIGGER;
+            break;
+        case 53695:
+        case 53696:                             // Judgements of the Just
+        {
+            if (!procSpell)
+                return SPELL_AURA_PROC_FAILED;
+
+            if (GetSpellSpecific(procSpell->Id) != SPELL_JUDGEMENT)
+                return SPELL_AURA_PROC_FAILED;
+
+            int bp = triggeredByAura->GetModifier()->m_amount;
+            CastCustomSpell(pVictim, 68055, &bp, NULL, NULL, true, NULL, triggeredByAura);
+        }
+        default:
+            break;
     }
 
     return SPELL_AURA_PROC_OK;

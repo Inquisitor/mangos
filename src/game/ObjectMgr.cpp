@@ -1727,6 +1727,9 @@ Team ObjectMgr::GetPlayerTeamByGUID(ObjectGuid guid) const
 
 uint32 ObjectMgr::GetPlayerAccountIdByGUID(ObjectGuid guid) const
 {
+    if (!guid.IsPlayer())
+        return 0;
+
     // prevent DB access for online player
     if(Player* player = GetPlayer(guid))
         return player->GetSession()->GetAccountId();
@@ -3946,14 +3949,14 @@ void ObjectMgr::LoadGroups()
                 diff = REGULAR_DIFFICULTY;                  // default for both difficaly types
             }
 
-            if (resetTime > (time(NULL) + INSTANCE_MAX_RESET_OFFSET))
+            if (resetTime > uint64(time(NULL) + INSTANCE_MAX_RESET_OFFSET))
             {
                 MapDifficultyEntry const* mapDiff = GetMapDifficultyData(mapId,diff);
                 resetTime = DungeonResetScheduler::CalculateNextResetTime(mapDiff, time(NULL));
                 sLog.outErrorDb("ObjectMgr::Wrong reset time in group_instance corrected to: %d", resetTime);
             }
 
-            if (resetTime < (time(NULL)))
+            if (resetTime < uint64(time(NULL)))
             {
                 DEBUG_LOG("ObjectMgr::Loading extended instance for player: %d", leaderGuidLow);
                 bool isExtended = false;

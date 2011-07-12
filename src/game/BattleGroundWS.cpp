@@ -221,6 +221,9 @@ void BattleGroundWS::EventPlayerCapturedFlag(Player *Source)
     if(m_FirstCapturedFlagTeam == TEAM_NONE)
         m_FirstCapturedFlagTeam = Source->GetTeam();
 
+    if(m_FirstCapturedFlagTeam == TEAM_NONE)
+        m_FirstCapturedFlagTeam = Source->GetTeam();
+
     Team winner = TEAM_NONE;
 
     // capture flag 75 sec
@@ -608,6 +611,7 @@ void BattleGroundWS::Reset()
     m_FocusedAssaultExtra = true;
 
     m_EndTimer = BG_WS_TIME_LIMIT;
+    m_LastCapturedFlagTeam = TEAM_NONE;
     m_FirstCapturedFlagTeam = TEAM_NONE;
 }
 

@@ -359,7 +359,7 @@ void VehicleKit::InstallAccessory( uint32 entry, int8 seatId, bool minion)
     {
         accessory->SetCreatorGuid(ObjectGuid());
         accessory->EnterVehicle(this, seatId);
-        accessory->SendHeartBeat(false);
+        accessory->SendHeartBeat();
     }
 }
 

@@ -574,7 +574,7 @@ void BattleGround::Update(uint32 diff)
                 winner = HORDE;
             else
                 winner = TEAM_NONE;
-            EndBattleGround(winner);
+           EndBattleGround(winner);
            m_ArenaEnded = true;
         }
     }
@@ -1524,29 +1524,6 @@ void BattleGround::AddPlayer(Player *plr)
     DETAIL_LOG("BATTLEGROUND: Player %s joined the battle.", plr->GetName());
 }
 
-uint32 BattleGround::GetPlayerScore(Player *Source, uint32 type)
-{
-    BattleGroundScoreMap::const_iterator itr = m_PlayerScores.find(Source->GetGUID());
-
-    if(itr == m_PlayerScores.end())                         // player not found...
-        return 0;
-
-    switch(type)
-    {
-        case SCORE_KILLING_BLOWS:                           // Killing blows
-            return itr->second->KillingBlows;
-        case SCORE_DEATHS:                                  // Deaths
-            return itr->second->Deaths;
-        case SCORE_DAMAGE_DONE:                             // Damage Done
-            return itr->second->DamageDone;
-        case SCORE_HEALING_DONE:                            // Healing Done
-            return itr->second->HealingDone;
-        default:
-            sLog.outError("BattleGround: Unknown player score type %u", type);
-            return 0;
-    }
-}
-
 uint32 BattleGround::GetDamageDoneForTeam(Team team)
 {
     uint32 finaldamage = 0;
@@ -2202,7 +2179,7 @@ void BattleGround::HandleKillPlayer( Player *player, Player *killer )
         {
             Player *plr = sObjectMgr.GetPlayer(itr->first);
 
-            if (!plr || plr == killer)
+            if (!plr || plr == killer || !plr->isAlive())
                 continue;
 
             if (plr->GetTeam() == killer->GetTeam() && plr->IsAtGroupRewardDistance(player))
@@ -2315,4 +2292,27 @@ GameObject* BattleGround::GetBGObject(uint32 type)
     if (!obj)
         sLog.outError("couldn't get gameobject %i",type);
     return obj;
+}
+
+uint32 BattleGround::GetPlayerScore(Player *Source, uint32 type)
+{
+    BattleGroundScoreMap::const_iterator itr = m_PlayerScores.find(Source->GetGUID());
+
+    if(itr == m_PlayerScores.end())                         // player not found...
+        return 0;
+
+    switch(type)
+    {
+        case SCORE_KILLING_BLOWS:                           // Killing blows
+            return itr->second->KillingBlows;
+        case SCORE_DEATHS:                                  // Deaths
+            return itr->second->Deaths;
+        case SCORE_DAMAGE_DONE:                             // Damage Done
+            return itr->second->DamageDone;
+        case SCORE_HEALING_DONE:                            // Healing Done
+            return itr->second->HealingDone;
+        default:
+            sLog.outError("BattleGround: Unknown player score type %u", type);
+            return 0;
+    }
 }

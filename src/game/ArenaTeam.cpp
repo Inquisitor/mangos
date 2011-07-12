@@ -200,7 +200,7 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
         else
         {
             newmember.matchmaker_rating = (*result)[0].GetUInt32();
-	        delete result;
+            delete result;
         }
     }
     if (GetType() == ARENA_TYPE_3v3)
@@ -215,7 +215,7 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
         else
         {
             newmember.matchmaker_rating = (*result)[0].GetUInt32();
-	        delete result;
+            delete result;
         }
     }
     if (GetType() == ARENA_TYPE_5v5)
@@ -230,7 +230,7 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
         else
         {
             newmember.matchmaker_rating = (*result)[0].GetUInt32();
-	        delete result;
+            delete result;
         }
     }
 
@@ -348,8 +348,8 @@ bool ArenaTeam::LoadMembersFromDB(QueryResult *arenaTeamMembersResult)
             else
             {
                 newmember.matchmaker_rating = (*result)[0].GetUInt32();
-  	            delete result;
-	        }
+                delete result;
+            }
         }
         if (GetType() == ARENA_TYPE_3v3)
         {
@@ -359,12 +359,12 @@ bool ArenaTeam::LoadMembersFromDB(QueryResult *arenaTeamMembersResult)
             {
                 CharacterDatabase.PExecute("INSERT INTO hidden_rating (guid, rating2, rating3, rating5) VALUES""('%u', '%u', '%u', '%u')", fields[1].GetUInt32(), 1500, 1500, 1500);
                 newmember.matchmaker_rating = 1500;
-            }  
+            }
             else
             {
                 newmember.matchmaker_rating = (*result)[0].GetUInt32();
-  	            delete result;
-	        }
+                delete result;
+            }
         }
         if (GetType() == ARENA_TYPE_5v5)
         {
@@ -374,12 +374,12 @@ bool ArenaTeam::LoadMembersFromDB(QueryResult *arenaTeamMembersResult)
             {
                 CharacterDatabase.PExecute("INSERT INTO hidden_rating (guid, rating2, rating3, rating5) VALUES""('%u', '%u', '%u', '%u')", fields[1].GetUInt32(), 1500, 1500, 1500);
                 newmember.matchmaker_rating = 1500;
-            }  
+            }
             else
             {
                 newmember.matchmaker_rating = (*result)[0].GetUInt32();
-  	            delete result;
-	        }
+                delete result;
+            }
         }
 
         //check if member exists in characters table
@@ -761,6 +761,12 @@ int32 ArenaTeam::LostAgainst(uint32 againstRating)
     // calculate the rating modification (ELO system with k=32 or k=48 if rating<1500)
     int32 mod = (int32)ceil(K * (0.0f - chance));
     // modify the team stats accordingly
+    
+    if(againstRating <= sWorld.getConfig(CONFIG_UINT32_LOSERNOCHANGE) || m_stats.rating <= sWorld.getConfig(CONFIG_UINT32_LOSERNOCHANGE))
+        mod = 0;
+    else if (m_stats.rating <= sWorld.getConfig(CONFIG_UINT32_LOSERHALFCHANGE))
+        mod /= 2;
+
     FinishGame(mod);
 
     // return the rating change, used to display it on the results screen
@@ -779,6 +785,12 @@ void ArenaTeam::MemberLost(Player * plr, uint32 againstRating)
             float K = (itr->personal_rating < 1500) ? 48.0f : 32.0f;
             // calculate the rating modification (ELO system with k=32 or k=48 if rating<1500)
             int32 mod = (int32)ceil(K * (0.0f - chance));
+            
+            if(againstRating <= sWorld.getConfig(CONFIG_UINT32_LOSERNOCHANGE) || itr->personal_rating <= sWorld.getConfig(CONFIG_UINT32_LOSERNOCHANGE))
+                mod = 0;
+            else if (itr->personal_rating <= sWorld.getConfig(CONFIG_UINT32_LOSERHALFCHANGE))
+                mod /= 2;
+
             itr->ModifyPersonalRating(plr, mod, GetSlot());
 
             // update matchmaker rating 

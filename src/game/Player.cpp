@@ -1843,6 +1843,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
     // reset movement flags at teleport, because player will continue move with these flags after teleport
     m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
+    DisableSpline();
 
     if (GetMapId() == mapid && !GetTransport())
     {
@@ -3813,6 +3814,16 @@ void Player::RemoveArenaSpellCooldowns()
             // remove & notify
             RemoveSpellCooldown(itr->first, true);
         }
+    }
+
+    if (Pet *pet = GetPet())
+    {
+        // notify player
+        for (CreatureSpellCooldowns::const_iterator itr = pet->m_CreatureSpellCooldowns.begin(); itr != pet->m_CreatureSpellCooldowns.end(); ++itr)
+            SendClearCooldown(itr->first, pet);
+
+        // actually clear cooldowns
+        pet->m_CreatureSpellCooldowns.clear();
     }
 }
 
@@ -14308,7 +14319,7 @@ bool Player::CanSeeStartQuest(Quest const *pQuest) const
         SatisfyQuestMonth(pQuest, false) &&
         pQuest->IsActive())
     {
-        return getLevel() + sWorld.getConfig(CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF) >= pQuest->GetMinLevel();
+        return int32(getLevel()) + sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF) >= int32(pQuest->GetMinLevel());
     }
 
     return false;
@@ -17651,6 +17662,8 @@ void Player::_LoadGroup(QueryResult *result)
                 sLFGMgr.LoadLFDGroupPropertiesForPlayer(this);
         }
     }
+    if (!GetGroup())
+        sLFGMgr.RemoveMemberFromLFDGroup(NULL,GetObjectGuid());
 }
 
 void Player::_LoadBoundInstances(QueryResult *result)
@@ -17944,7 +17957,7 @@ void Player::ConvertInstancesToGroup(Player *player, Group *group, ObjectGuid pl
 
     // if the player's not online we don't know what binds it has
     if (!player || !group || has_binds)
-        CharacterDatabase.PExecute("INSERT INTO group_instance SELECT guid, instance, permanent FROM character_instance WHERE guid = '%u'", player_lowguid);
+        CharacterDatabase.PExecute("REPLACE INTO group_instance SELECT guid, instance, permanent FROM character_instance WHERE guid = '%u'", player_lowguid);
 
     // the following should not get executed when changing leaders
     if (!player || has_solo)
@@ -18021,7 +18034,7 @@ void Player::SaveToDB()
     // first save/honor gain after midnight will also update the player's honor fields
     UpdateHonorFields();
 
-    DEBUG_FILTER_LOG(	LOG_FILTER_PLAYER_STATS, "The value of player %s at save: ", m_name.c_str());
+    DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_STATS, "The value of player %s at save: ", m_name.c_str());
     outDebugStatsValues();
 
     /** World of Warcraft Armory **/
@@ -20041,6 +20054,29 @@ void Player::ProhibitSpellSchool(SpellSchoolMask idSchoolMask, uint32 unTimeMs )
     GetSession()->SendPacket(&data);
 }
 
+void Player::SendModifyCooldown( uint32 spell_id, int32 delta)
+{
+    SpellEntry const* spellInfo = sSpellStore.LookupEntry(spell_id);
+    if (!spellInfo)
+        return;
+
+    uint32 cooldown = GetSpellCooldownDelay(spell_id);
+    if (cooldown == 0 && delta < 0)
+        return;
+
+    int32 result = int32(cooldown * IN_MILLISECONDS + delta);
+    if (result < 0)
+        result = 0;
+
+    AddSpellCooldown(spell_id, 0, uint32(time(NULL) + int32(result / IN_MILLISECONDS)));
+
+    WorldPacket data(SMSG_MODIFY_COOLDOWN, 4 + 8 + 4);
+    data << uint32(spell_id);
+    data << GetObjectGuid();
+    data << int32(result > 0 ? delta : result - cooldown * IN_MILLISECONDS);
+    GetSession()->SendPacket(&data);
+}
+
 void Player::InitDataForForm(bool reapplyMods)
 {
     ShapeshiftForm form = GetShapeshiftForm();
@@ -20936,13 +20972,7 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* targe
             // target aura duration for caster show only if target exist at caster client
             // send data at target visibility change (adding to client)
             if(target!=this && target->isType(TYPEMASK_UNIT))
-            {
                 SendAurasForTarget((Unit*)target);
-                ((Unit*)target)->SendHeartBeat(false);
-            }
-
-            if(target->GetTypeId()==TYPEID_UNIT && ((Creature*)target)->isAlive())
-                ((Creature*)target)->SendMonsterMoveWithSpeedToCurrentDestination(this);
         }
     }
 }
@@ -24168,12 +24198,12 @@ void Player::WriteWowArmoryDatabaseLog(uint32 type, uint32 data)
     */
     uint32 pGuid = GetGUIDLow();
     sLog.outDetail("WoWArmory: write feed log (guid: %u, type: %u, data: %u", pGuid, type, data);
-    if (type <= 0 || type > 3)	// Unknown type
+    if (type <= 0 || type > 3)    // Unknown type
     {
         sLog.outError("WoWArmory: unknown type id: %d, ignore.", type);
         return;
     }
-    if (type == 3)	// Do not write same bosses many times - just update counter.
+    if (type == 3)    // Do not write same bosses many times - just update counter.
     {
         uint8 Difficulty = GetMap()->GetDifficulty();
         QueryResult *result = CharacterDatabase.PQuery("SELECT counter FROM armory_character_feed_log WHERE guid='%u' AND type=3 AND data='%u' AND difficulty='%u' LIMIT 1", pGuid, data, Difficulty);
@@ -24268,7 +24298,7 @@ AreaLockStatus Player::GetAreaLockStatus(uint32 mapId, Difficulty difficulty)
 
 uint32 Player::GetEquipGearScore(bool withBags, bool withBank)
 {
-    if (m_cachedGS > 0)
+    if (withBags && withBank && m_cachedGS > 0)
         return m_cachedGS;
 
     GearScoreMap gearScore (MAX_INVTYPE);
@@ -24340,10 +24370,13 @@ uint32 Player::GetEquipGearScore(bool withBags, bool withBank)
     if (count)
     {
         DEBUG_LOG("Player: calculating gear score for %u. Result is %u",GetObjectGuid().GetCounter(), uint32( summ / count ));
-
-        m_cachedGS = uint32( summ / count );
-
-        return m_cachedGS;
+        if (withBags && withBank)
+        {
+            m_cachedGS = uint32( summ / count );
+            return m_cachedGS;
+        }
+        else
+            return uint32( summ / count );
     }
     else return 0;
 }
