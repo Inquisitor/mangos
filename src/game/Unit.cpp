@@ -885,15 +885,6 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             player_tap->SendDirectMessage(&data);
         }
 
-        // Reward player, his pets, and group/raid members
-        if (player_tap != pVictim)
-        {
-            if (group_tap)
-                group_tap->RewardGroupAtKill(pVictim, player_tap);
-            else if (player_tap)
-                player_tap->RewardSinglePlayerAtKill(pVictim);
-        }
-
         DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE,"DealDamageAttackStop");
 
         // stop combat
@@ -1058,6 +1049,15 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             }
         }
 
+        // Reward player, his pets, and group/raid members
+        if (player_tap != pVictim)
+        {
+            if (group_tap)
+                group_tap->RewardGroupAtKill(pVictim, player_tap);
+            else if (player_tap)
+                player_tap->RewardSinglePlayerAtKill(pVictim);
+        }
+
         // last damage from non duel opponent or opponent controlled creature
         if(duel_hasEnded)
         {
@@ -1203,8 +1203,19 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
                             {
                                 // some spells should be considered as DoT, but are triggered spells
                                 // TODO: needs some research, maybe attribute SPELL_ATTR_EX3_UNK25
-                                if (!spellProto || spellProto && spellProto->Id != 62188) // Biting Cold (Hodir) exception
-                                    spell->Delayed();
+                                if (spellProto)
+                                {
+                                    switch (spellProto->Id)
+                                    {
+                                        case 62188:                              // Biting Cold (Hodir)
+                                        case 65722:                              // Slag Pot (Ignis)
+                                        case 65723:                              // Slag Pot (Ignis) (h)
+                                            break;
+                                        default:
+                                            spell->Delayed();
+                                            break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -1472,7 +1483,7 @@ uint32 Unit::SpellNonMeleeDamageLog(Unit *pVictim, uint32 spellID, uint32 damage
     return damageInfo.damage;
 }
 
-void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, SpellEntry const *spellInfo, WeaponAttackType attackType)
+void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, SpellEntry const *spellInfo, WeaponAttackType attackType, float DamageMultiplier)
 {
     SpellSchoolMask damageSchoolMask = damageInfo->schoolMask;
     Unit *pVictim = damageInfo->target;
@@ -1497,6 +1508,8 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, S
         {
             //Calculate damage bonus
             damage = MeleeDamageBonusDone(pVictim, damage, attackType, spellInfo, SPELL_DIRECT_DAMAGE);
+            if (DamageMultiplier != 1.0f)
+                damage = int32(damage * DamageMultiplier);
             damage = pVictim->MeleeDamageBonusTaken(this, damage, attackType, spellInfo, SPELL_DIRECT_DAMAGE);
 
             // if crit add critical bonus
@@ -1521,6 +1534,8 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, S
         {
             // Calculate damage bonus
             damage = SpellDamageBonusDone(pVictim, spellInfo, damage, SPELL_DIRECT_DAMAGE);
+            if (DamageMultiplier != 1.0f)
+                damage = int32(damage * DamageMultiplier);
             damage = pVictim->SpellDamageBonusTaken(this, spellInfo, damage, SPELL_DIRECT_DAMAGE);
 
             // If crit add critical bonus
@@ -1888,7 +1903,6 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
 
         if (damageInfo->damage <= 0)
             damageInfo->procEx &= ~PROC_EX_DIRECT_DAMAGE;
-
     }
     else // Umpossible get negative result but....
         damageInfo->damage = 0;
@@ -9604,6 +9618,13 @@ int32 Unit::CalculateSpellDamage(Unit const* target, SpellEntry const* spellProt
 
     int32 value = basePoints;
 
+    // Life Burst (Malygos) hack
+    if (spellProto->Id == 57143)
+    {
+        value /= 2;
+        comboDamage = value;
+    }
+
     // random damage
     if (comboDamage != 0 && unitPlayer && target && (target->GetObjectGuid() == unitPlayer->GetComboTargetGuid() || IsAreaOfEffectSpell(spellProto)))
         value += (int32)(comboDamage * comboPoints);
@@ -10312,7 +10333,7 @@ void Unit::CleanupsBeforeDelete()
         else
             getHostileRefManager().deleteReferences();
         RemoveAllAuras(AURA_REMOVE_BY_DELETE);
-        GetMotionMaster()->Clear(false,true);         // remove all movement generators.           
+        GetMotionMaster()->Clear(false,true);         // remove all movement generators.
     }
     WorldObject::CleanupsBeforeDelete();
 }
@@ -12245,9 +12266,9 @@ SpellAuraHolder* Unit::GetSpellAuraHolder (uint32 spellid, ObjectGuid casterGuid
     return NULL;
 }
 
-void Unit::RemoveUnitFromHostileRefManager(Unit* pUnit) 
-{ 
-    getHostileRefManager().deleteReference(pUnit); 
+void Unit::RemoveUnitFromHostileRefManager(Unit* pUnit)
+{
+    getHostileRefManager().deleteReference(pUnit);
 }
 
 void Unit::_AddAura(uint32 spellID, uint32 duration)

@@ -5235,8 +5235,17 @@ void Player::HandleBaseModValue(BaseModGroup modGroup, BaseModType modType, floa
             if(amount <= -100.0f)
                 amount = -200.0f;
 
-            val = (100.0f + amount) / 100.0f;
-            m_auraBaseMod[modGroup][modType] *= apply ? val : (1.0f/val);
+            // Shield Block Value PCT_MODs should be added, not multiplied
+            if (modGroup == SHIELD_BLOCK_VALUE)
+            {
+                val = amount / 100.0f;
+                m_auraBaseMod[modGroup][modType] += apply ? val : -val;
+            }
+            else
+            {
+                val = (100.0f + amount) / 100.0f;
+                m_auraBaseMod[modGroup][modType] *= apply ? val : (1.0f/val);
+            }
             break;
     }
 
@@ -6679,13 +6688,13 @@ void Player::RewardReputation(Unit *pVictim, float rate)
     uint32 Repfaction1 = Rep->repfaction1;
     uint32 Repfaction2 = Rep->repfaction2;
     uint32 tabardFactionID = 0;
-    
+
     // Championning tabard reputation system
     if(HasAura(Rep->championingAura))
     {
         if( Item* pItem = GetItemByPos( INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_TABARD ) )
-        {                 
-            if ( tabardFactionID = pItem->GetProto()->RequiredReputationFaction ) 
+        {
+            if ( tabardFactionID = pItem->GetProto()->RequiredReputationFaction )
             {
                 Repfaction1 = tabardFactionID;
                 Repfaction2 = tabardFactionID;
@@ -7593,8 +7602,8 @@ void Player::_ApplyItemBonuses(ItemPrototype const *proto, uint8 slot, bool appl
             case ITEM_MOD_SPELL_POWER:
                 ApplySpellPowerBonus(int32(val), apply);
                 break;
-            case ITEM_MOD_HEALTH_REGEN:  
-                ApplyHealthRegenBonus(int32(val), apply);  
+            case ITEM_MOD_HEALTH_REGEN:
+                ApplyHealthRegenBonus(int32(val), apply);
                 break;
             case ITEM_MOD_SPELL_PENETRATION:
                 ApplyModInt32Value(PLAYER_FIELD_MOD_TARGET_RESISTANCE, -int32(val), apply);
@@ -7630,7 +7639,20 @@ void Player::_ApplyItemBonuses(ItemPrototype const *proto, uint8 slot, bool appl
         armor += uint32(proto->ArmorDamageModifier);
 
     if (armor)
-        HandleStatModifier(UNIT_MOD_ARMOR, BASE_VALUE, float(armor), apply);
+    {
+        switch(proto->InventoryType)
+        {
+            case INVTYPE_TRINKET:
+            case INVTYPE_NECK:
+            case INVTYPE_CLOAK:
+            case INVTYPE_FINGER:
+                HandleStatModifier(UNIT_MOD_ARMOR, TOTAL_VALUE, float(armor), apply);
+                break;
+            default:
+                HandleStatModifier(UNIT_MOD_ARMOR, BASE_VALUE, float(armor), apply);
+                break;
+        }
+    }
 
     if (proto->Block)
         HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(proto->Block), apply);
@@ -14684,14 +14706,14 @@ void Player::RewardQuest(Quest const *pQuest, uint32 reward, Object* questGiver,
             DestroyItemCount(pQuest->ReqItemId[i], pQuest->ReqItemCount[i], true);
     }
 
-    // Destroy quest item  
-    uint32 srcitem = pQuest->GetSrcItemId();  
-    if (srcitem > 0)  
-    {  
-        uint32 count = pQuest->GetSrcItemCount();  
-        if (count <= 0)  
-            count = 1;  
-        DestroyItemCount(srcitem, count, true, true);  
+    // Destroy quest item
+    uint32 srcitem = pQuest->GetSrcItemId();
+    if (srcitem > 0)
+    {
+        uint32 count = pQuest->GetSrcItemCount();
+        if (count <= 0)
+            count = 1;
+        DestroyItemCount(srcitem, count, true, true);
     }
 
     RemoveTimedQuest(quest_id);
@@ -16778,6 +16800,11 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     _LoadEquipmentSets(holder->GetResult(PLAYER_LOGIN_QUERY_LOADEQUIPMENTSETS));
 
+    if (!GetGroup() || !GetGroup()->isLFDGroup())
+    {
+        sLFGMgr.RemoveMemberFromLFDGroup(GetGroup(),GetObjectGuid());
+    }
+
     return true;
 }
 
@@ -17662,8 +17689,6 @@ void Player::_LoadGroup(QueryResult *result)
                 sLFGMgr.LoadLFDGroupPropertiesForPlayer(this);
         }
     }
-    if (!GetGroup())
-        sLFGMgr.RemoveMemberFromLFDGroup(NULL,GetObjectGuid());
 }
 
 void Player::_LoadBoundInstances(QueryResult *result)
@@ -17859,7 +17884,7 @@ void Player::SendRaidInfo()
                 data << ObjectGuid(state->GetInstanceGuid());   // instance guid
                 data << uint8((state->GetResetTime() > now) ? 1 : 0 );   // expired = 0
                 data << uint8(itr->second.extend ? 1 : 0);      // extended = 1
-                data << uint32(state->GetResetTime() > now ? state->GetResetTime() - now 
+                data << uint32(state->GetResetTime() > now ? state->GetResetTime() - now
                     : DungeonResetScheduler::CalculateNextResetTime(GetMapDifficultyData(state->GetMapId(), state->GetDifficulty()), now));    // reset time
                 ++counter;
             }
@@ -19556,6 +19581,9 @@ bool Player::IsAffectedBySpellmod(SpellEntry const *spellInfo, SpellModifier *mo
 
 void Player::AddSpellMod(SpellModifier* mod, bool apply)
 {
+    if (!mod)
+        return;
+
     uint16 Opcode= (mod->type == SPELLMOD_FLAT) ? SMSG_SET_FLAT_SPELL_MODIFIER : SMSG_SET_PCT_SPELL_MODIFIER;
 
     for(int eff = 0; eff < 96; ++eff)
@@ -19590,10 +19618,10 @@ void Player::AddSpellMod(SpellModifier* mod, bool apply)
 
 void Player::RemoveSpellMods(Spell const* spell)
 {
-    if(!spell || (m_SpellModRemoveCount == 0))
+    if (!spell || (m_SpellModRemoveCount == 0))
         return;
 
-    for(int i=0;i<MAX_SPELLMOD;++i)
+    for(int i = 0; i < MAX_SPELLMOD; ++i)
     {
         for (SpellModList::const_iterator itr = m_spellMods[i].begin(); itr != m_spellMods[i].end();)
         {
@@ -19608,6 +19636,31 @@ void Player::RemoveSpellMods(Spell const* spell)
                 else
                     itr = m_spellMods[i].begin();
             }
+        }
+    }
+}
+
+void Player::ResetSpellModsDueToCanceledSpell (Spell const* spell)
+{
+    for(int i = 0; i < MAX_SPELLMOD; ++i )
+    {
+        for (SpellModList::const_iterator itr = m_spellMods[i].begin(); itr != m_spellMods[i].end(); ++itr)
+        {
+            SpellModifier *mod = *itr;
+
+            if (mod->lastAffected != spell)
+                continue;
+
+            mod->lastAffected = NULL;
+
+            if (mod->charges == -1)
+            {
+                mod->charges = 1;
+                if (m_SpellModRemoveCount > 0)
+                    --m_SpellModRemoveCount;
+            }
+            else if (mod->charges > 0)
+                ++mod->charges;
         }
     }
 }
@@ -21917,6 +21970,9 @@ uint32 Player::GetResurrectionSpellId()
 // Used in triggers for check "Only to targets that grant experience or honor" req
 bool Player::isHonorOrXPTarget(Unit* pVictim) const
 {
+    if (!pVictim)
+        return false;
+
     uint32 v_level = pVictim->getLevel();
     uint32 k_grey  = MaNGOS::XP::GetGrayLevel(getLevel());
 
@@ -24078,7 +24134,7 @@ ReferAFriendError Player::GetReferFriendError(Player * target, bool summon)
     return ERR_REFER_A_FRIEND_NONE;
 }
 
-void Player::ChangeGrantableLevels(uint8 increase) 
+void Player::ChangeGrantableLevels(uint8 increase)
 {
     if (increase)
     {
@@ -24087,10 +24143,10 @@ void Player::ChangeGrantableLevels(uint8 increase)
     }
     else
     {
-        m_GrantableLevelsCount -= 1; 
+        m_GrantableLevelsCount -= 1;
 
-        if (m_GrantableLevelsCount < 0) 
-            m_GrantableLevelsCount = 0; 
+        if (m_GrantableLevelsCount < 0)
+            m_GrantableLevelsCount = 0;
     }
 
     // set/unset flag - granted levels
@@ -24291,7 +24347,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
     return AREA_LOCKSTATUS_OK;
 };
 
-AreaLockStatus Player::GetAreaLockStatus(uint32 mapId, Difficulty difficulty) 
+AreaLockStatus Player::GetAreaLockStatus(uint32 mapId, Difficulty difficulty)
 {
     return GetAreaTriggerLockStatus(sObjectMgr.GetMapEntranceTrigger(mapId), difficulty);
 };

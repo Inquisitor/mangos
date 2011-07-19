@@ -71,8 +71,8 @@ int32 CalculateSpellDuration(SpellEntry const *spellInfo, Unit const* caster)
     {
         int32 maxduration = GetSpellMaxDuration(spellInfo);
 
-        if (duration != maxduration && caster->GetTypeId() == TYPEID_PLAYER)
-            duration += int32((maxduration - duration) * ((Player*)caster)->GetComboPoints() / 5);
+        if (duration != maxduration)
+            duration += int32((maxduration - duration) * caster->GetComboPoints() / 5);
 
         if (Player* modOwner = caster->GetSpellModOwner())
         {
@@ -701,6 +701,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 53005:                                         // Penance start dummy aura - Rank 2
         case 53006:                                         // Penance start dummy aura - Rank 3
         case 53007:                                         // Penance start dummy aura - Rank 4
+        case 47747:                                         // Charge Rift (Nexus: Anomalus)
         case 47757:                                         // Penance heal effect trigger - Rank 1
         case 52986:                                         // Penance heal effect trigger - Rank 2
         case 52987:                                         // Penance heal effect trigger - Rank 3
@@ -708,9 +709,6 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 642:                                           // Divine Shield
         case 64843:                                         // Divine Hymn
         case 64901:                                         // Hymn of Hope
-        case 64343:                                         // Impact
-        case 64844:                                         // Divine Hymn
-        case 64904:                                         // Hymn of Hope
         case 1008:                                          // Amplify Magic - Rank 1
         case 8455:                                          // Amplify Magic - Rank 2
         case 10169:                                         // Amplify Magic - Rank 3
@@ -718,6 +716,11 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 27130:                                         // Amplify Magic - Rank 5
         case 33946:                                         // Amplify Magic - Rank 6
         case 43017:                                         // Amplify Magic - Rank 7
+        case 64343:                                         // Impact
+        case 64844:                                         // Divine Hymn
+        case 64904:                                         // Hymn of Hope
+        case 67369:                                         // Grunty Focus
+        case 67398:                                         // Zergling Periodic Effect
             return true;
         default:
             break;
