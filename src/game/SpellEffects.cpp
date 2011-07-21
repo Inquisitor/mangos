@@ -4332,7 +4332,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 totem->CastSpell(totem, triggered_spell_id, true, NULL, NULL, m_caster->GetObjectGuid());
 
                 // Fire Nova Visual
-                totem->CastSpell(totem, 19823, true, NULL, NULL, totem->GetObjectGuid());
+                totem->CastSpell(totem, 19823, true, NULL, NULL, m_caster->GetObjectGuid());
                 return;
             }
             break;
@@ -6992,7 +6992,7 @@ void Spell::EffectEnchantItemTmp(SpellEffectIndex eff_idx)
     else if(m_spellInfo->SpellVisual[0] == 215)
         duration = 1800;                                    // 30 mins
     // some fishing pole bonuses
-    else if(m_spellInfo->SpellVisual[0] == 563)
+    else if(m_spellInfo->SpellVisual[0] == 563 && m_spellInfo->Id != 64401)
         duration = 600;                                     // 10 mins
     // shaman rockbiter enchantments
     else if(m_spellInfo->SpellVisual[0] == 0)
