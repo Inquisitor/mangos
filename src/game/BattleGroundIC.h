@@ -875,6 +875,10 @@ class BattleGroundIC : public BattleGround
         uint32 GetNodeState(uint8 nodeType) { return (uint8)nodePoint[nodeType].nodeState; }
 
         virtual bool IsAllNodesConrolledByTeam(uint32 team) const;  // overwrited
+        // Achievements
+        bool GetWinHaveAllResource(Team team) const { return m_WinHaveAllResource[GetTeamIndexByTeamId(team)]; }
+        bool GetNotDestroyGate(Team team) const { return m_NotDestroyGate[GetTeamIndexByTeamId(team)]; }
+        bool GetWinHaveAllNodes(Team team) const { return m_WinHaveAllNodes[GetTeamIndexByTeamId(team)]; }
     private:
         uint32 closeFortressDoorsTimer;
         bool doorsClosed;
@@ -888,6 +892,9 @@ class BattleGroundIC : public BattleGround
         Transport* gunshipAlliance;
         Transport* gunshipHorde;
 
+        bool m_WinHaveAllResource[BG_TEAMS_COUNT];
+        bool m_WinHaveAllNodes[BG_TEAMS_COUNT];
+        bool m_NotDestroyGate[BG_TEAMS_COUNT];
 
         uint32 GetNextBanner(ICNodePoint* nodePoint,uint32 team, bool returnDefinitve);
 

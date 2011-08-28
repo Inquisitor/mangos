@@ -24,44 +24,23 @@ INSERT INTO mangos_string (entry, content_default, content_loc1, content_loc2, c
 (20101, 'Horde', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Орда'),
 (20102, 'Horde gate was destroyed!', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Врата Орды были уничтожены!'),
 (20103, 'Alliance gate was destroyed!', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Врата Альянса были уничтожены!'),
-(20104, 'Commander of horde was killen!', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Коммандир орды был убит!'),
-(20105, 'Commander of alliance was killen!', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Коммандир альянса был убит!');
+(20104, 'Commander of alliance was killen!', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Коммандир альянса был убит!'),
+(20105, 'Commander of horde was killen!', NULL, NULL, NULL, NULL, NULL, 'La Horda', 'La Horda', 'Коммандир орды был убит!');
 
 -- Alliance Gunship Cannon
 UPDATE `creature_template` SET `npcflag`=1, `spell1`=69495,`vehicle_id`=452, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34929, 35410);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34929, 35410);
-INSERT INTO `npc_spellclick_spells` VALUES ('34929', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35410', '60968', '0', '0', '0', '1');
 -- Horde Gunship Cannon
 UPDATE `creature_template` SET `npcflag`=1, `spell1`=68825,`vehicle_id`=453, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34935, 35427);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34935, 35427);
-INSERT INTO `npc_spellclick_spells` VALUES ('34935', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35427', '60968', '0', '0', '0', '1');
 -- Keep Cannon
 UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=160,`spell1`=67452,`spell2`=68169, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34944, 35429);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34944, 35429);
-INSERT INTO `npc_spellclick_spells` VALUES ('34944', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35429', '60968', '0', '0', '0', '1');
 -- Catapult
 UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=438,`spell1`=66218,`spell2`=66296, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34793, 35413);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34793, 35413);
-INSERT INTO `npc_spellclick_spells` VALUES ('34793', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35413', '60968', '0', '0', '0', '1');
 -- Demolisher
 UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=509,`spell1`=67441,`spell2`=60206, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34775, 35415);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34775, 35415);
-INSERT INTO `npc_spellclick_spells` VALUES ('34775', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35415', '60968', '0', '0', '0', '1');
 -- Siege Engine
-UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=435,`spell1`=67816,`spell2`=67797, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34776, 35431);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34776, 35431);
-INSERT INTO `npc_spellclick_spells` VALUES ('34776', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35431', '60968', '0', '0', '0', '1');
+UPDATE `creature_template` SET faction_A=84, faction_H=84, `npcflag`=1, `vehicle_id`=514,`spell1`=67816,`spell2`=67797, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34776, 35431);
 -- Siege Engine
-UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=435,`spell1`=67816,`spell2`=67797, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (35069, 35433);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (35069, 35433);
-INSERT INTO `npc_spellclick_spells` VALUES ('35069', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35433', '60968', '0', '0', '0', '1');
+UPDATE `creature_template` SET faction_A=83, faction_H=83, `npcflag`=1, `vehicle_id`=514,`spell1`=67816,`spell2`=67797, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (35069, 35433);
 
 DELETE FROM `vehicle_accessory` WHERE `entry` IN (35069, 34776, 35431, 35433);
 INSERT INTO `vehicle_accessory` VALUES
@@ -82,34 +61,16 @@ INSERT INTO `vehicle_accessory` VALUES
 
 -- Glaive Thrower
 UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=447,`spell1`=68827,`spell2`=67195, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34802, 35419);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34802, 35419);
-INSERT INTO `npc_spellclick_spells` VALUES ('34802', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35419', '60968', '0', '0', '0', '1');
 -- Glaive Thrower
 UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=447,`spell1`=68827,`spell2`=67195, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (35273, 35421);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (35273, 35421);
-INSERT INTO `npc_spellclick_spells` VALUES ('35273', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35421', '60968', '0', '0', '0', '1');
 -- Flame Turret
-UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=337,`spell1`=68832, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34778, 35417);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34778, 35417);
-INSERT INTO `npc_spellclick_spells` VALUES ('34778', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35417', '60968', '0', '0', '0', '1');
+UPDATE `creature_template` SET faction_A=83, faction_H=83, `npcflag`=1, `vehicle_id`=337,`spell1`=68832, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34778, 35417);
 -- Flame Turret
-UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=337,`spell1`=68832, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (36356, 36358);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (36356, 36358);
-INSERT INTO `npc_spellclick_spells` VALUES ('36356', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('36358', '60968', '0', '0', '0', '1');
+UPDATE `creature_template` SET faction_A=84, faction_H=84, `npcflag`=1, `vehicle_id`=337,`spell1`=68832, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (36356, 36358);
 -- Siege Turret
-UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=337,`spell1`=67462,`spell2`=69505, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34777, 35436);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (34777, 35436);
-INSERT INTO `npc_spellclick_spells` VALUES ('34777', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('35436', '60968', '0', '0', '0', '1');
+UPDATE `creature_template` SET faction_A=84, faction_H=84, `npcflag`=1, `vehicle_id`=337,`spell1`=67462,`spell2`=69505, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (34777, 35436);
 -- Siege Turret
-UPDATE `creature_template` SET `npcflag`=1, `vehicle_id`=337,`spell1`=67462,`spell2`=69505, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (36355, 36357);
-DELETE FROM `npc_spellclick_spells` WHERE npc_entry IN (36355, 36357);
-INSERT INTO `npc_spellclick_spells` VALUES ('36355', '60968', '0', '0', '0', '1');
-INSERT INTO `npc_spellclick_spells` VALUES ('36357', '60968', '0', '0', '0', '1');
+UPDATE `creature_template` SET faction_A=83, faction_H=83, `npcflag`=1, `vehicle_id`=337,`spell1`=67462,`spell2`=69505, `iconName` = 'vehichleCursor', ScriptName = 'npc_battleground_vehicle' WHERE `entry` in (36355, 36357);
 -- Catapult speed
 UPDATE `creature_template` SET `speed_run`=1.14,`speed_walk`=1 WHERE `entry`=34793;
 UPDATE `creature_template` SET `speed_run`=1.14,`speed_walk`=1 WHERE `entry`=35413;
@@ -119,13 +80,13 @@ update creature_template set PowerType=3, minmana=100, maxmana=100 where entry i
 
 
 -- Update alliance boss faction 
-UPDATE `creature_template` SET `faction_A`=84, `faction_H`=84, dmg_multiplier=12, type_flags=0, MovementType=1, mechanic_immune_mask=1, `ScriptName`='' WHERE `entry` IN (34924, 35403);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=84, `faction_H`=84, `dmg_multiplier`=21, `minhealth`=1827000, `maxhealth`=1827000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34924, 35403);
 -- Update horde boss faction 
-UPDATE `creature_template` SET `faction_A`=83, `faction_H`=83, dmg_multiplier=12, type_flags=0, MovementType=1, mechanic_immune_mask=1, `ScriptName`='' WHERE `entry` IN (34922, 35405);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=83, `faction_H`=83, `dmg_multiplier`=21, `minhealth`=1827000, `maxhealth`=1827000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34922, 35405);
 -- Update Kor Kron Guard faction 
-UPDATE `creature_template` SET `faction_A`=83, `faction_H`=83, dmg_multiplier=12, type_flags=0, MovementType=1, mechanic_immune_mask=1, `ScriptName`='' WHERE `entry` IN (34918, 35407);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=83, `faction_H`=83, `dmg_multiplier`=5, `minhealth`=35000, `maxhealth`=35000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34918, 35407);
 -- Update Npc Seven TH Legion Infantry faction 
-UPDATE `creature_template` SET `faction_A`=84, `faction_H`=84, dmg_multiplier=12, type_flags=0, MovementType=1, mechanic_immune_mask=1, `ScriptName`='' WHERE `entry` IN (34919, 35401);
+UPDATE `creature_template` SET `npcflag`=1, `faction_A`=84, `faction_H`=84, `dmg_multiplier`=5, `minhealth`=35000, `maxhealth`=35000, `unit_flags`=4096, `type_flags`=4, `mechanic_immune_mask`=650854235, `ScriptName`='' WHERE `entry` IN (34919, 35401);
 
 -- those doors are not selectables
 UPDATE `gameobject_template` SET `flags`=0x00000021 WHERE `entry` IN (195223,195703,195491,195451,195452,195437,195436);
@@ -172,20 +133,18 @@ INSERT INTO `spell_area` (`spell`,`area`) VALUES
 
 -- Bosses
 DELETE FROM creature WHERE guid>200099 AND guid<200110;
-INSERT INTO creature VALUES (200100, 34922, 628, 3, 1, 0, 0, 1295.44,-765.733,70.0541,0.0, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200101, 34924, 628, 3, 1, 0, 0, 224.983,-831.573,60.9034,0.0, 0, 600, 0, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200100, 34922, 628, 3, 1, 0, 0, 1295.44,-765.733,70.0541,0.0, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200101, 34924, 628, 3, 1, 0, 0, 224.983,-831.573,60.9034,0.0, 0, 600, 5, 0, 0, 0, 0, 0);
 
-INSERT INTO creature VALUES (200102, 34918, 628, 3, 1, 0, 0, 1296.01,-773.256,69.958,0.292168, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200103, 34918, 628, 3, 1, 0, 0, 1295.94,-757.756,69.9587,6.02165, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200104, 34918, 628, 3, 1, 0, 0, 1295.09,-760.927,69.9587,5.94311, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200105, 34918, 628, 3, 1, 0, 0, 1295.13,-769.7,69.95,0.34, 0, 600, 0, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200102, 34918, 628, 3, 1, 0, 0, 1296.01,-773.256,69.958,0.292168, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200103, 34918, 628, 3, 1, 0, 0, 1295.94,-757.756,69.9587,6.02165, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200104, 34918, 628, 3, 1, 0, 0, 1295.09,-760.927,69.9587,5.94311, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200105, 34918, 628, 3, 1, 0, 0, 1295.13,-769.7,69.95,0.34, 0, 600, 5, 0, 0, 0, 0, 0);
 
-INSERT INTO creature VALUES (200106, 34919, 628, 3, 1, 0, 0, 223.969,-822.958,60.8151,0.46337, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200107, 34919, 628, 3, 1, 0, 0, 224.211,-826.952,60.8188,6.25961, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200108, 34919, 628, 3, 1, 0, 0, 223.119,-838.386,60.8145,5.64857, 0, 600, 0, 0, 0, 0, 0, 0);
-INSERT INTO creature VALUES (200109, 34919, 628, 3, 1, 0, 0, 223.889,-835.102,60.8201,6.21642, 0, 600, 0, 0, 0, 0, 0, 0);
-UPdate creature_template set npcflag=1, dmg_multiplier=63.4, unit_flags=4096, type_flags=4, mechanic_immune_mask=650854235 WHERE entry IN (34924,35403,34922,35405,34918,35407,34919,35401);
-
+INSERT INTO creature VALUES (200106, 34919, 628, 3, 1, 0, 0, 223.969,-822.958,60.8151,0.46337, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200107, 34919, 628, 3, 1, 0, 0, 224.211,-826.952,60.8188,6.25961, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200108, 34919, 628, 3, 1, 0, 0, 223.119,-838.386,60.8145,5.64857, 0, 600, 5, 0, 0, 0, 0, 0);
+INSERT INTO creature VALUES (200109, 34919, 628, 3, 1, 0, 0, 223.889,-835.102,60.8201,6.21642, 0, 600, 5, 0, 0, 0, 0, 0);
 
 -- Spirit guides (This must be done with BG events - this is hacky way)
 DELETE FROM creature WHERE guid>4456541 AND guid<4456584;
@@ -233,3 +192,27 @@ INSERT INTO creature_battleground VALUES (200119, 5, 0);
 
 INSERT INTO creature_battleground VALUES (200120, 0, 1);
 INSERT INTO creature_battleground VALUES (200121, 0, 0);
+
+
+-- Seaforium source
+DELETE FROM `creature_template` WHERE `entry` in (50001);
+INSERT INTO `creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid_1`, `modelid_2`, `modelid_3`, `modelid_4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `minhealth`, `maxhealth`, `minmana`, `maxmana`, `armor`, `faction_A`, `faction_H`, `npcflag`, `speed_run`, `scale`, `rank`, `mindmg`, `maxdmg`, `dmgschool`, `attackpower`, `dmg_multiplier`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `dynamicflags`, `family`, `trainer_type`, `trainer_spell`, `trainer_class`, `trainer_race`, `minrangedmg`, `maxrangedmg`, `rangedattackpower`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `resistance1`, `resistance2`, `resistance3`, `resistance4`, `resistance5`, `resistance6`, `spell1`, `spell2`, `spell3`, `spell4`, `PetSpellDataId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `InhabitType`, `unk16`, `power_mod`, `RacialLeader`, `questItem1`, `questItem2`, `questItem3`, `questItem4`, `questItem5`, `questItem6`, `movementId`, `RegenHealth`, `equipment_id`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
+(50001, 0, 0, 0, 0, 0, 27462, 0, 27462, 0, 'Seaforium Bomb', NULL, 'Interact', 0, 80, 80, 7500, 7500, 0, 0, 9730, 7, 7, 1, 1, 0.5, 0, 420, 630, 0, 157, 1, 2000, 2000, 1, 0, 0, 0, 0, 0, 0, 0, 336, 504, 126, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 94, 1, 0, 0, 0, 'npc_ic_bomb');
+
+-- Huge Seaforium source
+DELETE FROM `creature_template` WHERE `entry` in (49999);
+INSERT INTO `creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid_1`, `modelid_2`, `modelid_3`, `modelid_4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `minhealth`, `maxhealth`, `minmana`, `maxmana`, `armor`, `faction_A`, `faction_H`, `npcflag`, `speed_run`, `scale`, `rank`, `mindmg`, `maxdmg`, `dmgschool`, `attackpower`, `dmg_multiplier`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `dynamicflags`, `family`, `trainer_type`, `trainer_spell`, `trainer_class`, `trainer_race`, `minrangedmg`, `maxrangedmg`, `rangedattackpower`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `resistance1`, `resistance2`, `resistance3`, `resistance4`, `resistance5`, `resistance6`, `spell1`, `spell2`, `spell3`, `spell4`, `PetSpellDataId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `InhabitType`, `unk16`, `power_mod`, `RacialLeader`, `questItem1`, `questItem2`, `questItem3`, `questItem4`, `questItem5`, `questItem6`, `movementId`, `RegenHealth`, `equipment_id`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
+(49999, 0, 0, 0, 0, 0, 27462, 0, 27462, 0, 'Huge Seaforium Bomb', NULL, 'Interact', 0, 80, 80, 10000, 10000, 0, 0, 9730, 7, 7, 1, 1, 0.5, 0, 420, 630, 0, 157, 1, 2000, 2000, 1, 0, 0, 0, 0, 0, 0, 0, 336, 504, 126, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 94, 1, 0, 0, 0, 'npc_ic_huge_bomb');
+
+DELETE FROM achievement_criteria_requirement WHERE criteria_id IN (12183, 12068, 11497, 11498, 11500, 11501, 12178, 12179, 12181, 12182);
+INSERT INTO achievement_criteria_requirement VALUES
+(12183, 6, 4710, 0),
+(12068, 6, 4710, 0),
+(11497, 1, 35273, 0),
+(11498, 1, 34775, 0),
+(11500, 1, 34793, 0),
+(11501, 1, 35069, 0),
+(12178, 1, 34802, 0),
+(12179, 1, 34775, 0),
+(12181, 1, 34793, 0),
+(12182, 1, 34776, 0);

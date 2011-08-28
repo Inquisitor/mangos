@@ -11749,8 +11749,8 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
                 m_caster->GetPosition(fx, fy, fz);
                 uint32 bombId = 0;
                 if (m_spellInfo->Id == 52410) { bombId = 50000;}
-                if (m_spellInfo->Id == 66268) { bombId = 50000;}
-                if (m_spellInfo->Id == 66674) { bombId = 50000;}
+                if (m_spellInfo->Id == 66268) { bombId = 50001;}
+                if (m_spellInfo->Id == 66674) { bombId = 49999;}
                 Creature* cBomb = m_caster->SummonCreature(bombId, fx, fy, fz, 0, TEMPSUMMON_DEAD_DESPAWN, 0);
                 if (!cBomb)
                     return;
@@ -12318,10 +12318,13 @@ void Spell::EffectWMODamage(SpellEffectIndex eff_idx)
                 damage = 2*damage;
                 plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
             }
-            // on IC need x5 damage
+            // IC
             else if(bg->GetTypeID(true) == BATTLEGROUND_IC)
             {
-                damage = 5*damage;
+                if(m_spellInfo->Id == 66676)
+                    plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 68366);
+                if(m_spellInfo->Id == 66672)
+                    plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 68367);
             }
     }
 

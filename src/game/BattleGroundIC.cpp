@@ -62,6 +62,14 @@ BattleGroundIC::BattleGroundIC()
 
     gunshipHorde = NULL;
     gunshipAlliance = NULL;
+
+    //achievements
+    for (uint8 i = 0; i < BG_TEAMS_COUNT; i++)
+    {
+         m_WinHaveAllResource[i] = false;
+         m_NotDestroyGate[i] = true;
+         m_WinHaveAllNodes[i] = false;
+    }
 }
 
 BattleGroundIC::~BattleGroundIC()
@@ -136,8 +144,10 @@ void BattleGroundIC::Update(uint32 diff)
         } else closeFortressDoorsTimer -= diff;
     }
 
+    uint8 u0[MAX_NODE_TYPES];
     for (uint8 i = NODE_TYPE_REFINERY; i < MAX_NODE_TYPES; i++)
     {
+        u0[i] = 0;
         if (nodePoint[i].nodeType == NODE_TYPE_DOCKS)
         {
         if (nodePoint[i].nodeState == NODE_STATE_CONTROLLED_A ||
@@ -146,23 +156,40 @@ void BattleGroundIC::Update(uint32 diff)
                 if (nodePoint[i].timer <= diff)
                 {
                     // we need to confirm this, i am not sure if this every 3 minutes
-                    for (uint8 u = (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_1_A : BG_IC_NPC_CATAPULT_1_H); u < (nodePoint[i].faction  == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_4_A : BG_IC_NPC_CATAPULT_4_H); u++)
+                    for (uint8 u = (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_1_A : BG_IC_NPC_CATAPULT_1_H); u < (nodePoint[i].faction  == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_4_A : BG_IC_NPC_CATAPULT_4_H) + 1; u++)
                     {
                         if (Creature* catapult = GetBGCreature(u))
                         {
                             if (!catapult->isAlive())
-                                catapult->Respawn();
+                            {
+                                DelCreature(u);
+                                if (AddCreature(NPC_CATAPULT,u,nodePoint[i].faction,
+                                    BG_IC_DocksVehiclesCatapults[u0[i]][0],BG_IC_DocksVehiclesCatapults[u0[i]][1],
+                                    BG_IC_DocksVehiclesCatapults[u0[i]][2],BG_IC_DocksVehiclesCatapults[u0[i]][3],
+                                    RESPAWN_ONE_DAY))
+                                    GetBGCreature(u)->setFaction(BG_IC_Factions[(nodePoint[i].faction == TEAM_ALLIANCE ? 0 : 1)]);
+                            }
                         }
+                        u0[i]++;
                     }
 
+                    u0[i] = 0;
                     // we need to confirm this is blizzlike,not sure if it is every 3 minutes
-                    for (uint8 u = (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_1_A : BG_IC_NPC_GLAIVE_THROWER_1_H); u < (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_2_A : BG_IC_NPC_GLAIVE_THROWER_2_H); u++)
+                    for (uint8 u = (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_1_A : BG_IC_NPC_GLAIVE_THROWER_1_H); u < (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_2_A : BG_IC_NPC_GLAIVE_THROWER_2_H) + 1; u++)
                     {
                         if (Creature* glaiveThrower = GetBGCreature(u))
                         {
                             if (!glaiveThrower->isAlive())
-                                glaiveThrower->Respawn();
+                            {
+                                DelCreature(u);
+                                if (AddCreature(nodePoint[i].faction == TEAM_ALLIANCE ? NPC_GLAIVE_THROWER_A : NPC_GLAIVE_THROWER_H,u,nodePoint[i].faction,
+                                    BG_IC_DocksVehiclesGlaives[u0[i]][0],BG_IC_DocksVehiclesGlaives[u0[i]][1],
+                                    BG_IC_DocksVehiclesGlaives[u0[i]][2],BG_IC_DocksVehiclesGlaives[u0[i]][3],
+                                    RESPAWN_ONE_DAY))
+                                    GetBGCreature(u)->setFaction(BG_IC_Factions[(nodePoint[i].faction == TEAM_ALLIANCE ? 0 : 1)]);
+                            }
                         }
+                        u0[i]++;
                     }
 
                     docksTimer = DOCKS_UPDATE_TIME;
@@ -189,17 +216,34 @@ void BattleGroundIC::Update(uint32 diff)
                                 siege->SetHealth(siege->GetMaxHealth());
                         }
                         else
-                            siege->Respawn();
+                        {
+                            DelCreature(siegeType);
+
+                            if(AddCreature((nodePoint[i].faction == TEAM_ALLIANCE ? NPC_SIEGE_ENGINE_A : NPC_SIEGE_ENGINE_H),siegeType,nodePoint[i].faction,
+                                BG_IC_WorkshopVehicles[4][0],BG_IC_WorkshopVehicles[4][1],
+                                BG_IC_WorkshopVehicles[4][2],BG_IC_WorkshopVehicles[4][3],
+                                RESPAWN_ONE_DAY))
+                                siege->setFaction(BG_IC_Factions[(nodePoint[i].faction == TEAM_ALLIANCE ? 0 : 1)]);
+                        }
                     }
 
                     // we need to confirm this, i am not sure if this every 3 minutes
-                    for (uint8 u = (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_1_A : BG_IC_NPC_DEMOLISHER_1_H); u < (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_4_A : BG_IC_NPC_DEMOLISHER_4_H); u++)
+                    for (uint8 u = (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_1_A : BG_IC_NPC_DEMOLISHER_1_H); u < (nodePoint[i].faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_4_A : BG_IC_NPC_DEMOLISHER_4_H) + 1; u++)
                     {
                         if (Creature* demolisher = GetBGCreature(u))
                         {
                             if (!demolisher->isAlive())
-                                demolisher->Respawn();
+                            {
+                                DelCreature(u);
+
+                                if (AddCreature(NPC_DEMOLISHER,u,nodePoint[i].faction,
+                                    BG_IC_WorkshopVehicles[u0[i]][0],BG_IC_WorkshopVehicles[u0[i]][1],
+                                    BG_IC_WorkshopVehicles[u0[i]][2],BG_IC_WorkshopVehicles[u0[i]][3],
+                                    RESPAWN_ONE_DAY))
+                                    GetBGCreature(u)->setFaction(BG_IC_Factions[(nodePoint[i].faction == TEAM_ALLIANCE ? 0 : 1)]);
+                            }
                         }
+                        u0[i]++;
                     }
                     siegeEngineWorkshopTimer = WORKSHOP_UPDATE_TIME;
                 } else siegeEngineWorkshopTimer -= diff;
@@ -300,9 +344,9 @@ void BattleGroundIC::StartingEventOpenDoors()
             SpawnBGCreature(m_BgCreatures[i], RESPAWN_IMMEDIATELY);
     }
     // setting correct factions for Keep Cannons
-    for (uint8 i = BG_IC_NPC_KEEP_CANNON_1; i < BG_IC_NPC_KEEP_CANNON_12; i++)
+    for (uint8 i = BG_IC_NPC_KEEP_CANNON_1; i < BG_IC_NPC_KEEP_CANNON_12 + 1; i++)
         GetBGCreature(i)->setFaction(BG_IC_Factions[0]);
-    for (uint8 i = BG_IC_NPC_KEEP_CANNON_13; i < BG_IC_NPC_KEEP_CANNON_25; i++)
+    for (uint8 i = BG_IC_NPC_KEEP_CANNON_13; i < BG_IC_NPC_KEEP_CANNON_25 + 1; i++)
         GetBGCreature(i)->setFaction(BG_IC_Factions[1]);
 }
 
@@ -342,11 +386,15 @@ void BattleGroundIC::RemovePlayer(Player* plr, uint64 /*guid*/)
     plr->RemoveAurasDueToSpell(SPELL_OIL_REFINERY);
 }
 
-void BattleGroundIC::HandleAreaTrigger(Player * /*Source*/, uint32 /*Trigger*/)
+void BattleGroundIC::HandleAreaTrigger(Player * Source, uint32 Trigger)
 {
     // this is wrong way to implement these things. On official it done by gameobject spell cast.
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
+
+    //Achievements
+    if ((Source->GetAreaId() == 4752 && Source->GetTeam() == ALLIANCE) || (Source->GetAreaId() == 4753 && Source->GetTeam() == HORDE))
+        Source->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
 }
 
 void BattleGroundIC::UpdatePlayerScore(Player* Source, uint32 type, uint32 value, bool doAddHonor)
@@ -360,9 +408,11 @@ void BattleGroundIC::UpdatePlayerScore(Player* Source, uint32 type, uint32 value
     {
         case SCORE_BASES_ASSAULTED:
             ((BattleGroundICScore*)itr->second)->BasesAssaulted += value;
+            Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,245);
             break;
         case SCORE_BASES_DEFENDED:
             ((BattleGroundICScore*)itr->second)->BasesDefended += value;
+            Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,246);
             break;
         default:
             BattleGround::UpdatePlayerScore(Source, type, value /*, doAddHonor */);
@@ -449,7 +499,14 @@ void BattleGroundIC::HandleKillUnit(Creature *unit, Player* killer)
     //Achievement Mowed Down
     // TO-DO: This should be done on the script of each vehicle of the BG.
     if (unit->GetVehicleKit())
-        killer->CastSpell(killer, SPELL_DESTROYED_VEHICLE_ACHIEVEMENT, true);
+        killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, SPELL_DESTROYED_VEHICLE_ACHIEVEMENT);
+
+    if (unit->GetEntry() == 49999)
+        killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 1843);
+    if (unit->GetEntry() == 50001)
+        killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 1843);
+
+    killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS,1, 0, unit);
 }
 
 void BattleGroundIC::HandleKillPlayer(Player* player, Player* killer)
@@ -474,6 +531,20 @@ void BattleGroundIC::HandleKillPlayer(Player* player, Player* killer)
 void BattleGroundIC::EndBattleGround(uint32 winner)
 {
     SendMessage2ToAll(LANG_BG_IC_TEAM_WINS,CHAT_MSG_BG_SYSTEM_NEUTRAL,NULL, (winner == ALLIANCE ? LANG_BG_IC_ALLIANCE : LANG_BG_IC_HORDE));
+
+    uint8 winTeam = (winner == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE);
+    // achievements
+    if(nodePoint[NODE_TYPE_REFINERY].faction == winTeam)
+        if(nodePoint[NODE_TYPE_QUARRY].faction == winTeam)
+            m_WinHaveAllResource[winTeam] = true;
+
+    if(nodePoint[NODE_TYPE_REFINERY].faction == winTeam)
+        if(nodePoint[NODE_TYPE_QUARRY].faction == winTeam)
+            if(nodePoint[NODE_TYPE_DOCKS].faction == winTeam)
+                if(nodePoint[NODE_TYPE_HANGAR].faction == winTeam)
+                    if(nodePoint[NODE_TYPE_WORKSHOP].faction == winTeam)
+                        m_WinHaveAllNodes[winTeam] = true;
+
 
     BattleGround::EndBattleGround(Team(winner));
 }
@@ -722,7 +793,7 @@ void BattleGroundIC::HandleCapturedNodes(ICNodePoint* nodePoint, bool recapture)
             docksTimer = DOCKS_UPDATE_TIME;
 
         // we must del opposing faction vehicles when the node is captured (unused ones)
-        for (uint8 i = (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_1_H : BG_IC_NPC_GLAIVE_THROWER_1_A); i < (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_2_H : BG_IC_NPC_GLAIVE_THROWER_2_A); i++)
+        for (uint8 i = (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_1_H : BG_IC_NPC_GLAIVE_THROWER_1_A); i < (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_GLAIVE_THROWER_2_H : BG_IC_NPC_GLAIVE_THROWER_2_A) + 1; i++)
         {
             if (Creature* glaiveThrower = GetBGCreature(i))
             {
@@ -734,7 +805,7 @@ void BattleGroundIC::HandleCapturedNodes(ICNodePoint* nodePoint, bool recapture)
             }
         }
 
-        for (uint8 i = (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_1_H : BG_IC_NPC_CATAPULT_1_A); i < (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_4_H  : BG_IC_NPC_CATAPULT_4_A); i++)
+        for (uint8 i = (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_1_H : BG_IC_NPC_CATAPULT_1_A); i < (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_CATAPULT_4_H  : BG_IC_NPC_CATAPULT_4_A) + 1; i++)
         {
             if (Creature* catapult = GetBGCreature(i))
             {
@@ -784,7 +855,7 @@ void BattleGroundIC::HandleCapturedNodes(ICNodePoint* nodePoint, bool recapture)
             if (!recapture)
             {
                 // we must del opposing faction vehicles when the node is captured (unused ones)
-                for (uint8 i = (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_1_H : BG_IC_NPC_DEMOLISHER_1_A); i < (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_4_H : BG_IC_NPC_DEMOLISHER_4_A); i++)
+                for (uint8 i = (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_1_H : BG_IC_NPC_DEMOLISHER_1_A); i < (nodePoint->faction == TEAM_ALLIANCE ? BG_IC_NPC_DEMOLISHER_4_H : BG_IC_NPC_DEMOLISHER_4_A) + 1; i++)
                 {
                     if (Creature* demolisher = GetBGCreature(i))
                     {
@@ -840,6 +911,17 @@ void BattleGroundIC::HandleCapturedNodes(ICNodePoint* nodePoint, bool recapture)
                 }
             }
 
+            //del bombs
+            for (uint8 i = 0; i < MAX_WORKSHOP_BOMBS_SPAWNS_PER_FACTION; i++)
+            {
+                int8 bombGO = BG_IC_GO_SEAFORIUM_BOMBS_1+i;
+
+                if (GameObject* seaforiumBombs = GetBGObject(bombGO))
+                {
+                    DelObject(bombGO);
+                }
+            }
+
             for (uint8 i = 0; i < MAX_WORKSHOP_BOMBS_SPAWNS_PER_FACTION; i++)
             {
                 AddObject(BG_IC_GO_SEAFORIUM_BOMBS_1+i,GO_SEAFORIUM_BOMBS,
@@ -872,6 +954,7 @@ void BattleGroundIC::DestroyGate(Player* pl, GameObject* go, uint32 /*destroyedE
         UpdateWorldState(uws_open, 1);
     }
     DoorOpen((pl->GetTeamId() == TEAM_ALLIANCE ? m_BgObjects[BG_IC_GO_HORDE_KEEP_PORTCULLIS] : m_BgObjects[BG_IC_GO_DOODAD_PORTCULLISACTIVE02]));
+    m_NotDestroyGate[pl->GetTeamId()] = false;
 
     uint32 lang_entry = 0;
 

@@ -40,8 +40,10 @@
 #include "BattleGroundAV.h"
 #include "BattleGroundWS.h"
 #include "BattleGroundSA.h"
+#include "BattleGroundIC.h"
 #include "Map.h"
 #include "InstanceData.h"
+#include "Vehicle.h"
 
 #include "Policies/SingletonImp.h"
 
@@ -481,6 +483,7 @@ void AchievementMgr::ResetAchievementCriteria(AchievementCriteriaTypes type, uin
                         case 3848:
                         case 3849:
                         case 3853:
+                        case 3855:
                             break;
                         default:
                             {
@@ -539,6 +542,7 @@ void AchievementMgr::ResetAchievementCriteria(AchievementCriteriaTypes type, uin
                     case 3848:
                     case 3849:
                     case 3853:
+                    case 3855:
                         SetCriteriaProgress(achievementCriteria, achievement, 0, PROGRESS_SET);
                     default: continue; // Do not reset progress for other achievements.
                 }
@@ -1040,6 +1044,20 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
+                        case 3846:
+                        case 4176:
+                        {
+                            if(!((BattleGroundIC*)bg)->GetWinHaveAllResource(GetPlayer()->GetTeam()))
+                                continue;
+                            break;
+                        }
+                        case 3851:
+                        case 4177:
+                        {
+                            if(!((BattleGroundIC*)bg)->GetWinHaveAllNodes(GetPlayer()->GetTeam()))
+                                continue;
+                            break;
+                        }
                         default:
                         {
                             // those requirements couldn't be found in the dbc
@@ -1396,17 +1414,56 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
 
                 switch(achievement->ID)
                 {
+                    case 3845:
+                        if(miscvalue1 == 68357)
+                            break;
+                    case 3847:
+                        if(miscvalue1 == 68362 || miscvalue1 == 68365 || miscvalue1 == 68364 || miscvalue1 == 68363)
+                            break;
+                    case 3850:
+                        if(miscvalue1 == 68357)
+                        {
+                            if (GetPlayer()->GetCharmGuid().IsVehicle())
+                            {
+                                uint32 Tentry1;
+                                if(!(Tentry1 = GetPlayer()->GetVehicle()->GetBase()->GetEntry()))
+                                    continue;
+
+                                if(Tentry1 != 34944)
+                                    continue;
+
+                                break;
+                            }
+                        }
+                    case 3854:
+                        if(miscvalue1 == 68502)
+                        {
+                            BattleGround* bg = GetPlayer()->GetBattleGround();
+                            if (!bg)
+                                continue;
+
+                            if(GetPlayer()->GetTeam() == ALLIANCE)
+                                if(GetPlayer()->GetAreaId() != 4752)
+                                    continue;
+
+                            if(GetPlayer()->GetTeam() == HORDE)
+                                if(GetPlayer()->GetAreaId() != 4753)
+                                    continue;
+
+                            if(!((BattleGroundIC*)bg)->GetNotDestroyGate(GetPlayer()->GetTeam()))
+                                continue;
+
+                            break;
+                        }
                     case 2193:
                     case 1761:
-                    case 409:
                         if(miscvalue1 == 60937)            //this is hack for damage from bomb
                             break;                         //this is not such spell in dbc
-                        else if(miscvalue1 == 26549)       //this is hack for Last man standing
+                    case 409:
+                        if(miscvalue1 == 26549)            //this is hack for Last man standing
                             break;
-                        else
-                            continue;
                     case 1757:
-                    case 2200:                            //this is hack for win SA with all walls
+                    case 2200:                             //this is hack for win SA with all walls
                         if(miscvalue1 == 52459)
                         {
                             BattleGround* bg = GetPlayer()->GetBattleGround();
@@ -1418,8 +1475,6 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             else
                                 continue;
                         }
-                        else
-                            continue;
                     case 1310:                                         // SA, win under 4 minutes
                         if(miscvalue1 == 65246)
                         {
@@ -1455,10 +1510,15 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 switch(achievement->ID)                    //this is hack for kill bomb SA
                 {
                     case 1765:
+                    case 3852:
                         if(miscvalue1 == 1843)
                             break;
-                        else
-                            continue;
+                    case 3848:
+                        if(miscvalue1 == 68366)
+                            break;
+                    case 3849:
+                        if(miscvalue1 == 68367)
+                            break;
                     default:
                         {
                             // those requirements couldn't be found in the dbc
@@ -1940,6 +2000,42 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             continue;
                         break;
                     }
+                    case 3855:                  // Glaive Grave
+                    {
+                        if(!bg || bg->GetPlayerScore(GetPlayer(),SCORE_DEATHS) != 0)
+                            continue;
+
+                        if (GetPlayer()->GetCharmGuid().IsVehicle())
+                        {
+                            uint32 Ventry;
+                            if(!(Ventry = GetPlayer()->GetVehicle()->GetBase()->GetEntry()))
+                                continue;
+
+                            if(Ventry != 34802 || Ventry != 35273)
+                                continue;
+
+                            break;
+                        }
+                        else
+                            continue;
+                    }
+                    case 3850:
+                    {
+                        if (GetPlayer()->GetCharmGuid().IsVehicle())
+                        {
+                            uint32 Tentry0;
+                            if(!(Tentry0 = GetPlayer()->GetVehicle()->GetBase()->GetEntry()))
+                                continue;
+
+                            if(Tentry0 != 34944)
+                                continue;
+
+                            break;
+                        }
+                        else
+                            continue;
+                    }
+
                 }
                 SetCriteriaProgress(achievementCriteria, achievement, miscvalue1, PROGRESS_ACCUMULATE);
                 break;

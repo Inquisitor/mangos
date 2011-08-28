@@ -19,3 +19,12 @@ INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
     ( '65635','Spell.dbc','81 0','Gear Scaling - fix % damage')
    ,( '67441','Spell.dbc','76 0 88 47 91 52','Ram - hack damage on GO (tar-108 not implement)')
 ;
+
+-- by Antimozg
+DELETE FROM `spell_patch` WHERE `dbc` = 'Achievement_Criteria.dbc' AND `entry` IN (
+    12183, 12068
+);
+INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
+    ( '12183','Achievement_Criteria.dbc','2 56','Fix Achi 3855 - need Kill (not XK)')
+   ,( '12068','Achievement_Criteria.dbc','2 56','Fix Achi 3850 - need Kill (not XK)')
+;
