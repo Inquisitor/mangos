@@ -12159,6 +12159,10 @@ void Unit::ExitVehicle()
         m_pVehicle->RemovePassenger(this);
         m_pVehicle = NULL;
 
+        trans->RemovePassenger(this);
+        SetTransport(NULL);
+        m_movementInfo.ClearTransportData();
+
         if (GetTypeId() == TYPEID_PLAYER)
             ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
 
@@ -12170,6 +12174,8 @@ void Unit::ExitVehicle()
         trans->AddPassenger(this);
         SetLocationMapId(trans->GetMapId());
         MonsterMoveWithSpeed(x, y, z + 0.5f, 28);
+        // commented out by Antimozg
+        //SendMonsterMove(x, y, z + 0.5f, SPLINETYPE_NORMAL, SPLINEFLAG_WALKMODE, 0);
     }
     else
     {
