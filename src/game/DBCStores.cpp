@@ -23,6 +23,7 @@
 #include "SharedDefines.h"
 #include "ObjectGuid.h"
 #include "SpellMgr.h"
+#include "Unit.h"
 
 #include "DBCfmt.h"
 
