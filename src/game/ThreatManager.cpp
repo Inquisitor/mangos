@@ -24,6 +24,7 @@
 #include "Player.h"
 #include "ObjectAccessor.h"
 #include "UnitEvents.h"
+#include "SpellMgr.h"
 
 //==============================================================
 //================= ThreatCalcHelper ===========================
@@ -38,7 +39,7 @@ float ThreatCalcHelper::CalcThreat(Unit* pHatedUnit, Unit* /*pHatingUnit*/, floa
 
     if (pThreatSpell)
     {
-        if (pThreatSpell->AttributesEx & SPELL_ATTR_EX_NO_THREAT)
+        if (pThreatSpell->AttributesEx & SPELL_ATTR_EX_NO_THREAT && !IsSpellReduceThreat(pThreatSpell))
             return 0.0f;
 
         if (Player* modOwner = pHatedUnit->GetSpellModOwner())
@@ -518,7 +519,7 @@ void ThreatManager::tauntApply(Unit* pTaunter)
             // Ok, temp threat is unused
             if(ref->getTempThreatModifyer() == 0.0f)
             {
-                ref->setTempThreat(getCurrentVictim()->getThreat());
+                ref->setTempThreat(getCurrentVictim()->getThreat()*1.4f);
                 iUpdateNeed = true;
             }
         }

@@ -66,6 +66,7 @@ CREATE TABLE `pet_scaling_data` (
 DROP TABLE IF EXISTS `spell_dbc`;
 CREATE TABLE `spell_dbc` (
   `Id` int(10) unsigned NOT NULL,
+  `Category` int(10) unsigned NOT NULL default '0',
   `Dispel` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `Mechanic` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `Attributes` int(10) unsigned NOT NULL DEFAULT '0',
@@ -74,10 +75,19 @@ CREATE TABLE `spell_dbc` (
   `AttributesEx3` int(10) unsigned NOT NULL DEFAULT '0',
   `AttributesEx4` int(10) unsigned NOT NULL DEFAULT '0',
   `AttributesEx5` int(10) unsigned NOT NULL DEFAULT '0',
+  `AttributesEx6` int(10) unsigned NOT NULL DEFAULT '0',
+  `AttributesEx7` int(10) unsigned NOT NULL DEFAULT '0',
   `Stances` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `StancesNot` int(10) unsigned NOT NULL DEFAULT '0',
   `Targets` int(10) unsigned NOT NULL DEFAULT '0',
+  `CasterAuraSpell` int(10) unsigned NOT NULL DEFAULT '0',
+  `TargetAuraSpell` int(10) unsigned NOT NULL DEFAULT '0',
+  `ExcludeCasterAuraSpell` int(10) unsigned NOT NULL DEFAULT '0',
+  `ExcludeTargetAuraSpell` int(10) unsigned NOT NULL DEFAULT '0',
   `CastingTimeIndex` tinyint(3) unsigned NOT NULL DEFAULT '1',
+  `RecoveryTime` int(10) unsigned NOT NULL DEFAULT '0',
+  `CategoryRecoveryTime` int(10) unsigned NOT NULL DEFAULT '0',
+  `InterruptFlags` int(10) unsigned NOT NULL DEFAULT '0',
   `AuraInterruptFlags` int(10) unsigned NOT NULL DEFAULT '0',
   `ProcFlags` int(10) unsigned NOT NULL DEFAULT '0',
   `ProcChance` tinyint(3) unsigned NOT NULL DEFAULT '0',
@@ -142,6 +152,7 @@ CREATE TABLE `spell_dbc` (
   `EffectSpellClassMaskC1` int(10) unsigned NOT NULL DEFAULT '0',
   `EffectSpellClassMaskC2` int(10) unsigned NOT NULL DEFAULT '0',
   `EffectSpellClassMaskC3` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellIconID` int(10) unsigned NOT NULL DEFAULT '0',
   `MaxTargetLevel` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `SpellFamilyName` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `SpellFamilyFlags1` int(10) unsigned NOT NULL DEFAULT '0',
@@ -233,3 +244,43 @@ CREATE TABLE IF NOT EXISTS `creature_spell` (
     `flags`     int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Spell custom flags',
      PRIMARY KEY (`guid`,`index`,`active`)
 ) DEFAULT CHARSET=utf8 PACK_KEYS=0 COMMENT='Creature spells storage';
+
+-- Player race/faction change tables
+
+CREATE TABLE IF NOT EXISTS `player_factionchange_achievements` (
+    `alliance_id` int(8) NOT NULL,
+    `horde_id` int(8) NOT NULL,
+    `CommentA` varchar(255) NOT NULL,
+    `CommentH` varchar(255) NOT NULL,
+    PRIMARY KEY (`alliance_id`,`horde_id`)
+) DEFAULT CHARSET=UTF8;
+
+CREATE TABLE IF NOT EXISTS `player_factionchange_items` (
+    `race_A` int(8) NOT NULL DEFAULT '0',
+    `alliance_id` int(8) NOT NULL,
+    `commentA` varchar(255) DEFAULT NULL,
+    `race_H` int(8) NOT NULL DEFAULT '0',
+    `horde_id` int(8) NOT NULL,
+    `commentH` varchar(255) DEFAULT NULL,
+    PRIMARY KEY (`alliance_id`,`horde_id`)
+) DEFAULT CHARSET=UTF8;
+
+CREATE TABLE IF NOT EXISTS `player_factionchange_reputations` (
+    `race_A` int(8) NOT NULL DEFAULT '0',
+    `alliance_id` int(8) NOT NULL,
+    `commentA` varchar(255) DEFAULT NULL,
+    `race_H` int(8) NOT NULL DEFAULT '0',
+    `horde_id` int(8) NOT NULL,
+    `commentH` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`alliance_id`,`horde_id`)
+) DEFAULT CHARSET=UTF8;
+
+CREATE TABLE IF NOT EXISTS  `player_factionchange_spells` (
+    `race_A` int(8) NOT NULL DEFAULT '0',
+    `alliance_id` int(8) NOT NULL,
+    `commentA` varchar(255) DEFAULT NULL,
+    `race_H` int(8) NOT NULL DEFAULT '0',
+    `horde_id` int(8) NOT NULL,
+    `commentH` varchar(255) DEFAULT NULL,
+    PRIMARY KEY (`race_A`,`alliance_id`,`race_H`,`horde_id`)
+) DEFAULT CHARSET=UTF8;

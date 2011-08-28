@@ -653,7 +653,7 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
                 unit->SetHealth(0);
             }
 
-            caster->CastSpell(target, itr->second.spellId, true);
+            caster->CastSpell(target, itr->second.spellId, true, NULL, NULL,caster->GetObjectGuid());
         }
     }
     if (unit->GetObjectGuid().IsVehicle())

@@ -33,11 +33,12 @@ struct Modifier
 
 class Unit;
 struct SpellEntry;
-struct SpellModifier;
 struct ProcTriggerSpell;
 
 // forward decl
 class Aura;
+
+typedef std::vector<Aura*> AuraStorage;
 
 // internal helper
 struct ReapplyAffectedPassiveAurasHelper;
@@ -46,7 +47,7 @@ class MANGOS_DLL_SPEC SpellAuraHolder
 {
     public:
         SpellAuraHolder (SpellEntry const* spellproto, Unit *target, WorldObject *caster, Item *castItem);
-        Aura* m_auras[MAX_EFFECT_INDEX];
+        AuraStorage m_auras;
 
         void AddAura(Aura *aura, SpellEffectIndex index);
         void RemoveAura(SpellEffectIndex index);
@@ -98,11 +99,11 @@ class MANGOS_DLL_SPEC SpellAuraHolder
 
         void SetInUse(bool state)
         {
-            if(state)
+            if (state)
                 ++m_in_use;
             else
             {
-                if(m_in_use)
+                if (m_in_use)
                     --m_in_use;
             }
         }
@@ -127,12 +128,14 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         uint8 GetAuraLevel() const { return m_auraLevel; }
         void SetAuraLevel(uint8 level) { m_auraLevel = level; }
         uint32 GetAuraCharges() const { return m_procCharges; }
-        void SetAuraCharges(uint32 charges)
+        void SetAuraCharges(uint32 charges, bool update = true)
         {
             if (m_procCharges == charges)
                 return;
             m_procCharges = charges;
-            SendAuraUpdate(false);
+
+            if (update)
+                SendAuraUpdate(false);
         }
         bool DropAuraCharge()                               // return true if last charge dropped
         {
@@ -198,15 +201,15 @@ typedef void(Aura::*pAuraHandler)(bool Apply, bool Real);
 // Real == true at aura add/remove
 // Real == false at aura mod unapply/reapply; when adding/removing dependent aura/item/stat mods
 //
-// Code in aura handler can be guarded by if(Real) check if it should execution only at real add/remove of aura
+// Code in aura handler can be guarded by if (Real) check if it should execution only at real add/remove of aura
 //
-// MAIN RULE: Code MUST NOT be guarded by if(Real) check if it modifies any stats
+// MAIN RULE: Code MUST NOT be guarded by if (Real) check if it modifies any stats
 //      (percent auras, stats mods, etc)
-// Second rule: Code must be guarded by if(Real) check if it modifies object state (start/stop attack, send packets to client, etc)
+// Second rule: Code must be guarded by if (Real) check if it modifies object state (start/stop attack, send packets to client, etc)
 //
-// Other case choice: each code line moved under if(Real) check is mangos speedup,
-//      each setting object update field code line moved under if(Real) check is significant mangos speedup, and less server->client data sends
-//      each packet sending code moved under if(Real) check is _large_ mangos speedup, and lot less server->client data sends
+// Other case choice: each code line moved under if (Real) check is mangos speedup,
+//      each setting object update field code line moved under if (Real) check is significant mangos speedup, and less server->client data sends
+//      each packet sending code moved under if (Real) check is _large_ mangos speedup, and lot less server->client data sends
 
 class MANGOS_DLL_SPEC Aura
 {
@@ -380,11 +383,10 @@ class MANGOS_DLL_SPEC Aura
         void HandleAuraLinked(bool Apply, bool Real);
         void HandleAuraOpenStable(bool apply, bool Real);
         void HandleAuraAddMechanicAbilities(bool apply, bool Real);
-        void HandleAuraAoeCharm(bool apply, bool Real);
         void HandleAuraSetVehicle(bool apply, bool Real);
         void HandleAuraFactionChange(bool apply, bool real);
-        void HandleAuraStopNaturalManaRegen(bool apply, bool real);
-        
+        void HandleAuraStopNaturalManaRegen(bool apply, bool Real);
+
         virtual ~Aura();
 
         void SetModifier(AuraType t, int32 a, uint32 pt, int32 miscValue);
@@ -421,7 +423,7 @@ class MANGOS_DLL_SPEC Aura
             m_modifier.m_amount = damage;
             m_modifier.periodictime = periodicTime;
 
-            if(uint32 maxticks = GetAuraMaxTicks())
+            if (uint32 maxticks = GetAuraMaxTicks())
                 m_periodicTick = maxticks - GetAuraDuration() / m_modifier.periodictime;
         }
 
@@ -430,14 +432,15 @@ class MANGOS_DLL_SPEC Aura
         bool IsAreaAura() const { return m_isAreaAura; }
         bool IsPeriodic() const { return m_isPeriodic; }
         bool IsInUse() const { return m_in_use; }
+        bool IsStacking() const { return m_stacking;}
 
         void SetInUse(bool state)
         {
-            if(state)
+            if (state)
                 ++m_in_use;
             else
             {
-                if(m_in_use)
+                if (m_in_use)
                     --m_in_use;
             }
         }
@@ -459,7 +462,7 @@ class MANGOS_DLL_SPEC Aura
 
         ClassFamilyMask const& GetAuraSpellClassMask() const { return  m_spellAuraHolder->GetSpellProto()->GetEffectSpellClassMask(m_effIndex); }
         bool isAffectedOnSpell(SpellEntry const *spell) const;
-        bool CanProcFrom(SpellEntry const *spell, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
+        bool CanProcFrom(SpellEntry const *spell, uint32 procFlag, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
 
         //SpellAuraHolder const* GetHolder() const { return m_spellHolder; }
         SpellAuraHolder* GetHolder() { return m_spellAuraHolder; }
@@ -482,7 +485,6 @@ class MANGOS_DLL_SPEC Aura
         void ReapplyAffectedPassiveAuras();
 
         Modifier m_modifier;
-        SpellModifier *m_spellmod;
 
         time_t m_applyTime;
 
@@ -498,8 +500,11 @@ class MANGOS_DLL_SPEC Aura
         bool m_isPeriodic:1;
         bool m_isAreaAura:1;
         bool m_isPersistent:1;
+        bool m_stacking:1;                                  // Aura is not overwritten, but effects are not cumulative with similar effects
 
         uint32 m_in_use;                                    // > 0 while in Aura::ApplyModifier call/Aura::Update/etc
+
+        bool IsEffectStacking();
 
         SpellAuraHolder* const m_spellAuraHolder;
     private:

@@ -33,6 +33,9 @@ void CreatureAI::AttackedBy( Unit* attacker )
 
 CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, bool isTriggered)
 {
+    if (!pTarget)
+        return CAST_FAIL_OTHER;
+
     // If not triggered, we check
     if (!isTriggered)
     {
@@ -83,6 +86,9 @@ CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32
     if (uiCastFlags & CAST_FORCE_TARGET_SELF)
         pCaster = pTarget;
 
+    if (!pTarget)
+        return CAST_FAIL_OTHER;
+
     // Allowed to cast only if not casting (unless we interrupt ourself) or if spell is triggered
     if (!pCaster->IsNonMeleeSpellCasted(false) || (uiCastFlags & (CAST_TRIGGERED | CAST_INTERRUPT_PREVIOUS)))
     {
@@ -121,22 +127,33 @@ CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32
         return CAST_FAIL_IS_CASTING;
 }
 
+bool CreatureAI::AttackByType(WeaponAttackType attType)
+{
+    // Make sure our attack is ready before checking distance
+    if (m_creature->isAttackReady(attType) && m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
+    {
+        m_creature->AttackerStateUpdate(m_creature->getVictim(), attType);
+        m_creature->resetAttackTimer(attType);
+        WeaponAttackType attTypeTwo = (attType == BASE_ATTACK ? OFF_ATTACK : BASE_ATTACK);
+        if (m_creature->getAttackTimer(attTypeTwo) < 500)
+            m_creature->setAttackTimer(attTypeTwo, 500);
+        return true;
+    }
+
+    return false;
+}
+
 bool CreatureAI::DoMeleeAttackIfReady()
 {
     // Check target
     if (!m_creature->getVictim())
         return false;
 
-    // Make sure our attack is ready before checking distance
-    if (!m_creature->isAttackReady())
-        return false;
+    if (AttackByType(BASE_ATTACK))
+        return true;
 
-    // If we are within range melee the target
-    if (!m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
-        return false;
+    if (m_creature->haveOffhandWeapon())
+        return AttackByType(OFF_ATTACK);
 
-    m_creature->AttackerStateUpdate(m_creature->getVictim());
-    m_creature->resetAttackTimer();
-
-    return true;
+    return false;
 }

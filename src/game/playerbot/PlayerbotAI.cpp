@@ -1811,13 +1811,7 @@ void PlayerbotAI::DoCombatMovement()
 
     float targetDist = m_bot->GetDistance(m_targetCombat);
 
-    // if m_bot has it's back to the attacker, turn
-    if (!m_bot->HasInArc(M_PI_F, m_targetCombat))
-    {
-        // TellMaster("%s is facing the wrong way!", m_bot->GetName());
-        m_bot->GetMotionMaster()->Clear(true);
-        m_bot->SetOrientation(m_bot->GetAngle(m_targetCombat));
-    }
+    m_bot->SetFacingTo(m_bot->GetAngle(m_targetCombat));
 
     if (m_combatStyle == COMBAT_MELEE && !m_bot->hasUnitState(UNIT_STAT_CHASE) && ((m_movementOrder == MOVEMENT_STAY && targetDist <= ATTACK_DISTANCE) || (m_movementOrder != MOVEMENT_STAY)))
         // melee combat - chase target if in range or if we are not forced to stay
@@ -2583,7 +2577,10 @@ void PlayerbotAI::MovementReset()
             else if (!FollowCheckTeleport(*m_followTarget)) return;
         }
 
-        if (m_bot->isAlive() && (m_bot->GetMap() == m_followTarget->GetMap()))
+        if (m_bot->isAlive() && 
+            !m_bot->isInCombat() && 
+            (m_bot->GetMap() == m_followTarget->GetMap() && m_bot->IsWithinDistInMap(GetMaster(), m_bot->GetMap()->GetVisibilityDistance(), true)) && 
+            !m_bot->IsBeingTeleported() )
         {
             float angle = rand_float(0, M_PI_F);
             float dist = rand_float(m_mgr->m_confFollowDistance[0], m_mgr->m_confFollowDistance[1]);
@@ -2643,21 +2640,6 @@ void PlayerbotAI::UpdateAI(const uint32 p_time)
 {
     if (m_bot->IsBeingTeleported() || m_bot->GetTrader())
         return;
-
-    // Send updates to world if chasing target or moving to point
-    MovementGeneratorType movementType = m_bot->GetMotionMaster()->GetCurrentMovementGeneratorType();
-    if (movementType == CHASE_MOTION_TYPE || movementType == POINT_MOTION_TYPE)
-    {
-        float x, y, z;
-        m_bot->GetMotionMaster()->GetDestination(x, y, z);
-        if (x != m_destX || y != m_destY || z != m_destZ)
-        {
-            m_bot->MonsterMoveWithSpeed(x, y, z, 28);
-            m_destX = x;
-            m_destY = y;
-            m_destZ = z;
-        }
-    }
 
     time_t currentTime = time(0);
     if (currentTime < m_ignoreAIUpdatesUntilTime)
@@ -3754,8 +3736,9 @@ bool PlayerbotAI::FollowCheckTeleport(WorldObject &obj)
 {
     // if bot has strayed too far from the master, teleport bot
 
-    if (!m_bot->IsWithinDistInMap(&obj, 50, true) && GetMaster()->isAlive() && !GetMaster()->IsTaxiFlying())
+    if (!m_bot->IsWithinDistInMap(&obj, m_bot->GetMap()->GetVisibilityDistance(), true) && GetMaster()->isAlive() && !GetMaster()->IsTaxiFlying())
     {
+        m_bot->GetMotionMaster()->Clear();
         m_ignoreAIUpdatesUntilTime = time(0) + 6;
         PlayerbotChatHandler ch(GetMaster());
         if (!ch.teleport(*m_bot))

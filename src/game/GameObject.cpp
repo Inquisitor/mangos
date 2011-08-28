@@ -91,7 +91,7 @@ void GameObject::AddToWorld()
 void GameObject::RemoveFromWorld()
 {
     ///- Remove the gameobject from the accessor
-    if(IsInWorld())
+    if (IsInWorld())
     {
         // Remove GO from owner
         if (ObjectGuid owner_guid = GetOwnerGuid())
@@ -224,9 +224,9 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                 else
                 {
                     // each faction in its list
-                    if (((Player*)(*itr))->GetTeam() == ALLIANCE)
+                    if ((*itr)->GetTeam() == ALLIANCE)
                         m_AlliancePlayersSet.insert((*itr)->GetObjectGuid());
-                    else if (((Player*)(*itr))->GetTeam() == HORDE)
+                    else if ((*itr)->GetTeam() == HORDE)
                         m_HordePlayersSet.insert((*itr)->GetObjectGuid());
 
                     // also use a general list to make things easy for now
@@ -238,7 +238,7 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
             if (m_CapturePlayersSet.empty())
                 return;
 
-            for (std::set<ObjectGuid>::iterator itr = m_CapturePlayersSet.begin(); itr != m_CapturePlayersSet.end(); ++itr)
+            for (GuidsSet::iterator itr = m_CapturePlayersSet.begin(); itr != m_CapturePlayersSet.end(); )
             {
                 if (Player* p_captor = GetMap()->GetPlayer(*itr))
                 {
@@ -246,7 +246,8 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                     if (!p_captor->IsWithinDistInMap(this, radius))
                     {
                         p_captor->SendUpdateWorldState(info->capturePoint.worldState1, 0);
-                        m_CapturePlayersSet.erase(p_captor->GetObjectGuid());
+                        GuidsSet::iterator temp = itr++;
+                        m_CapturePlayersSet.erase(temp);
 
                         // also erase from faction sets
                         if (p_captor->GetTeam() == ALLIANCE)
@@ -275,7 +276,13 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                         // if conditions are ok, then use the button
                         // further checks and calculations will be done in the use function
                         Use(p_captor);
+                        ++itr;
                     }
+                }
+                else
+                {
+                    GuidsSet::iterator temp = itr++;
+                    m_CapturePlayersSet.erase(temp);
                 }
             }
             m_captureTime = 1000;
@@ -294,7 +301,8 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                 {
                     // Arming Time for GAMEOBJECT_TYPE_TRAP (6)
                     Unit* owner = GetOwner();
-                    if (owner && ((Player*)owner)->isInCombat())
+                    if (owner && ((Player*)owner)->isInCombat()
+                        || GetEntry() == 190752) // SoTA Seaforium Charges
                         m_cooldownTime = time(NULL) + GetGOInfo()->trap.startDelay;
                     m_lootState = GO_READY;
                     break;
@@ -404,9 +412,14 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                         }
                     }
 
+                    // SoTA Seaforium Charge
+                    if (GetEntry() == 190752)
+                    {
+                        ok = owner;
+                    }
                     // Note: this hack with search required until GO casting not implemented
                     // search unfriendly creature
-                    if (owner && goInfo->trap.charges > 0)  // hunter trap
+                    else if (owner && goInfo->trap.charges > 0)  // hunter trap
                     {
                         MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, owner, radius);
                         MaNGOS::UnitSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck> checker(ok, u_check);
@@ -480,7 +493,7 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                 case GAMEOBJECT_TYPE_CHEST:
                     if (m_groupLootId)
                     {
-                        if(update_diff < m_groupLootTimer)
+                        if (update_diff < m_groupLootTimer)
                             m_groupLootTimer -= update_diff;
                         else
                             StopGroupLoot();
@@ -576,10 +589,10 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
 void GameObject::Refresh()
 {
     // not refresh despawned not casted GO (despawned casted GO destroyed in all cases anyway)
-    if(m_respawnTime > 0 && m_spawnedByDefault)
+    if (m_respawnTime > 0 && m_spawnedByDefault)
         return;
 
-    if(isSpawned())
+    if (isSpawned())
         GetMap()->Add(this);
 }
 
@@ -699,7 +712,7 @@ bool GameObject::LoadFromDB(uint32 guid, Map *map)
 {
     GameObjectData const* data = sObjectMgr.GetGOData(guid);
 
-    if( !data )
+    if ( !data )
     {
         sLog.outErrorDb("Gameobject (GUID: %u) not found in table `gameobject`, can't load. ",guid);
         return false;
@@ -733,7 +746,7 @@ bool GameObject::LoadFromDB(uint32 guid, Map *map)
     }
     else
     {
-        if(data->spawntimesecs >= 0)
+        if (data->spawntimesecs >= 0)
         {
             m_spawnedByDefault = true;
             m_respawnDelayTime = data->spawntimesecs;
@@ -842,7 +855,7 @@ Unit* GameObject::GetOwner() const
 
 void GameObject::SaveRespawnTime()
 {
-    if(m_respawnTime > time(NULL) && m_spawnedByDefault)
+    if (m_respawnTime > time(NULL) && m_spawnedByDefault)
         GetMap()->GetPersistentState()->SaveGORespawnTime(GetGUIDLow(), m_respawnTime);
 }
 
@@ -857,7 +870,7 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
         return false;
 
     // Transport always visible at this step implementation
-    if(IsTransport() && IsInMap(u))
+    if (IsTransport() && IsInMap(u))
         return true;
 
     // quick check visibility false cases for non-GM-mode
@@ -868,15 +881,15 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
             return false;
 
         // special invisibility cases
-        if(GetGOInfo()->type == GAMEOBJECT_TYPE_TRAP && GetGOInfo()->trap.stealthed)
+        if (GetGOInfo()->type == GAMEOBJECT_TYPE_TRAP && GetGOInfo()->trap.stealthed)
         {
-            if(u->HasAura(2836) && u->isInFront(this, 15.0f))   // hack, maybe values are wrong
+            if (u->HasAura(2836) && u->isInFront(this, 15.0f))   // hack, maybe values are wrong
                 return true;
 
             if (GetOwner() && u->IsFriendlyTo(GetOwner()))
                 return true;
 
-            if(m_lootState == GO_READY)
+            if (m_lootState == GO_READY)
                 return false;
         }
     }
@@ -888,7 +901,7 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
 
 void GameObject::Respawn()
 {
-    if(m_spawnedByDefault && m_respawnTime > 0)
+    if (m_spawnedByDefault && m_respawnTime > 0)
     {
         m_respawnTime = time(NULL);
         GetMap()->GetPersistentState()->SaveGORespawnTime(GetGUIDLow(), 0);
@@ -1062,7 +1075,7 @@ void GameObject::ResetDoorOrButton()
 
 void GameObject::UseDoorOrButton(uint32 time_to_restore, bool alternative /* = false */)
 {
-    if(m_lootState != GO_READY)
+    if (m_lootState != GO_READY)
         return;
 
     if(!time_to_restore)
@@ -1076,12 +1089,12 @@ void GameObject::UseDoorOrButton(uint32 time_to_restore, bool alternative /* = f
 
 void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false */)
 {
-    if(activate)
+    if (activate)
         SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
     else
         RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
 
-    if(GetGoState() == GO_STATE_READY)                      //if closed -> open
+    if (GetGoState() == GO_STATE_READY)                      //if closed -> open
         SetGoState(alternative ? GO_STATE_ACTIVE_ALTERNATIVE : GO_STATE_ACTIVE);
     else                                                    //if open -> close
         SetGoState(GO_STATE_READY);
@@ -1278,9 +1291,13 @@ void GameObject::Use(Unit* user)
                         GetMap()->ScriptsStart(sEventScripts, info->goober.eventId, player, this);
 
                     if (player->CanUseBattleGroundObject())
+                    {
                         if (BattleGround *bg = player->GetBattleGround())
+                        {
                             if (bg->GetTypeID(true) == BATTLEGROUND_SA)
                                 bg->EventPlayerDamageGO(player, this, info->goober.eventId);
+                        }
+                    }
                 }
 
                 // possible quest objective for active quests
@@ -1957,8 +1974,9 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
     if (pDoneBy && pDoneBy->GetTypeId() == TYPEID_PLAYER)
         pWho = (Player*)pDoneBy;
 
-    if(pDoneBy && ((Creature*)pDoneBy)->GetVehicleKit())
+    if (pDoneBy && ((Creature*)pDoneBy)->GetVehicleKit())
         pWho = (Player*)pDoneBy->GetCharmerOrOwner();
+
 
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "GO damage taken: %u to health %u", damage, m_health);
 
@@ -1970,6 +1988,7 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
              if (BattleGround *bg = pWho->GetBattleGround())
                  bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damageEvent);
     }
+
     else
         m_health = 0;
 
@@ -1981,7 +2000,6 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
             SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_DESTROYED);
             SetDisplayId(m_goInfo->destructibleBuilding.destroyedDisplayId);
             GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.destroyedEvent, pDoneBy, this);
-
             if (pWho)
             {
                 //sScriptMgr.OnGameObjectDestroyed(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
@@ -2151,7 +2169,7 @@ void GameObject::UpdateRotationFields(float rotation2 /*=0.0f*/, float rotation3
 bool GameObject::IsHostileTo(Unit const* unit) const
 {
     // always non-hostile to GM in GM mode
-    if(unit->GetTypeId()==TYPEID_PLAYER && ((Player const*)unit)->isGameMaster())
+    if (unit->GetTypeId()==TYPEID_PLAYER && ((Player const*)unit)->isGameMaster())
         return false;
 
     // test owner instead if have
@@ -2172,17 +2190,17 @@ bool GameObject::IsHostileTo(Unit const* unit) const
         return false;
 
     // GvP forced reaction and reputation case
-    if(unit->GetTypeId()==TYPEID_PLAYER)
+    if (unit->GetTypeId()==TYPEID_PLAYER)
     {
         // forced reaction
-        if(tester_faction->faction)
+        if (tester_faction->faction)
         {
-            if(ReputationRank const* force = ((Player*)unit)->GetReputationMgr().GetForcedRankIfAny(tester_faction))
+            if (ReputationRank const* force = ((Player*)unit)->GetReputationMgr().GetForcedRankIfAny(tester_faction))
                 return *force <= REP_HOSTILE;
 
             // apply reputation state
             FactionEntry const* raw_tester_faction = sFactionStore.LookupEntry(tester_faction->faction);
-            if(raw_tester_faction && raw_tester_faction->reputationListID >=0 )
+            if (raw_tester_faction && raw_tester_faction->reputationListID >=0 )
                 return ((Player const*)unit)->GetReputationMgr().GetRank(raw_tester_faction) <= REP_HOSTILE;
         }
     }
@@ -2194,7 +2212,7 @@ bool GameObject::IsHostileTo(Unit const* unit) const
 bool GameObject::IsFriendlyTo(Unit const* unit) const
 {
     // always friendly to GM in GM mode
-    if(unit->GetTypeId()==TYPEID_PLAYER && ((Player const*)unit)->isGameMaster())
+    if (unit->GetTypeId()==TYPEID_PLAYER && ((Player const*)unit)->isGameMaster())
         return true;
 
     // test owner instead if have
@@ -2215,17 +2233,17 @@ bool GameObject::IsFriendlyTo(Unit const* unit) const
         return false;
 
     // GvP forced reaction and reputation case
-    if(unit->GetTypeId()==TYPEID_PLAYER)
+    if (unit->GetTypeId()==TYPEID_PLAYER)
     {
         // forced reaction
-        if(tester_faction->faction)
+        if (tester_faction->faction)
         {
-            if(ReputationRank const* force =((Player*)unit)->GetReputationMgr().GetForcedRankIfAny(tester_faction))
+            if (ReputationRank const* force =((Player*)unit)->GetReputationMgr().GetForcedRankIfAny(tester_faction))
                 return *force >= REP_FRIENDLY;
 
             // apply reputation state
-            if(FactionEntry const* raw_tester_faction = sFactionStore.LookupEntry(tester_faction->faction))
-                if(raw_tester_faction->reputationListID >=0 )
+            if (FactionEntry const* raw_tester_faction = sFactionStore.LookupEntry(tester_faction->faction))
+                if (raw_tester_faction->reputationListID >=0 )
                     return ((Player const*)unit)->GetReputationMgr().GetRank(raw_tester_faction) >= REP_FRIENDLY;
         }
     }

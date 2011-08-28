@@ -208,15 +208,16 @@ enum ScoreType
     SCORE_TOWERS_ASSAULTED      = 13,
     SCORE_TOWERS_DEFENDED       = 14,
     SCORE_SECONDARY_OBJECTIVES  = 15,
+    /** World of Warcraft Armory **/
+    SCORE_DAMAGE_TAKEN          = 16,
+    SCORE_HEALING_TAKEN         = 17,
     //SA
-    SCORE_GATES_DESTROYED       = 16,
-    SCORE_DEMOLISHERS_DESTROYED = 17,
+    SCORE_GATES_DESTROYED       = 18,
+    SCORE_DEMOLISHERS_DESTROYED = 19,
     //IC
-    SCORE_BASE_ASSAULTED        = 18,
-    SCORE_BASE_DEFENDED         = 19,
-    //WoWArmory
-    SCORE_DAMAGE_TAKEN          = 20,
-    SCORE_HEALING_TAKEN         = 21
+    SCORE_BASE_ASSAULTED        = 20,
+    SCORE_BASE_DEFENDED         = 21
+
 };
 
 enum BattleGroundType
@@ -561,8 +562,6 @@ class BattleGround
         virtual void EventPlayerClickedOnFlag(Player* /*player*/, GameObject* /*target_obj*/) {}
         virtual void EventPlayerCapturedFlag(Player* /*player*/) {}
 
-        virtual void EventPlayerDamageGO(Player* /*player*/, GameObject* /*target_obj*/, uint32 /*eventId*/) {}
-        virtual void EventSpawnGOSA(Player* /*owner*/, Creature* /*obj*/, float /*x*/, float /*y*/, float /*z*/) {}
         virtual void VirtualUpdatePlayerScore(Player* /*Source*/, uint32 /*type*/, uint32 /*value*/) {}
 
         void EventPlayerLoggedIn(Player* player, ObjectGuid plr_guid);
@@ -572,6 +571,8 @@ class BattleGround
         virtual void DoAction(uint32 action, uint64 var) {}
 
         virtual void HandlePlayerResurrect(Player* player) {}
+        virtual void EventPlayerDamageGO(Player* /*player*/, GameObject* /*target_obj*/, uint32 /*eventId*/) {}
+        virtual void EventSpawnGOSA(Player* /*owner*/, Creature* /*obj*/, float /*x*/, float /*y*/, float /*z*/) {}
 
         /* Death related */
         virtual WorldSafeLocsEntry const* GetClosestGraveYard(Player* player);

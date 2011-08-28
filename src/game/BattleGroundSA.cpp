@@ -49,8 +49,10 @@ BattleGroundSA::BattleGroundSA()
     isDemolisherDestroyed[0] = false; // ALLIANCE
     isDemolisherDestroyed[1] = false; // HORDE
     shipsTimer = BG_SA_BOAT_START;
+
     for (int32 i = 0; i <= BG_SA_GATE_MAX; ++i)
         GateStatus[i] = 1;
+
     TimerEnabled = false;
     TimeST2Round = 120000;
     Round_timer = 0;
@@ -131,8 +133,8 @@ void BattleGroundSA::EndBattleGround(Team winner)
     else
         winner = RoundScores[1].winner == ALLIANCE ? ALLIANCE : HORDE;
 
-    //win reward
-    if(winner)
+    // win reward
+    if (winner)
     {
         RewardXpToTeam(0, 0.8f, winner);
     }
@@ -161,7 +163,7 @@ void BattleGroundSA::Update(uint32 diff)
     {
         if (Round_timer >= BG_SA_ROUNDLENGTH)
         {
-            if(Phase == SA_ROUND_ONE) // Timeout of first round
+            if (Phase == SA_ROUND_ONE) // Timeout of first round
             {
                 PlaySoundToAll(BG_SA_SOUND_GYD_VICTORY);
                 SendMessageToAll(defender == ALLIANCE ? LANG_BG_SA_ALLIANCE_TIMEOUT_END_1ROUND : LANG_BG_SA_HORDE_TIMEOUT_END_1ROUND, CHAT_MSG_BG_SYSTEM_NEUTRAL, NULL);
@@ -229,6 +231,7 @@ void BattleGroundSA::Update(uint32 diff)
                     RewardHonorToTeam(85, (teamIndex == 0) ? ALLIANCE:HORDE);
                     RewardXpToTeam(0, 0.6f, (teamIndex == 0) ? ALLIANCE:HORDE);
                     RewardReputationToTeam((teamIndex == 0) ? 1050:1085, 65, (teamIndex == 0) ? ALLIANCE:HORDE);
+
                     switch(gyd)
                     {
                         case 0: SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);break;
@@ -268,6 +271,7 @@ void BattleGroundSA::Update(uint32 diff)
             SpawnEvent(SA_EVENT_ADD_NPC, 0, true);
             SpawnEvent(SA_EVENT_ADD_BOMB, (GetDefender() == ALLIANCE ? 1 : 0), true);
             ToggleTimer();
+
             SetStatus(STATUS_IN_PROGRESS); // Start round two
             PlaySoundToAll(SOUND_BG_START);
             SendMessageToAll(LANG_BG_SA_HAS_BEGUN, CHAT_MSG_BG_SYSTEM_NEUTRAL, NULL);
@@ -362,7 +366,7 @@ void BattleGroundSA::HandleAreaTrigger(Player * /*Source*/, uint32 /*Trigger*/)
 void BattleGroundSA::UpdatePlayerScore(Player* Source, uint32 type, uint32 value)
 {
     BattleGroundScoreMap::iterator itr = m_PlayerScores.find(Source->GetGUID());
-    if(itr == m_PlayerScores.end()) // player not found...
+    if (itr == m_PlayerScores.end()) // player not found...
         return;
 
     switch(type)
@@ -399,8 +403,10 @@ void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
     {
         Player *plr = sObjectMgr.GetPlayer(itr->first);
 
-        if (plr)
-            TeleportPlayerToCorrectLoc(plr, true);
+        if (!plr)
+            continue;
+
+        TeleportPlayerToCorrectLoc(plr, true);
 
         if (plr->GetBGTeam() == defender && plr->GetItemByEntry(39213) != NULL)
             plr->DestroyItemCount(39213, 1, true);
@@ -488,30 +494,41 @@ bool BattleGroundSA::SetupBattleGround()
 
 bool BattleGroundSA::SetupShips()
 {
-    for (int i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; i++)
+    for (uint8 i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; ++i)
+    {
         for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-            if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+        {
+            if (Player* plr = sObjectMgr.GetPlayer(itr->first))
                 SendTransportsRemove(plr);
-    for (uint8 i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; i++)
+        }
+    }
+
+    for (uint8 i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; ++i)
     {
         uint32 boatid=0;
         switch (i)
         {
             case BG_SA_BOAT_ONE:
                 boatid = GetDefender() == ALLIANCE ? BG_SA_BOAT_ONE_H : BG_SA_BOAT_ONE_A;
-                if (!(AddObject(i, boatid, BG_SA_START_LOCATIONS[i + 5][0], BG_SA_START_LOCATIONS[i + 5][1], BG_SA_START_LOCATIONS[i + 5][2]+ (GetDefender() == ALLIANCE ? -3.750f: 0) , BG_SA_START_LOCATIONS[i + 5][3], 0, 0, 1.0f, 0.0002f, RESPAWN_ONE_DAY)))
+                if (!(AddObject(i, boatid, BG_SA_START_LOCATIONS[i + 5][0], BG_SA_START_LOCATIONS[i + 5][1], BG_SA_START_LOCATIONS[i + 5][2]+ (GetDefender() == ALLIANCE ? -3.750f: 0) , BG_SA_START_LOCATIONS[i + 5][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_ONE_DAY)))
                 {
                     sLog.outError("SA_ERROR: Can't spawn ships!");
                     return false;
                 }
+
+                if (GameObject* boat = GetBGObject(i))
+                    boat->SetTransportPathRotation(0.0f, 0.0f, 1.0f, 0.0002f);
                 break;
             case BG_SA_BOAT_TWO:
                 boatid = GetDefender() == ALLIANCE ? BG_SA_BOAT_TWO_H : BG_SA_BOAT_TWO_A;
-                if (!(AddObject(i, boatid, BG_SA_START_LOCATIONS[i + 5][0], BG_SA_START_LOCATIONS[i + 5][1], BG_SA_START_LOCATIONS[i + 5][2]+ (GetDefender() == ALLIANCE ? -3.750f: 0) , BG_SA_START_LOCATIONS[i + 5][3], 0, 0, 1.0f, 0.00001f, RESPAWN_ONE_DAY)))
+                if (!(AddObject(i, boatid, BG_SA_START_LOCATIONS[i + 5][0], BG_SA_START_LOCATIONS[i + 5][1], BG_SA_START_LOCATIONS[i + 5][2]+ (GetDefender() == ALLIANCE ? -3.750f: 0) , BG_SA_START_LOCATIONS[i + 5][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_ONE_DAY)))
                 {
                     sLog.outError("SA_ERROR: Can't spawn ships!");
                     return false;
                 }
+
+                if (GameObject* boat = GetBGObject(i))
+                    boat->SetTransportPathRotation(0, 0, 1.0f, 0.00001f);
                 break;
         }
     }
@@ -519,10 +536,14 @@ bool BattleGroundSA::SetupShips()
     SpawnBGObject(m_BgObjects[BG_SA_BOAT_ONE], RESPAWN_IMMEDIATELY);
     SpawnBGObject(m_BgObjects[BG_SA_BOAT_TWO], RESPAWN_IMMEDIATELY);
 
-    for (int i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; i++)
+    for (uint8 i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; ++i)
+    {
         for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-            if (Player *plr = sObjectMgr.GetPlayer(itr->first))
+        {
+            if (Player* plr = sObjectMgr.GetPlayer(itr->first))
                 SendTransportInit(plr);
+        }
+    }
     return true;
 }
 
@@ -867,13 +888,13 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
         {
             if (eventId == 22097 && player->GetTeam() != GetDefender())
             {
-                if(!relicGateDestroyed)
+                if (!relicGateDestroyed)
                 {
                     player->GetSession()->KickPlayer();
                     sLog.outError("Player %s has clicked SOTA Relic without Relic gate being destroyed", player->GetName());
                     return;
                 }
-                if(Phase == SA_ROUND_ONE) // Victory at first round
+                if (Phase == SA_ROUND_ONE) // Victory at first round
                 {
                     RoundScores[0].winner = GetDefender() == ALLIANCE ? HORDE : ALLIANCE;
                     RoundScores[0].time = Round_timer;
@@ -910,16 +931,16 @@ void BattleGroundSA::HandleKillPlayer(Player* player, Player* killer)
 
 void BattleGroundSA::HandleKillUnit(Creature* unit, Player* killer)
 {
-    if(!unit)
+    if (!unit)
         return;
 
-    if(unit->GetEntry() == 28781) //Demolisher
+    if (unit->GetEntry() == 28781) // Demolisher
     {
         UpdatePlayerScore(killer, SCORE_DEMOLISHERS_DESTROYED, 1);
         isDemolisherDestroyed[killer->GetTeam() == HORDE ? 0 : 1] = true;
     }
 
-    if(unit->GetEntry() == 50000) //bomb
+    if (unit->GetEntry() == 50000) // bomb
     {
         killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 1843);
     }
@@ -929,6 +950,7 @@ int32 BattleGroundSA::_GatesName(GameObject* obj)
 {
     if (!obj)
         return 0;
+
     switch (obj->GetEntry())
     {
         case BG_SA_GO_GATES_ROOM_ANCIENT_SHRINE: return LANG_BG_SA_GATE_ROOM_ANCIENT_SHRINE;
@@ -977,8 +999,10 @@ WorldSafeLocsEntry const* BattleGroundSA::GetClosestGraveYard(Player* player)
         for (uint8 i = 0; i < gyd.size(); ++i)
         {
             WorldSafeLocsEntry const*entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIdsPhase[gyd[i]]);
+
             if (!entry)
                 continue;
+
             float dist = (entry->x - plr_x)*(entry->x - plr_x)+(entry->y - plr_y)*(entry->y - plr_y);
             if (mindist > dist)
             {
@@ -1086,7 +1110,7 @@ void BattleGroundSA::SendWarningToAllSA(uint8 gyd, int status, Team team, bool i
     }
     else
     {
-        if(destroyed)
+        if (destroyed)
         {
             switch(door)
             {
@@ -1179,10 +1203,12 @@ void BattleGroundSA::SendTransportInit(Player *player)
     if (GetBGObject(BG_SA_BOAT_ONE) || GetBGObject(BG_SA_BOAT_TWO))
     {
         UpdateData transData;
+
         if (GetBGObject(BG_SA_BOAT_ONE))
             GetBGObject(BG_SA_BOAT_ONE)->BuildCreateUpdateBlockForPlayer(&transData, player);
         if (GetBGObject(BG_SA_BOAT_TWO))
             GetBGObject(BG_SA_BOAT_TWO)->BuildCreateUpdateBlockForPlayer(&transData, player);
+
         WorldPacket packet;
         transData.BuildPacket(&packet);
         player->GetSession()->SendPacket(&packet);
@@ -1241,13 +1267,13 @@ uint32 BattleGroundSA::GetCorrectFactionSA(uint8 vehicleType) const
 
 bool BattleGroundSA::winSAwithAllWalls(Team team)
 {
-   if(GetDefender() != team)
+   if (GetDefender() != team)
         return false;
 
     bool allNotDestroyed = true;
 
     for (uint32 i = 0; i < BG_SA_GATE_MAX; ++i)
-        if(GateStatus[i] == BG_SA_GO_GATES_DESTROY)
+        if (GateStatus[i] == BG_SA_GO_GATES_DESTROY)
             allNotDestroyed = false;
 
     return allNotDestroyed;

@@ -38,8 +38,8 @@
 #include "BattleGround.h"
 #include "BattleGroundAB.h"
 #include "BattleGroundAV.h"
-#include "BattleGroundSA.h"
 #include "BattleGroundWS.h"
+#include "BattleGroundSA.h"
 #include "Map.h"
 #include "InstanceData.h"
 
@@ -1071,7 +1071,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             break;
                         }
                         case 1762:                          // SA, win without losing any siege vehicles
-                        case 2192:                          // SA, win without losing any siege vehicles
+                        case 2192:
                         {
                             if (bg->GetTypeID(true) != BATTLEGROUND_SA)
                                 continue;

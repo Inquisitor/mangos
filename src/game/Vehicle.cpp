@@ -39,12 +39,12 @@ VehicleKit::VehicleKit(Unit* base) : m_pBase(base), m_uiNumFreeSeats(0)
         if (!seatId)
             continue;
 
-        if(base)
+        if (base)
         {
-            if(GetBase()->GetVehicleInfo()->GetEntry()->m_flags & VEHICLE_FLAG_NO_STRAFE)
+            if (GetBase()->GetVehicleInfo()->GetEntry()->m_flags & VEHICLE_FLAG_NO_STRAFE)
                 GetBase()->m_movementInfo.AddMovementFlag2(MOVEFLAG2_NO_STRAFE);
 
-            if(GetBase()->GetVehicleInfo()->GetEntry()->m_flags & VEHICLE_FLAG_NO_JUMPING)
+            if (GetBase()->GetVehicleInfo()->GetEntry()->m_flags & VEHICLE_FLAG_NO_JUMPING)
                 GetBase()->m_movementInfo.AddMovementFlag2(MOVEFLAG2_NO_JUMPING);
         }
 
@@ -174,6 +174,13 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
         passenger->SendMessageToSet(&data, true);
     }
 
+    switch (m_pBase->GetEntry())
+    {
+        case 28817:
+            passenger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            break;
+    }
+
     if (seat->second.seatInfo->m_flags & SEAT_FLAG_UNATTACKABLE || seat->second.seatInfo->m_flags & SEAT_FLAG_CAN_CONTROL)
     {
         switch (m_pBase->GetEntry())
@@ -192,9 +199,12 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
 
     if (seatInfo->m_flags & SEAT_FLAG_CAN_CONTROL)
     {
-        m_pBase->StopMoving();
-        m_pBase->GetMotionMaster()->Clear();
-        m_pBase->CombatStop(true);
+        if (!(m_pBase->GetVehicleInfo()->GetEntry()->m_flags & (VEHICLE_FLAG_ACCESSORY)))
+        {
+            m_pBase->StopMoving();
+            m_pBase->GetMotionMaster()->Clear();
+            m_pBase->CombatStop(true);
+        }
         m_pBase->DeleteThreatList();
         m_pBase->getHostileRefManager().deleteReferences();
         m_pBase->SetCharmerGuid(passenger->GetObjectGuid());
@@ -202,7 +212,7 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
 
         passenger->SetCharm(m_pBase);
 
-        if(m_pBase->HasAuraType(SPELL_AURA_FLY) || m_pBase->HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED))
+        if (m_pBase->HasAuraType(SPELL_AURA_FLY) || m_pBase->HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED))
         {
             WorldPacket data;
             data.Initialize(SMSG_MOVE_SET_CAN_FLY, 12);
@@ -230,13 +240,18 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
         if(!(((Creature*)m_pBase)->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_KEEP_AI))
             ((Creature*)m_pBase)->AIM_Initialize();
 
-        if(m_pBase->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE))
+        if (m_pBase->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE))
         {
             WorldPacket data2(SMSG_FORCE_MOVE_ROOT, 8+4);
             data2 << m_pBase->GetPackGUID();
             data2 << (uint32)(2);
             m_pBase->SendMessageToSet(&data2,false);
         }
+        else if (passenger->m_movementInfo.GetMovementFlags() & MOVEFLAG_WALK_MODE)
+            ((Creature*)m_pBase)->SetWalk(true);
+        else
+            ((Creature*)m_pBase)->SetWalk(false);
+
     }
 
     passenger->SendMonsterMoveTransport(m_pBase, SPLINETYPE_FACINGANGLE, SPLINEFLAG_UNKNOWN5, 0, 0.0f);
@@ -302,6 +317,13 @@ void VehicleKit::RemovePassenger(Unit *passenger)
             ((Creature*)m_pBase)->AIM_Initialize();
     }
 
+    switch (m_pBase->GetEntry())
+    {
+        case 28817:
+            passenger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            break;
+    }
+
     if (passenger->GetTypeId() == TYPEID_PLAYER)
     {
         ((Player*)passenger)->GetCamera().ResetView();
@@ -323,9 +345,9 @@ void VehicleKit::RemovePassenger(Unit *passenger)
             ((Creature*)m_pBase)->AI()->PassengerBoarded(passenger, seat->first, false);
     }
 
- 	// only for flyable vehicles
- 	if (m_pBase->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING))
- 	    m_pBase->CastSpell(passenger, 45472, true);    // Parachute
+    // only for flyable vehicles
+    if (m_pBase->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING))
+        m_pBase->CastSpell(passenger, 45472, true);    // Parachute
 }
 
 void VehicleKit::Reset()
@@ -355,10 +377,11 @@ void VehicleKit::InstallAccessory( uint32 entry, int8 seatId, bool minion)
         passenger->ExitVehicle();
     }
 
-    if (Creature *accessory = m_pBase->SummonCreature(entry, m_pBase->GetPositionX(), m_pBase->GetPositionY(), m_pBase->GetPositionZ(), 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000))
+    if (Creature* accessory = m_pBase->SummonCreature(entry, m_pBase->GetPositionX(), m_pBase->GetPositionY(), m_pBase->GetPositionZ(), 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000))
     {
         accessory->SetCreatorGuid(ObjectGuid());
         accessory->EnterVehicle(this, seatId);
+        accessory->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE);
         accessory->SendHeartBeat();
     }
 }

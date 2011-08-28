@@ -24,8 +24,46 @@
 #include "Group.h"
 #include "Player.h"
 
+void LFGStateStructure::SetDungeons(LFGDungeonSet* dungeons)
+{
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
+    m_DungeonsList = *dungeons;
+    if (m_DungeonsList.empty())
+        m_type = LFG_TYPE_NONE;
+    else
+    {
+        if (LFGDungeonEntry const* entry = *m_DungeonsList.begin())
+            m_type = LFGType(entry->type);
+        else
+            m_type = LFG_TYPE_NONE;
+    }
+};
+
+void LFGStateStructure::RemoveDungeon(LFGDungeonEntry const* dungeon)
+{
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
+    m_DungeonsList.erase(dungeon);
+    if (m_DungeonsList.empty())
+        m_type = LFG_TYPE_NONE;
+    else
+    {
+        if (LFGDungeonEntry const* entry = *m_DungeonsList.begin())
+            m_type = LFGType(entry->type);
+        else
+            m_type = LFG_TYPE_NONE;
+    }
+};
+
+void LFGStateStructure::AddDungeon(LFGDungeonEntry const* dungeon)
+{
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
+    m_DungeonsList.insert(dungeon);
+};
+
+
 void LFGPlayerState::Clear()
 {
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     rolesMask = LFG_ROLE_MASK_NONE;
     update = true;
     m_state = LFG_STATE_NONE;
@@ -38,6 +76,7 @@ void LFGPlayerState::Clear()
               LFG_MEMBER_FLAG_STATUS  |
               LFG_MEMBER_FLAG_BIND);
 
+    m_type = LFG_TYPE_NONE;
     m_DungeonsList.clear();
     m_LockMap.clear();
     m_comment.clear();
@@ -47,7 +86,7 @@ void LFGPlayerState::Clear()
     m_teleported = false;
 }
 
-LFGLockStatusMap* LFGPlayerState::GetLockMap()
+LFGLockStatusMap const* LFGPlayerState::GetLockMap()
 {
     if (update || m_LockMap.empty())
     {
@@ -81,14 +120,6 @@ LFGRoleMask LFGPlayerState::GetRoles()
     return rolesMask;
 };
 
-LFGType LFGPlayerState::GetDungeonType()
-{
-    if (update)
-        return LFG_TYPE_NONE;
-
-    return GetType();
-};
-
 void LFGPlayerState::SetJoined()
 {
     m_jointime = time_t(time(NULL));
@@ -115,22 +146,14 @@ void LFGPlayerState::SetComment(std::string comment)
 
 };
 
-LFGType LFGPlayerState::GetType()
-{
-    if (m_DungeonsList.empty())
-        return LFG_TYPE_NONE;
-    else
-        return LFGType((*m_DungeonsList.begin())->type);
-};
-
 void LFGGroupState::Clear()
 {
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     queued = false;
     update = true;
     m_status = LFG_STATUS_NOT_SAVED;
     m_votesNeeded = 3;
     m_kicksLeft = 5;
-    m_DungeonsList.clear();
     m_flags = LFG_MEMBER_FLAG_NONE |
               LFG_MEMBER_FLAG_COMMENT |
               LFG_MEMBER_FLAG_ROLES |
@@ -138,20 +161,15 @@ void LFGGroupState::Clear()
     m_proposal = NULL;
     m_roleCheckCancelTime = 0;
     m_roleCheckState      = LFG_ROLECHECK_NONE;
+    m_type = LFG_TYPE_NONE;
+    m_DungeonsList.clear();
+    m_LockMap.clear();
     SetDungeon(NULL);
     SetState(LFG_STATE_NONE);
     SaveState();
     StopBoot();
     SetRandomPlayersCount(0);
 }
-
-LFGType LFGGroupState::GetType()
-{
-    if (m_DungeonsList.empty())
-        return LFG_TYPE_NONE;
-    else
-        return LFGType((*m_DungeonsList.begin())->type);
-};
 
 uint8 LFGGroupState::GetVotesNeeded() const
 {
@@ -182,14 +200,6 @@ bool LFGGroupState::IsRoleCheckActive()
 
     return false;
 }
-
-LFGType LFGGroupState::GetDungeonType()
-{
-    if (!GetDungeons() || GetDungeons()->empty())
-        return LFG_TYPE_NONE;
-
-    return LFGType((*GetDungeons()->begin())->type);
-};
 
 bool LFGGroupState::IsBootActive()
 {
@@ -320,6 +330,7 @@ void LFGProposal::RemoveMember(ObjectGuid guid)
     if (guid.IsEmpty())
         return;
 
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     LFGQueueSet::iterator itr = playerGuids.find(guid);
     if (itr != playerGuids.end())
         playerGuids.erase(itr);
@@ -327,6 +338,7 @@ void LFGProposal::RemoveMember(ObjectGuid guid)
 
 void LFGProposal::AddMember(ObjectGuid guid)
 {
+    LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     playerGuids.insert(guid);
 };
 

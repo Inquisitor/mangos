@@ -303,12 +303,12 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX_UNK25                       0x02000000            // 25
 #define SPELL_ATTR_EX_UNK26                       0x04000000            // 26
 #define SPELL_ATTR_EX_UNK27                       0x08000000            // 27
-#define SPELL_ATTR_EX_UNK28                       0x10000000            // 28
-#define SPELL_ATTR_EX_UNK29                       0x20000000            // 29
+#define SPELL_ATTR_EX_HIDDEN_AURA                 0x10000000            // 28 client doesn't display these spells in aura bar (special and server-side spells)
+#define SPELL_ATTR_EX_CHANNEL_DISPLAY_SPELL_NAME  0x20000000            // 29 spell name is displayed in cast bar instead of 'channeling' text
 #define SPELL_ATTR_EX_UNK30                       0x40000000            // 30 overpower
 #define SPELL_ATTR_EX_UNK31                       0x80000000            // 31
 
-#define SPELL_ATTR_EX2_UNK0                       0x00000001            // 0
+#define SPELL_ATTR2_ALLOW_DEAD_TARGET             0x00000001            // 0
 #define SPELL_ATTR_EX2_UNK1                       0x00000002            // 1
 #define SPELL_ATTR_EX2_IGNORE_LOS                 0x00000004            // 2 do not need LOS (e.g. 18220 since 3.3.3)
 #define SPELL_ATTR_EX2_UNK3                       0x00000008            // 3 auto targeting? (e.g. fishing skill enhancement items since 3.3.3)
@@ -345,12 +345,12 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX3_UNK1                       0x00000002            // 1
 #define SPELL_ATTR_EX3_UNK2                       0x00000004            // 2
 #define SPELL_ATTR_EX3_MELEE                      0x00000008            // 3
-#define SPELL_ATTR_EX3_UNK4                       0x00000010            // 4 Druid Rebirth only this spell have this flag
+#define SPELL_ATTR_EX3_IGNORE_RESURRECTION_TIMER  0x00000010            // 4 you don't have to wait to be resurrected with these spells
 #define SPELL_ATTR_EX3_UNK5                       0x00000020            // 5
 #define SPELL_ATTR_EX3_UNK6                       0x00000040            // 6
 #define SPELL_ATTR_EX3_STACK_FOR_DIFF_CASTERS     0x00000080            // 7 create a separate (de)buff stack for each caster
-#define SPELL_ATTR_EX3_UNK8                       0x00000100            // 8 players only?
-#define SPELL_ATTR_EX3_UNK9                       0x00000200            // 9 
+#define SPELL_ATTR_EX3_UNK8                       0x00000100            // 8
+#define SPELL_ATTR_EX3_UNK9                       0x00000200            // 9
 #define SPELL_ATTR_EX3_MAIN_HAND                  0x00000400            // 10 Main hand weapon required
 #define SPELL_ATTR_EX3_BATTLEGROUND               0x00000800            // 11 Can casted only on battleground
 #define SPELL_ATTR_EX3_CAST_ON_DEAD               0x00001000            // 12 target is a dead player (not every spell has this flag)
@@ -463,10 +463,10 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX6_UNK20                      0x00100000            // 20
 #define SPELL_ATTR_EX6_UNK21                      0x00200000            // 21
 #define SPELL_ATTR_EX6_UNK22                      0x00400000            // 22
-#define SPELL_ATTR_EX6_DEBUFF_MAJOR               0x00800000            // 23 only debuff and debuff-like spells in 3.3.5a
+#define SPELL_ATTR_EX6_NO_STACK_DEBUFF_MAJOR      0x00800000            // 23 only debuff and debuff-like spells in 3.3.5a
 #define SPELL_ATTR_EX6_UNK24                      0x01000000            // 24 not set in 3.0.3
 #define SPELL_ATTR_EX6_UNK25                      0x02000000            // 25 not set in 3.0.3
-#define SPELL_ATTR_EX6_UNK26                      0x04000000            // 26 not set in 3.0.3
+#define SPELL_ATTR_EX6_NO_STACK_BUFF              0x04000000            // 26 not set in 3.0.3
 #define SPELL_ATTR_EX6_UNK27                      0x08000000            // 27 not set in 3.0.3
 #define SPELL_ATTR_EX6_UNK28                      0x10000000            // 28 not set in 3.0.3
 #define SPELL_ATTR_EX6_NO_DMG_MODS                0x20000000            // 29 do not apply damage mods (usually in cases where it has already been applied)
@@ -1197,7 +1197,12 @@ enum WeaponAttackType
 {
     BASE_ATTACK   = 0,
     OFF_ATTACK    = 1,
-    RANGED_ATTACK = 2
+    RANGED_ATTACK = 2,
+
+    // leave these greater than or equal to MAX_ATTACK
+    NONSTACKING_POS_MOD_MELEE = 3,
+    NONSTACKING_NEG_MOD_MELEE = 4,
+    NONSTACKING_MOD_ALL = 5
 };
 
 #define MAX_ATTACK  3
@@ -2131,7 +2136,7 @@ enum CreatureTypeFlags
     CREATURE_TYPEFLAGS_HERBLOOT         = 0x00000100,       // Can be looted by herbalist
     CREATURE_TYPEFLAGS_MININGLOOT       = 0x00000200,       // Can be looted by miner
     CREATURE_TYPEFLAGS_UNK11            = 0x00000400,       // no idea, but it used by client
-    CREATURE_TYPEFLAGS_UNK12            = 0x00000800,       // related to possibility to cast spells while mounted
+    CREATURE_TYPEFLAGS_MOUNTED_COMBAT   = 0x00000800,       // Creature can remain mounted when entering combat
     CREATURE_TYPEFLAGS_CAN_ASSIST       = 0x00001000,       // Can aid any player (and group) in combat. Typically seen for escorting NPC's
     CREATURE_TYPEFLAGS_UNK14            = 0x00002000,       // checked from calls in Lua_PetHasActionBar
     CREATURE_TYPEFLAGS_UNK15            = 0x00004000,       // Lua_UnitGUID, client does guid_low &= 0xFF000000 if this flag is set
