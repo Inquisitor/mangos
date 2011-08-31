@@ -2006,8 +2006,10 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
 
                 if (BattleGround *bg = pWho->GetBattleGround())
                 {
-                    bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
-                    ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                    if(bg->GetTypeID(true) == BATTLEGROUND_SA)
+                        bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                    if(bg->GetTypeID(true) == BATTLEGROUND_IC)
+                        ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
                 }
 
             }
@@ -2034,8 +2036,10 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
             if (pWho)
                 if (BattleGround *bg = pWho->GetBattleGround())
                 {
-                    bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damagedEvent);
-                    ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                    if(bg->GetTypeID(true) == BATTLEGROUND_SA)
+                        bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damagedEvent);
+                    if(bg->GetTypeID(true) == BATTLEGROUND_IC)
+                        ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
                 }
          }
     }
