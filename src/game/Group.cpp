@@ -1072,7 +1072,7 @@ void Group::SendUpdate()
         WorldPacket data(SMSG_GROUP_LIST, (1+1+1+1+8+4+GetMembersCount()*20));
         data << uint8(m_groupType);                         // group type (flags in 3.3)
         data << uint8(citr->group);                         // groupid
-        data << uint8(citr->flags);                         // group flags
+        data << (isLFGGroup() ? uint8(citr->flags) : uint8(0)); // group flags
         data << uint8(citr->roles);                         // roles mask
         if(isLFGGroup())
         {
@@ -1095,7 +1095,7 @@ void Group::SendUpdate()
             data << citr2->guid;
             data << uint8(onlineState);                     // online-state
             data << uint8(citr2->group);                    // groupid
-            data << uint8(citr2->flags);                    // group flags
+            data << (isLFGGroup() ? uint8(citr2->flags) : uint8(0)); // group flags
             data << uint8(citr2->roles);                    // 3.3, role?
         }
 
@@ -1733,6 +1733,10 @@ bool Group::InCombatToInstance(uint32 instanceId)
     for(GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next())
     {
         Player *pPlayer = itr->getSource();
+
+        if (!pPlayer || !pPlayer->IsInWorld())
+            continue;
+
         if(pPlayer->GetMap() && pPlayer->GetInstanceId() == instanceId && pPlayer->IsInCombat())
             return true;
     }

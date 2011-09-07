@@ -45,12 +45,12 @@
 #include "MapPersistentStateMgr.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
-#include "Vehicle.h"
 #include "Transports.h"
 #include "VMapFactory.h"
 #include "MovementGenerator.h"
 #include "movement/MoveSplineInit.h"
 #include "movement/MoveSpline.h"
+#include "CreatureLinkingMgr.h"
 
 #include <math.h>
 #include <stdarg.h>
@@ -282,6 +282,9 @@ Unit::Unit() :
     for(int i=0; i < MAX_REACTIVE; ++i)
         m_reactiveTimer[i] = 0;
 
+    m_isCreatureLinkingTrigger = false;
+    m_isSpawningLinked = false;
+
     m_transport = NULL;
 
     m_pVehicleKit = NULL;
@@ -309,10 +312,10 @@ Unit::~Unit()
         }
     }
 
-    delete m_charmInfo;
-    delete m_vehicleInfo;
     CleanupDeletedAuras();
 
+    delete m_charmInfo;
+    delete m_vehicleInfo;
     delete movespline;
 
     // those should be already removed at "RemoveFromWorld()" call
@@ -340,7 +343,10 @@ void Unit::Update( uint32 update_diff, uint32 p_time )
     m_Events.Update( update_diff );
     _UpdateSpells( update_diff );
 
-    CleanupDeletedAuras();
+    {
+        MAPLOCK_WRITE(this,MAP_LOCK_TYPE_AURAS);
+        CleanupDeletedAuras();
+    }
 
     if (m_lastManaUseTimer)
     {
@@ -1002,6 +1008,9 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             if (InstanceData* mapInstance = cVictim->GetInstanceData())
                 mapInstance->OnCreatureDeath(cVictim);
 
+            if (m_isCreatureLinkingTrigger)
+                cVictim->GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_DIE, cVictim);
+
             // Dungeon specific stuff, only applies to players killing creatures
             if (cVictim->GetInstanceId())
             {
@@ -1032,8 +1041,8 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
                             save->SetResetTime(resettime);
                     }
 
-                    if (DungeonPersistentState* state = ((DungeonMap*)m)->GetPersistanceState())
-                        state->UpdateEncounterState(ENCOUNTER_CREDIT_KILL_CREATURE, ((Creature*)cVictim)->GetEntry(), creditedPlayer);
+                    // update encounter state if needed
+                    ((DungeonMap*)m)->GetPersistanceState()->UpdateEncounterState(ENCOUNTER_CREDIT_KILL_CREATURE, ((Creature*)cVictim)->GetEntry());
                 }
             }
         }
@@ -3252,6 +3261,10 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit *pVictim, SpellEntry const *spell)
     if (spell->DmgClass == SPELL_DAMAGE_CLASS_RANGED)
         attType = RANGED_ATTACK;
 
+    // cannot parry/dodge/miss if melee spell selfcasted
+    if (pVictim && pVictim->GetObjectGuid() == GetObjectGuid())
+        return SPELL_MISS_NONE;
+
     // bonus from skills is 0.04% per skill Diff
     int32 attackerWeaponSkill = (spell->EquippedItemClass == ITEM_CLASS_WEAPON) ? int32(GetWeaponSkillValue(attType,pVictim)) : GetMaxSkillValueForLevel();
     int32 skillDiff = attackerWeaponSkill - int32(pVictim->GetMaxSkillValueForLevel(this));
@@ -3289,6 +3302,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit *pVictim, SpellEntry const *spell)
     // Same spells cannot be parry/dodge
     if (spell->Attributes & SPELL_ATTR_IMPOSSIBLE_DODGE_PARRY_BLOCK)
         return SPELL_MISS_NONE;
+
 
     bool from_behind = !pVictim->HasInArc(M_PI_F,this);
 
@@ -3846,7 +3860,10 @@ void Unit::_UpdateSpells( uint32 time )
         SpellAuraHolder* i_holder = m_spellAuraHoldersUpdateIterator->second;
         ++m_spellAuraHoldersUpdateIterator;                            // need shift to next for allow update if need into aura update
         if (i_holder && !i_holder->IsDeleted() && !i_holder->IsEmptyHolder() && !i_holder->IsInUse())
+        {
+            MAPLOCK_READ(this,MAP_LOCK_TYPE_AURAS);
             i_holder->UpdateHolder(time);
+        }
     }
 
     // remove expired auras
@@ -5386,10 +5403,7 @@ void Unit::RemoveAura(Aura *Aur, AuraRemoveMode mode)
 
     // If aura in use (removed from code that plan access to it data after return)
     // store it in aura list with delayed deletion
-    if (Aur->IsInUse())
-        m_deletedAuras.push_back(Aur);
-    else
-        delete Aur;
+    m_deletedAuras.push_back(Aur);
 }
 
 void Unit::RemoveAllAuras(AuraRemoveMode mode /*= AURA_REMOVE_BY_DEFAULT*/)
@@ -6954,12 +6968,17 @@ int32 Unit::SpellBonusWithCoeffs(SpellEntry const *spellProto, int32 total, int3
  */
 uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
 {
-    if(!spellProto || !pVictim || damagetype==DIRECT_DAMAGE || spellProto->AttributesEx6 & SPELL_ATTR_EX6_NO_DMG_MODS)
+    if(!spellProto || !pVictim || !pVictim->GetMap() || damagetype==DIRECT_DAMAGE || spellProto->AttributesEx6 & SPELL_ATTR_EX6_NO_DMG_MODS)
         return pdamage;
 
     // conflagrate gets damage mods from previously calculated immolate aura damage tick
     if (spellProto->IsFitToFamily<SPELLFAMILY_WARLOCK, CF_WARLOCK_CONFLAGRATE>())
         return pdamage;
+
+    if (!IsInWorld() || !GetMap())
+        return pdamage;
+
+    MAPLOCK_READ(this,MAP_LOCK_TYPE_AURAS);
 
     // For totems get damage bonus from owner (statue isn't totem in fact)
     if ( GetTypeId()==TYPEID_UNIT && ((Creature*)this)->IsTotem() && ((Totem*)this)->GetTotemType()!=TOTEM_STATUE)
@@ -6978,29 +6997,30 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
     float nonStackingPos = 0.0f;
     float nonStackingNeg = 0.0f;
 
-    AuraList const mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
+    AuraList const& mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
     for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
     {
-        if (!*i)
+        Aura* aura = *i;
+        if (!aura || !aura->GetModifier())
             continue;
 
-        SpellAuraHolder* holder = (*i)->GetHolder();
+        SpellAuraHolder* holder = aura->GetHolder();
         if (!holder || holder->IsDeleted())
             continue;
 
-        if ( ((*i)->GetModifier()->m_miscvalue & GetSpellSchoolMask(spellProto)) &&
-            (*i)->GetSpellProto()->EquippedItemClass == -1 &&
+        if ( (aura->GetModifier()->m_miscvalue & GetSpellSchoolMask(spellProto)) &&
+            aura->GetSpellProto()->EquippedItemClass == -1 &&
                                                             // -1 == any item class (not wand then)
-            (*i)->GetSpellProto()->EquippedItemInventoryTypeMask == 0 )
+            aura->GetSpellProto()->EquippedItemInventoryTypeMask == 0 )
                                                             // 0 == any inventory type (not wand then)
         {
-            float calculatedBonus = (*i)->GetModifier()->m_amount;
+            float calculatedBonus = aura->GetModifier()->m_amount;
 
             // bonus stored in another auras basepoints
             if (calculatedBonus == 0)
             {
                 // Clearcasting - bonus from Elemental Oath
-                if ((*i)->GetSpellProto()->Id == 16246)
+                if (aura->GetSpellProto()->Id == 16246)
                 {
                     AuraList const& aurasCrit = GetAurasByType(SPELL_AURA_MOD_SPELL_CRIT_CHANCE);
                     for (AuraList::const_iterator itr = aurasCrit.begin(); itr != aurasCrit.end(); itr++)
@@ -7014,7 +7034,7 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                 }
             }
 
-            if ((*i)->IsStacking())
+            if (aura->IsStacking())
                 DoneTotalMod *= (calculatedBonus+100.0f)/100.0f;
             else
             {
@@ -7044,7 +7064,12 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
 
     // done scripted mod (take it from owner)
     Unit *owner = GetOwner();
-    if (!owner) owner = this;
+    if (!owner) 
+        owner = this;
+
+    MAPLOCK_READ1(owner,MAP_LOCK_TYPE_AURAS);
+    MAPLOCK_READ2(pVictim,MAP_LOCK_TYPE_AURAS);
+
     AuraList const& mOverrideClassScript= owner->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
     for(AuraList::const_iterator i = mOverrideClassScript.begin(); i != mOverrideClassScript.end(); ++i)
     {
@@ -7397,7 +7422,7 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
  */
 uint32 Unit::SpellDamageBonusTaken(Unit *pCaster, SpellEntry const *spellProto, uint32 pdamage, DamageEffectType damagetype, uint32 stack)
 {
-    if(!spellProto || !pCaster || damagetype==DIRECT_DAMAGE )
+    if(!spellProto || !pCaster || !IsInWorld() || !GetMap() || damagetype==DIRECT_DAMAGE )
         return pdamage;
 
     uint32 schoolMask = spellProto->SchoolMask;
@@ -7405,6 +7430,8 @@ uint32 Unit::SpellDamageBonusTaken(Unit *pCaster, SpellEntry const *spellProto, 
     // Taken total percent damage auras
     float TakenTotalMod = 1.0f;
     int32 TakenTotal = 0;
+
+    MAPLOCK_READ(this,MAP_LOCK_TYPE_AURAS);
 
     // ..taken
     TakenTotalMod *= GetTotalAuraMultiplierByMiscMask(SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN, schoolMask);
@@ -8169,6 +8196,12 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
     if (!pVictim || pdamage == 0 || (spellProto && spellProto->AttributesEx6 & SPELL_ATTR_EX6_NO_DMG_MODS))
         return pdamage;
 
+    if (!pVictim->IsInWorld() || !pVictim->GetMap() || !GetMap())
+        return pdamage;
+
+    MAPLOCK_READ(this,MAP_LOCK_TYPE_AURAS);
+    MAPLOCK_READ1(pVictim,MAP_LOCK_TYPE_AURAS);
+
     // differentiate for weapon damage based spells
     bool isWeaponDamageBasedSpell = !(spellProto && (damagetype == DOT || IsSpellHaveEffect(spellProto, SPELL_EFFECT_SCHOOL_DAMAGE)));
     Item*  pWeapon          = GetTypeId() == TYPEID_PLAYER ? ((Player*)this)->GetWeaponForAttack(attType,true,false) : NULL;
@@ -8227,15 +8260,16 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
         AuraList const mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
         for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
         {
-            if (!(*i)->GetHolder() || (*i)->GetHolder()->IsDeleted())
+            Aura* aura = *i;
+            if (!aura || aura->GetHolder() || aura->GetHolder()->IsDeleted() || !aura->GetModifier())
                 continue;
 
-            if ((*i)->GetModifier()->m_miscvalue & schoolMask &&                         // schoolmask has to fit with the intrinsic spell school
-                (*i)->GetModifier()->m_miscvalue & GetMeleeDamageSchoolMask() &&         // AND schoolmask has to fit with weapon damage school (essential for non-physical spells)
-                (((*i)->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
-                (pWeapon && pWeapon->IsFitToSpellRequirements((*i)->GetSpellProto()))))  // OR used weapon fits aura requirements
+            if (aura->GetModifier()->m_miscvalue & schoolMask &&                         // schoolmask has to fit with the intrinsic spell school
+                aura->GetModifier()->m_miscvalue & GetMeleeDamageSchoolMask() &&         // AND schoolmask has to fit with weapon damage school (essential for non-physical spells)
+                ((aura->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
+                (pWeapon && pWeapon->IsFitToSpellRequirements(aura->GetSpellProto()))))  // OR used weapon fits aura requirements
             {
-                DonePercent *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
+                DonePercent *= (aura->GetModifier()->m_amount+100.0f) / 100.0f;
             }
         }
 
@@ -8767,6 +8801,9 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
 
         if (InstanceData* mapInstance = GetInstanceData())
             mapInstance->OnCreatureEnterCombat(pCreature);
+
+        if (m_isCreatureLinkingTrigger)
+            GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_AGGRO, pCreature, enemy);
     }
 }
 
@@ -9627,6 +9664,9 @@ void Unit::TauntFadeOut(Unit *taunter)
         if (InstanceData* mapInstance = GetInstanceData())
             mapInstance->OnCreatureEvade((Creature*)this);
 
+        if (m_isCreatureLinkingTrigger)
+            GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_EVADE, (Creature*)this);
+
         return;
     }
 
@@ -9723,6 +9763,9 @@ bool Unit::SelectHostileTarget()
     if (InstanceData* mapInstance = GetInstanceData())
         mapInstance->OnCreatureEvade((Creature*)this);
 
+    if (m_isCreatureLinkingTrigger)
+        GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_EVADE, (Creature*)this);
+
     return false;
 }
 
@@ -9785,7 +9828,9 @@ int32 Unit::CalculateSpellDamage(Unit const* target, SpellEntry const* spellProt
     if(spellProto->Id == 29444 && effect_index == EFFECT_INDEX_1)
         value += spellProto->EffectRealPointsPerLevel[EFFECT_INDEX_1];
 
-    if (Player* modOwner = GetSpellModOwner())
+    Player* modOwner = GetSpellModOwner();
+
+    if (modOwner && IsSpellAffectedBySpellMods(spellProto))
     {
         modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_ALL_EFFECTS, value);
 
@@ -9952,24 +9997,21 @@ void Unit::ApplyDiminishingToDuration(DiminishingGroup group, int32 &duration,Un
     if (duration == -1 || group == DIMINISHING_NONE || (!isReflected && caster->IsFriendlyTo(this)) )
         return;
 
+    // test pet/charm masters instead pets/charmeds
+    Player* target = GetCharmerOrOwnerPlayerOrPlayerItself();
+    Player* source = caster->GetCharmerOrOwnerPlayerOrPlayerItself();
+
     // Duration of crowd control abilities on pvp target is limited by 10 sec. (2.2.0)
     if (limitduration > 0 && duration > limitduration)
     {
-        // test pet/charm masters instead pets/charmeds
-        Unit const* targetOwner = GetCharmerOrOwner();
-        Unit const* casterOwner = caster->GetCharmerOrOwner();
-
-        Unit const* target = targetOwner ? targetOwner : this;
-        Unit const* source = casterOwner ? casterOwner : caster;
-
-        if (target->GetTypeId() == TYPEID_PLAYER && source->GetTypeId() == TYPEID_PLAYER)
+        if (target && source)
             duration = limitduration;
     }
 
     float mod = 1.0f;
 
     // Some diminishings applies to mobs too (for example, Stun)
-    if((GetDiminishingReturnsGroupType(group) == DRTYPE_PLAYER && GetTypeId() == TYPEID_PLAYER) || GetDiminishingReturnsGroupType(group) == DRTYPE_ALL)
+    if ((GetDiminishingReturnsGroupType(group) == DRTYPE_PLAYER && target) || GetDiminishingReturnsGroupType(group) == DRTYPE_ALL)
     {
         DiminishingLevels diminish = Level;
         switch(diminish)
@@ -10479,7 +10521,7 @@ void Unit::RemoveFromWorld()
         UnsummonAllTotems();
         RemoveAllGameObjects();
         RemoveAllDynObjects();
-        CleanupDeletedAuras();
+//        CleanupDeletedAuras();
         GetViewPoint().Event_RemovedFromWorld();
     }
 

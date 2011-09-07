@@ -205,7 +205,7 @@ class MANGOS_DLL_SPEC Pet : public Creature
         bool InitStatsForLevel(uint32 level, Unit* owner = NULL);
         bool HaveInDiet(ItemPrototype const* item) const;
         uint32 GetCurrentFoodBenefitLevel(uint32 itemlevel);
-        void SetDuration(int32 dur) { m_duration = dur; }
+        void SetDuration(uint32 dur) { m_duration = dur; }
 
         bool UpdateStats(Stats stat);
         bool UpdateAllStats();
@@ -305,6 +305,7 @@ class MANGOS_DLL_SPEC Pet : public Creature
         DeclinedName const* GetDeclinedNames() const { return m_declinedname; }
 
         bool    m_removed;                                  // prevent overwrite pet state in DB at next Pet::Update if pet already removed(saved)
+        bool    m_updated;                                  // pet updated now
     protected:
         uint32  m_happinessTimer;
         PetType m_petType;

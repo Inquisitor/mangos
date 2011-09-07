@@ -358,6 +358,12 @@ bool IsNoStackAuraDueToAura(uint32 spellId_1, uint32 spellId_2)
     return false;
 }
 
+bool IsSpellAffectedBySpellMods(SpellEntry const* spellInfo)
+{
+    return !(IsPassiveSpell(spellInfo) && spellInfo->AttributesEx3 & SPELL_ATTR_EX3_CAN_PROC_WITH_TRIGGERED);
+}
+
+
 int32 CompareAuraRanks(uint32 spellId_1, uint32 spellId_2)
 {
     SpellEntry const*spellInfo_1 = sSpellStore.LookupEntry(spellId_1);
@@ -690,6 +696,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 63138:                                         // Sara's Fervor (Ulduar - Yogg Saron encounter)
         case 63134:                                         // Sara's Blessing (Ulduar - Yogg Saron encounter)
         case 63355:                                         // Crunch Armor
+        case 66406:                                         // Snobolled! (Trial of the Crusader, Gormok the Impaler encounter)
         case 71010:                                         // Web Wrap (Icecrown Citadel, trash mob Nerub'ar Broodkeeper)
         case 72219:                                         // Gastric Bloat 10 N
         case 72551:                                         // Gastric Bloat 10 H

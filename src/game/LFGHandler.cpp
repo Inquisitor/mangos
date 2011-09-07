@@ -484,7 +484,16 @@ void WorldSession::SendLfgUpdateParty(LFGUpdateType updateType, LFGType type)
         data << uint8(size);
 
         for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
-            data << uint32((*itr)->Entry());
+        {
+            if (!*itr)
+                continue;
+
+            LFGDungeonEntry const* dungeon = *itr;
+            if (!dungeon)
+                data << uint32(0);
+            else
+                data << uint32((*itr)->Entry());
+        }
 
         data << comment.c_str();
     }
@@ -538,7 +547,17 @@ void WorldSession::SendLfgUpdatePlayer(LFGUpdateType updateType, LFGType type)
         data << uint8(size);
 
         for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
-            data << uint32((*itr)->Entry());
+        {
+            if (!*itr)
+                continue;
+
+            LFGDungeonEntry const* dungeon = *itr;
+            if (!dungeon)
+                data << uint32(0);
+            else
+                data << uint32((*itr)->Entry());
+        }
+
         data << comment.c_str();
     }
     SendPacket(&data);
@@ -1081,9 +1100,10 @@ void WorldSession::SendLfgUpdateProposal(LFGProposal* pProposal)
         isSameGroup   =  GetPlayer()->GetGroup() == group;
     }
 
-    if (!pProposal->playerGuids.empty())
+    LFGQueueSet const proposalGuids = pProposal->GetMembers();
+    if (!proposalGuids.empty())
     {
-        for (LFGQueueSet::const_iterator itr = pProposal->playerGuids.begin(); itr != pProposal->playerGuids.end(); ++itr)
+        for (LFGQueueSet::const_iterator itr = proposalGuids.begin(); itr != proposalGuids.end(); ++itr)
             if (Player* player = sObjectMgr.GetPlayer(*itr))
                 if (player->IsInWorld())
                     rolesMap.insert(std::make_pair(player->GetObjectGuid(), player->GetLFGState()->GetRoles()));

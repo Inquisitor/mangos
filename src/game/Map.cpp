@@ -197,6 +197,9 @@ void Map::RemoveFromGrid(Creature* obj, NGridType *grid, Cell const& cell)
 void Map::DeleteFromWorld(Player* pl)
 {
     sObjectAccessor.RemoveObject(pl);
+
+    WriteGuard Guard(GetLock(MAP_LOCK_TYPE_AURAS));
+
     delete pl;
 }
 
@@ -591,10 +594,10 @@ void Map::Remove(Player *player, bool remove)
     if(p.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || p.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP)
     {
         // invalid coordinates
-        player->ResetMap();
-
         if( remove )
             DeleteFromWorld(player);
+        else
+            player->TeleportToHomebind();
 
         return;
     }
@@ -656,7 +659,6 @@ Map::Remove(T *obj, bool remove)
     if (obj->GetTypeId() == TYPEID_UNIT)
         RemoveAttackersStorageFor(obj->GetObjectGuid());
 
-    obj->ResetMap();
     if( remove )
     {
         // if option set then object already saved at this moment
@@ -664,6 +666,7 @@ Map::Remove(T *obj, bool remove)
             obj->SaveRespawnTime();
 
         // Note: In case resurrectable corpse and pet its removed from global lists in own destructor
+        WriteGuard Guard(GetLock(MAP_LOCK_TYPE_AURAS));
         delete obj;
     }
 }
@@ -1272,9 +1275,8 @@ bool DungeonMap::CanEnter(Player *player)
         return false;
     }
 
-    // cannot enter while players in the instance are in combat
-    Group *pGroup = player->GetGroup();
-    if(pGroup && pGroup->InCombatToInstance(GetInstanceId()) && player->isAlive() && player->GetMapId() != GetId())
+    // cannot enter while an encounter in the instance is in progress
+    if (!player->isGameMaster() && (player->isAlive() && GetInstanceData() && GetInstanceData()->IsEncounterInProgress()) && player->GetMapId() != GetId())
     {
         player->SendTransferAborted(GetId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
         return false;
@@ -1448,11 +1450,20 @@ bool DungeonMap::Reset(InstanceResetMethod method)
 
     if(HavePlayers())
     {
-        if(method == INSTANCE_RESET_ALL || method == INSTANCE_RESET_CHANGE_DIFFICULTY)
+        if (method == INSTANCE_RESET_ALL)
         {
             // notify the players to leave the instance so it can be reset
             for(MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
                 itr->getSource()->SendResetFailedNotify(GetId());
+        }
+        else if (method == INSTANCE_RESET_CHANGE_DIFFICULTY)
+        {
+            // notify the players to leave the instance so it can be reset
+            for(MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
+                itr->getSource()->SendResetFailedNotify(GetId());
+
+            m_unloadWhenEmpty = true;
+            m_resetAfterUnload = true;
         }
         else
         {
@@ -3259,8 +3270,8 @@ void Map::SendObjectUpdates()
     WorldPacket packet;                                     // here we allocate a std::vector with a size of 0x10000
     for(UpdateDataMapType::iterator iter = update_players.begin(); iter != update_players.end(); ++iter)
     {
-        iter->second.BuildPacket(&packet);
-        iter->first->GetSession()->SendPacket(&packet);
+        if (iter->second.BuildPacket(&packet))
+            iter->first->GetSession()->SendPacket(&packet);
         packet.clear();                                     // clean the string
     }
 }

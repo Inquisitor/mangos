@@ -117,8 +117,8 @@ enum SpellModOp
     SPELLMOD_FREQUENCY_OF_SUCCESS   = 26,                   // Only used with SPELL_AURA_ADD_PCT_MODIFIER and affects used on proc spells
     SPELLMOD_MULTIPLE_VALUE         = 27,
     SPELLMOD_RESIST_DISPEL_CHANCE   = 28,
-    SPELLMOD_CRIT_DAMAGE_BONUS_2    = 29, //one not used spell
-    SPELLMOD_SPELL_COST_REFUND_ON_FAIL = 30
+    SPELLMOD_UNK29                  = 29,                   // used by single test spell 45365
+    SPELLMOD_COST_ON_HIT_FAIL       = 30
 };
 
 #define MAX_SPELLMOD 32
@@ -1217,7 +1217,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         bool AttackStop(bool targetSwitch = false);
         void RemoveAllAttackers();
         bool isAttackingPlayer() const;
-        Unit* getVictim() const { return GetMap() ? GetMap()->GetUnit(m_attackingGuid) : NULL; }
+        Unit* getVictim() const { return IsInWorld() ? GetMap()->GetUnit(m_attackingGuid) : NULL; }
         void CombatStop(bool includingCast = false);
         void CombatStopWithPets(bool includingCast = false);
         void StopAttackFaction(uint32 faction_id);
@@ -2129,6 +2129,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         VehicleKit*  m_pVehicle;
 
         void DisableSpline();
+        bool m_isCreatureLinkingTrigger;
+        bool m_isSpawningLinked;
+
     private:
         void CleanupDeletedAuras();
         void UpdateSplineMovement(uint32 t_diff);

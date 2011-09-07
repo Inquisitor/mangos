@@ -24,6 +24,7 @@
 #include "Player.h"
 #include "Vehicle.h"
 #include "ObjectMgr.h"
+#include "SpellAuras.h"
 
 void WorldSession::HandleDismissControlledVehicle(WorldPacket &recv_data)
 {
@@ -70,9 +71,10 @@ void WorldSession::HandleDismissControlledVehicle(WorldPacket &recv_data)
     {
         GetPlayer()->ExitVehicle();
 
-        if (dismiss)
-            vehicle->ForcedDespawn();
     }
+
+    if (dismiss)
+        vehicle->ForcedDespawn();
 
 }
 
@@ -102,8 +104,8 @@ void WorldSession::HandleRequestVehicleExit(WorldPacket &recv_data)
     {
         vehicle->RemoveAurasByCasterSpell(controlSpell, GetPlayer()->GetObjectGuid());
     }
-    else
-        GetPlayer()->ExitVehicle();
+
+    GetPlayer()->ExitVehicle();
 }
 
 void WorldSession::HandleRequestVehiclePrevSeat(WorldPacket &recv_data)

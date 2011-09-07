@@ -611,7 +611,7 @@ void AreaAura::Update(uint32 diff)
                         for(GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
                         {
                             Player* Target = itr->getSource();
-                            if (Target && Target->isAlive() && Target->GetSubGroup()==subgroup && caster->IsFriendlyTo(Target))
+                            if (Target && Target->IsInWorld() && Target->isAlive() && Target->GetSubGroup()==subgroup && caster->IsInWorld() && caster->IsFriendlyTo(Target))
                             {
                                 if (caster->IsWithinDistInMap(Target, m_radius))
                                     targets.push_back(Target);
@@ -661,7 +661,7 @@ void AreaAura::Update(uint32 diff)
                         for(GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
                         {
                             Player* Target = itr->getSource();
-                            if (Target && Target->isAlive() && caster->IsFriendlyTo(Target))
+                            if (Target && Target->IsInWorld() && Target->isAlive() && caster->IsInWorld() && caster->IsFriendlyTo(Target))
                             {
                                 if (caster->IsWithinDistInMap(Target, m_radius))
                                     targets.push_back(Target);
@@ -672,7 +672,7 @@ void AreaAura::Update(uint32 diff)
                                     {
                                         for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
                                             if (Pet* _pet = caster->GetMap()->GetPet(*itr))
-                                                if (_pet && caster->IsWithinDistInMap(_pet, m_radius))
+                                                if (_pet && _pet->IsInWorld() && caster->IsWithinDistInMap(_pet, m_radius))
                                                     targets.push_back(_pet);
                                     }
                                 }
@@ -2153,6 +2153,12 @@ void Aura::TriggerSpell()
                 // original caster must be target
                 target->CastSpell(target, trigger_spell_id, true, NULL, this, target->GetObjectGuid());
                 return;
+            case 58678:                                     // Rock Shards (Vault of Archavon, Archavon)
+            {
+                if (GetAuraTicks() != 1 && GetAuraTicks()%7)
+                    return;
+                break;
+            }
             case 56654:                                     // Rapid Recuperation (triggered energize have baspioints == 0)
             case 58882:
             {
@@ -2447,6 +2453,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         return;
                     case 52921:                             // Arc Lightning (Halls of Lighning: Loken)
                         target->CastSpell(target, 52924, false);
+                        return;
+                    case 54236:                             // Death Touch - Lich King kill Overlord Drakuru
+                        target->CastSpell(target, 54248, false);    // Cast Drakuru Death
                         return;
                     case 55328:                                 // Stoneclaw Totem I
                         target->CastSpell(target, 5728, true);
@@ -9861,26 +9870,21 @@ void Aura::HandleAuraLinked(bool apply, bool Real)
     if (apply)
     {
         if (pCaster && pCaster->GetTypeId() == TYPEID_PLAYER &&
-            pTarget->GetTypeId() != TYPEID_PLAYER &&
+            pTarget->GetObjectGuid().IsVehicle() &&
             spellInfo->AttributesEx  &  SPELL_ATTR_EX_HIDDEN_AURA &&
             spellInfo->Attributes &  SPELL_ATTR_UNK8)
         {
-            float healBonus   = float(pCaster->GetTotalAuraModifier(SPELL_AURA_MOD_HEALING_PCT))/100.0;
-            if (healBonus < 0.0)
-                healBonus = 0.0;
-            float damageBonus = float(pCaster->CalculateDamage(BASE_ATTACK, false)/pCaster->GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE)) - 1.0;
-            if (damageBonus < 0.0)
-                damageBonus = 0.0;
-            float healthBonus = float(pCaster->GetMaxHealth()/(pCaster->GetModifierValue(UNIT_MOD_HEALTH, BASE_VALUE) + pCaster->GetCreateHealth())) - 1.0;
-            if (healthBonus < 0)
-                healthBonus = 0.0;
+            float bonus = ((float)((Player*)pCaster)->GetEquipGearScore(false, false) - (float)sWorld.getConfig(CONFIG_UINT32_GEAR_CALC_BASE))
+                                 / (float)sWorld.getConfig(CONFIG_UINT32_GEAR_CALC_BASE);
 
-            int32 bp0 = int32((spellInfo->EffectBasePoints[EFFECT_INDEX_0] + healBonus)   * 100);
-            int32 bp1 = int32((spellInfo->EffectBasePoints[EFFECT_INDEX_1] + damageBonus) * 100);
-            int32 bp2 = int32((spellInfo->EffectBasePoints[EFFECT_INDEX_2] + healthBonus) * 100);
+            float curHealthRatio = pTarget->GetHealthPercent() / 100.0f;
+
+            int32 bp0 = int32(((float)spellInfo->EffectBasePoints[EFFECT_INDEX_0] + bonus) * 100);
+            int32 bp1 = int32(((float)spellInfo->EffectBasePoints[EFFECT_INDEX_1] + bonus) * 100);
+            int32 bp2 = int32(((float)spellInfo->EffectBasePoints[EFFECT_INDEX_2] + bonus) * 100);
 
             pTarget->CastCustomSpell(pTarget, spellInfo, &bp0, &bp1, &bp2, true, NULL, this, GetCasterGuid(), GetSpellProto());
-            pTarget->SetHealth(pTarget->GetMaxHealth());
+            pTarget->SetHealth(uint32((float)pTarget->GetMaxHealth() * curHealthRatio));
         }
         // Ebon Plague and Crypt Fever - set basepoints for linked aura increasing disease damage taken
         else if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT &&
@@ -11911,7 +11915,8 @@ void SpellAuraHolder::Update(uint32 diff)
         Unit* caster = GetCaster();
         if(!caster)
         {
-            m_target->RemoveAurasByCasterSpell(GetId(), GetCasterGuid());
+            if (m_target)
+                m_target->RemoveAurasByCasterSpell(GetId(), GetCasterGuid());
             return;
         }
 
