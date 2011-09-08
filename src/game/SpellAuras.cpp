@@ -426,9 +426,6 @@ m_isPersistent(false), m_in_use(0), m_spellAuraHolder(holder)
 
     SetModifier(AuraType(spellproto->EffectApplyAuraName[eff]), damage, spellproto->EffectAmplitude[eff], spellproto->EffectMiscValue[eff]);
 
-    if (int32 amount = CalculateCrowdControlAuraAmount(caster))
-        m_modifier.m_amount = amount;
-
     Player* modOwner = caster ? caster->GetSpellModOwner() : NULL;
 
     // Apply periodic time mod
