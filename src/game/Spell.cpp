@@ -3749,21 +3749,6 @@ void Spell::cast(bool skipCheck)
         }
         case SPELLFAMILY_WARRIOR:
         {
-           //Warrior T10 Protection 4P Bonus trigger from Bloodrage.
-           if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x00000100) && m_caster->HasAura(70844))
-               AddTriggeredSpell(70845); //Stoicism
-            // Item - Warrior T10 Melee 4P Bonus
-           if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0300000000000000)) //Slam! & Sudden Death
-           {
-               Aura* A=m_caster->GetAura(70847,EFFECT_INDEX_0);
-               if (A && roll_chance_i(A->GetModifier()->m_amount) )
-               {
-                   AddPrecastSpell(70849); //Extra Charge!
-                   // Slam! trigger Slam GCD Reduced . Sudden Death trigger Execute GCD Reduced
-                   int32 gcd_spell=m_spellInfo->Id==46916  ? 71072 : 71069 ;
-                   AddPrecastSpell(gcd_spell);
-               }
-           }
             // Shattering Throw
             if (m_spellInfo->Id == 64382)
                 AddTriggeredSpell(64380);                    // Shattering Throw
