@@ -3829,7 +3829,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     return;
 
                 // dummy cast itself ignored by client in logs
-                m_caster->CastCustomSpell(unitTarget,50782,&damage,NULL,NULL,true);
+                m_caster->CastCustomSpell(unitTarget,50783,&damage,NULL,NULL,true);
                 return;
             }
             // Concussion Blow
