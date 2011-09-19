@@ -759,6 +759,9 @@ void Spell::prepareDataForTriggerSystem()
                     m_canTrigger = true;
                 break;
             case SPELLFAMILY_WARRIOR:
+                 //For Whirlwind triggers need do it
+                if (m_spellInfo->SpellFamilyFlags.test<CF_WARRIOR_WHIRLWIND>())
+                    m_canTrigger = true;
                 break;
             default:
                 break;
