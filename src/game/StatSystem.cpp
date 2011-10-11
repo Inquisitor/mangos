@@ -603,6 +603,8 @@ void Player::UpdateParryPercentage()
         diminishing += (int32(GetRatingBonusValue(CR_DEFENSE_SKILL))) * 0.04f;
         // Parry from SPELL_AURA_MOD_PARRY_PERCENT aura
         nondiminishing += GetTotalAuraModifier(SPELL_AURA_MOD_PARRY_PERCENT);
+        if (HasAura(49410))
+            nondiminishing +=GetTotalStatValue(STAT_STRENGTH)*GetRatingMultiplier(CR_PARRY)/4.0f;
         // apply diminishing formula to diminishing parry chance
         value = nondiminishing + diminishing * parry_cap[pclass] /
                                  (diminishing + parry_cap[pclass] * m_diminishing_k[pclass]);
