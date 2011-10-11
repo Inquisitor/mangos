@@ -2278,7 +2278,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             // Solar Flare (Freya's elder)
             else if (m_spellInfo->Id == 62240 || m_spellInfo->Id == 62920)
             {
-                if (SpellAuraHolder *holder = m_caster->GetSpellAuraHolder(62239))
+                if (SpellAuraHolderPtr holder = m_caster->GetSpellAuraHolder(62239))
                     unMaxTargets = holder->GetStackAmount();
                 else
                     unMaxTargets = 1;
@@ -5509,7 +5509,7 @@ SpellCastResult Spell::CheckCast(bool strict)
             Unit::SpellAuraHolderMap const& auras = target->GetSpellAuraHolderMap();
             for(Unit::SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
             {
-                SpellAuraHolder *holder = itr->second;
+                SpellAuraHolderPtr holder = itr->second;
                 if (!holder->IsPositive())
                 {
                     foundNeg = true;
