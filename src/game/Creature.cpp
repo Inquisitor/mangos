@@ -1364,8 +1364,8 @@ bool Creature::LoadFromDB(uint32 guidlow, Map *map)
     else if (m_respawnTime)                                  // respawn time set but expired
     {
         m_respawnTime = 0;
-
-        GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), 0);
+        if (GetMap()->GetPersistentState())
+            GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), 0);
     }
 
     uint32 curhealth = data->curhealth;
@@ -1656,7 +1656,8 @@ void Creature::Respawn()
     if (IsDespawned())
     {
         if (HasStaticDBSpawnData())
-            GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), 0);
+            if (GetMap()->GetPersistentState())
+                GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), 0);
         m_respawnTime = time(NULL);                         // respawn at next tick
     }
 }
@@ -1776,7 +1777,7 @@ SpellEntry const *Creature::ReachWithSpellCure(Unit *pVictim)
     for(uint32 i = 0; i <= GetSpellMaxIndex(); ++i)
     {
         uint32 spellID = GetSpell(i);
-        if (spellID)
+        if (!spellID)
             continue;
 
         SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellID);
@@ -1963,9 +1964,15 @@ void Creature::SaveRespawnTime()
         return;
 
     if (m_respawnTime > time(NULL))                          // dead (no corpse)
-        GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), m_respawnTime);
+    {
+        if (GetMap()->GetPersistentState())
+            GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), m_respawnTime);
+    }
     else if (m_corpseDecayTimer > 0)                        // dead (corpse)
-        GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), time(NULL) + m_respawnDelay + m_corpseDecayTimer / IN_MILLISECONDS);
+    {
+        if (GetMap()->GetPersistentState())
+            GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), time(NULL) + m_respawnDelay + m_corpseDecayTimer / IN_MILLISECONDS);
+    }
 }
 
 bool Creature::IsOutOfThreatArea(Unit* pVictim) const
@@ -2128,100 +2135,100 @@ void Creature::SetInCombatWithZone()
     }
 }
 
-Unit* Creature::SelectAttackingTarget(AttackingTarget target, uint32 position, float minRange) const
+bool Creature::MeetsSelectAttackingRequirement(Unit* pTarget, SpellEntry const* pSpellInfo, uint32 selectFlags) const
+{
+    if (selectFlags & SELECT_FLAG_PLAYER && pTarget->GetTypeId() != TYPEID_PLAYER)
+        return false;
+
+    if (selectFlags & SELECT_FLAG_POWER_MANA && pTarget->getPowerType() != POWER_MANA)
+        return false;
+    else if (selectFlags & SELECT_FLAG_POWER_RAGE && pTarget->getPowerType() != POWER_RAGE)
+        return false;
+    else if (selectFlags & SELECT_FLAG_POWER_ENERGY && pTarget->getPowerType() != POWER_ENERGY)
+        return false;
+    else if (selectFlags & SELECT_FLAG_POWER_RUNIC && pTarget->getPowerType() != POWER_RUNIC_POWER)
+        return false;
+
+    if (selectFlags & SELECT_FLAG_IN_MELEE_RANGE && !CanReachWithMeleeAttack(pTarget))
+        return false;
+
+    if (selectFlags & SELECT_FLAG_IN_LOS && !IsWithinLOSInMap(pTarget))
+        return false;
+
+    if (pSpellInfo)
+    {
+        switch (pSpellInfo->rangeIndex)
+        {
+            case SPELL_RANGE_IDX_SELF_ONLY: return false;
+            case SPELL_RANGE_IDX_ANYWHERE:  return true;
+            case SPELL_RANGE_IDX_COMBAT:    return CanReachWithMeleeAttack(pTarget);
+        }
+
+        SpellRangeEntry const* srange = sSpellRangeStore.LookupEntry(pSpellInfo->rangeIndex);
+        float max_range = GetSpellMaxRange(srange);
+        float min_range = GetSpellMinRange(srange);
+        float dist = GetCombatDistance(pTarget);
+
+        return dist < max_range && dist >= min_range;
+    }
+
+    return true;
+}
+
+Unit* Creature::SelectAttackingTarget(AttackingTarget target, uint32 position, uint32 uiSpellEntry, uint32 selectFlags) const
+{
+    return SelectAttackingTarget(target, position, sSpellStore.LookupEntry(uiSpellEntry), selectFlags);
+}
+
+Unit* Creature::SelectAttackingTarget(AttackingTarget target, uint32 position, SpellEntry const* pSpellInfo /*= NULL*/, uint32 selectFlags/*= 0*/) const
 {
     if (!CanHaveThreatList())
         return NULL;
 
-    //ThreatList m_threatlist;
+    // ThreatList m_threatlist;
     ThreatList const& threatlist = getThreatManager().getThreatList();
-    ThreatList::const_iterator i = threatlist.begin();
-    ThreatList::const_reverse_iterator r = threatlist.rbegin();
+    ThreatList::const_iterator itr = threatlist.begin();
+    ThreatList::const_reverse_iterator ritr = threatlist.rbegin();
 
     if (position >= threatlist.size() || !threatlist.size())
         return NULL;
 
-    switch(target)
+    switch (target)
     {
         case ATTACKING_TARGET_RANDOM:
         {
-            if(minRange > 0)
-            {
-                Unit* pTarget = NULL;
-                std::vector<Unit *> target_list;
+            std::vector<Unit*> suitableUnits;
+            suitableUnits.reserve(threatlist.size() - position);
+            advance(itr, position);
+            for (itr; itr != threatlist.end(); ++itr)
+                if (Unit* pTarget = GetMap()->GetUnit((*itr)->getUnitGuid()))
+                    if (!selectFlags || MeetsSelectAttackingRequirement(pTarget, pSpellInfo, selectFlags))
+                        suitableUnits.push_back(pTarget);
 
-                for (i; i != threatlist.end(); ++i)
-                {
-                    pTarget = GetMap()->GetUnit((*i)->getUnitGuid());
+            if (!suitableUnits.empty())
+                return suitableUnits[urand(0, suitableUnits.size()-1)];
 
-                    if (pTarget && !pTarget->IsWithinDist(this, minRange, false))
-                        target_list.push_back(pTarget);
-
-                    pTarget = NULL;
-                }
-
-                if (target_list.size())
-                    if (pTarget = *(target_list.begin()+rand()%target_list.size()))
-                        return pTarget;
-            }
-
-            i = threatlist.begin();
-            advance(i, position + (rand() % (threatlist.size() - position)));
-            return GetMap()->GetUnit((*i)->getUnitGuid());
+            break;
         }
         case ATTACKING_TARGET_TOPAGGRO:
         {
-            advance(i, position);
-            return GetMap()->GetUnit((*i)->getUnitGuid());
+            advance(itr, position);
+            for (itr; itr != threatlist.end(); ++itr)
+                if (Unit* pTarget = GetMap()->GetUnit((*itr)->getUnitGuid()))
+                    if (!selectFlags || MeetsSelectAttackingRequirement(pTarget, pSpellInfo, selectFlags))
+                        return pTarget;
+
+            break;
         }
         case ATTACKING_TARGET_BOTTOMAGGRO:
         {
-            advance(r, position);
-            return GetMap()->GetUnit((*r)->getUnitGuid());
-        }
-        case ATTACKING_TARGET_RANDOM_PLAYER:
-        {
-            std::vector<Unit*> threatPlayers;
-            threatPlayers.reserve(threatlist.size());
-            for (; i != threatlist.end(); ++i)
-            {
-                Unit *target = GetMap()->GetUnit((*i)->getUnitGuid());
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                    threatPlayers.push_back(target);
-            }
-            if (threatPlayers.empty() || position >= threatPlayers.size())
-                return NULL;
-            return threatPlayers[urand(position, threatPlayers.size()-1)];
-        }
-        case ATTACKING_TARGET_TOPAGGRO_PLAYER:
-        {
-            for (; i != threatlist.end(); ++i)
-            {
-                Unit *target = GetMap()->GetUnit((*i)->getUnitGuid());
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                {
-                    if (!position)
-                        return target;
-                    else
-                        --position;
-                }
-            }
-            return NULL;
-        }
-        case ATTACKING_TARGET_BOTTOMAGGRO_PLAYER:
-        {
-            for (; r != threatlist.rend(); ++r)
-            {
-                Unit *target = GetMap()->GetUnit((*r)->getUnitGuid());
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                {
-                    if (!position)
-                        return target;
-                    else
-                        --position;
-                }
-            }
-            return NULL;
+            advance(ritr, position);
+            for (ritr; ritr != threatlist.rend(); ++ritr)
+                if (Unit* pTarget = GetMap()->GetUnit((*itr)->getUnitGuid()))
+                    if (!selectFlags || MeetsSelectAttackingRequirement(pTarget, pSpellInfo, selectFlags))
+                        return pTarget;
+
+            break;
         }
     }
 

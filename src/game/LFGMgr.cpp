@@ -1707,6 +1707,14 @@ void LFGMgr::UpdateBoot(Player* player, bool accept)
                 }
                 Player::RemoveFromGroup(group, victim->GetObjectGuid());
                 victim->GetLFGState()->Clear();
+
+                // group may be disbanded after Player::RemoveFromGroup!
+                group = player->GetGroup();
+                if (!group)
+                    return;
+                if (!group->GetLFGState()->IsBootActive())
+                    return;
+
                 group->GetLFGState()->DecreaseKicksLeft();
                 group->GetLFGState()->StopBoot();
                 OfferContinue(group);
@@ -2148,6 +2156,19 @@ Player* LFGMgr::LeaderElection(LFGQueueSet* playerGuids)
             {
                 GS = (*itr)->GetEquipGearScore();
                 leader = (*itr);
+            }
+        }
+    }
+
+    if (!leader)
+    {
+        for (LFGQueueSet::const_iterator itr = playerGuids->begin(); itr != playerGuids->end(); ++itr)
+        {
+            Player* member  = sObjectMgr.GetPlayer(*itr);
+            if (member && member->IsInWorld())
+            {
+                leader = member;
+                break;
             }
         }
     }

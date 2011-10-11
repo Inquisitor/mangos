@@ -121,6 +121,14 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    if (proto->Area && proto->Area != pUser->GetAreaId() ||
+        proto->Map && proto->Map != pUser->GetMapId())
+    {
+        if (SpellEntry const* spellInfo = sSpellStore.LookupEntry(spellid))
+            Spell::SendCastResult(pUser, spellInfo, cast_count, SPELL_FAILED_INCORRECT_AREA);
+        return;
+    }
+
     if (pUser->isInCombat())
     {
         for(int i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
@@ -374,7 +382,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
 
     Unit* mover = NULL;
 
-    if (spellInfo->AttributesEx6 & SPELL_ATTR_EX6_UNK12 && _mover->IsCharmerOrOwnerPlayerOrPlayerItself())
+    if (spellInfo->AttributesEx6 & SPELL_ATTR_EX6_CASTABLE_ON_VEHICLE && _mover->IsCharmerOrOwnerPlayerOrPlayerItself())
         mover = _mover->GetCharmerOrOwnerPlayerOrPlayerItself();
     else
         mover = _mover;
@@ -517,7 +525,7 @@ void WorldSession::HandleCancelAuraOpcode( WorldPacket& recvPacket)
         return;
     }
 
-    SpellAuraHolder *holder = _player->GetSpellAuraHolder(spellId);
+    SpellAuraHolderPtr holder = _player->GetSpellAuraHolder(spellId);
 
     // not own area auras can't be cancelled (note: maybe need to check for aura on holder and not general on spell)
     if (holder && holder->GetCasterGuid() != _player->GetObjectGuid() && HasAreaAuraEffect(holder->GetSpellProto()))

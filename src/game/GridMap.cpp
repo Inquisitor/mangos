@@ -781,7 +781,7 @@ float TerrainInfo::GetHeight(float x, float y, float z, bool pUseVmaps, float ma
     {
         mapHeight  += 200.0f;
         vmapHeight += 200.0f;
-    } 
+    }
 
     // mapHeight set for any above raw ground Z or <= INVALID_HEIGHT
     // vmapheight set for any under Z value or <= INVALID_HEIGHT
@@ -1058,6 +1058,9 @@ GridMap * TerrainInfo::GetGrid( const float x, const float y )
     int gx=(int)(32-x/SIZE_OF_GRIDS);                       //grid x
     int gy=(int)(32-y/SIZE_OF_GRIDS);                       //grid y
 
+    if (gx >= MAX_NUMBER_OF_GRIDS || gy >= MAX_NUMBER_OF_GRIDS)
+        return NULL;
+
     //quick check if GridMap already loaded
     GridMap * pMap = m_GridMaps[gx][gy];
     if(!pMap)
@@ -1256,7 +1259,7 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
                     }
                 }
             }
-            else 
+            else
                 ++goodCount;
         }
         else

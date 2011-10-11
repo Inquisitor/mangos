@@ -208,11 +208,11 @@ struct AchievementCriteriaEntry
             uint32  castCount;                              // 4
         } cast_spell;
 
-        // ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE   = 30
+        // ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE = 30
         struct
         {
-            uint32  captureID;                              // 3
-            uint32  captureCount;                           // 4
+            uint32 captureID;                               // 3
+            uint32 captureCount;                            // 4
             //uint32  additionalRequirement1_type;          // 5
             //uint32  additionalRequirement1_value;         // 6
             //uint32  additionalRequirement2_type;          // 7
@@ -2128,7 +2128,7 @@ struct SpellRangeEntry
 {
     uint32    ID;                                           // 0        m_ID
     float     minRange;                                     // 1        m_rangeMin[2]
-    float     minRangeFriendly;                             // 2 
+    float     minRangeFriendly;                             // 2
     float     maxRange;                                     // 3        m_rangeMax[2]
     float     maxRangeFriendly;                             // 4
     //uint32  Flags;                                        // 5        m_flags
@@ -2470,6 +2470,28 @@ struct WorldSafeLocsEntry
     float     z;                                            // 4        m_locZ
     //char*   name[16]                                      // 5-20     m_AreaName_lang
                                                             // 21 string flags
+};
+
+struct WorldStateEntry
+{
+    uint32    ID;                                           // 0        m_ID
+    uint32    map_id;                                       // 1        WorldState bind map
+    uint32    m_zone;                                       // 2        WorldState bind zone (0 - on battlegrounds)
+    uint32    m_flags;                                      // 3
+//    char*     m_uiIcon;                                   // 4
+//    char*     m_uiMessage1[16]                            // 5-20
+//    uint32    m_flags1;                                   // 21       string flags
+//    char*     m_uiMessage2[16]                            // 22-37
+//    uint32    m_flags2;                                   // 38       string flags
+    uint32    m_state;                                      // 39       WorldState ID (not unique!) 0 - for battleground states.
+//    char*     m_uiIcon1;                                  // 40
+//    char*     m_uiIcon2;                                  // 41
+//    char*     m_uiMessage3[16]                            // 42-57
+//    uint32    m_flags3;                                   // 58       string flags
+//    char*     m_uiType;                                   // 59       only CAPTUREPOINT type, or NULL
+//    uint32    m_unk60;                                    // 60
+//    uint32    m_unk61;                                    // 61
+//    uint32    m_unk62;                                    // 62       only 0
 };
 
 // GCC have alternative #pragma pack() syntax and old gcc version not support pack(pop), also any gcc version not support it at some platform

@@ -24,7 +24,7 @@ CREATE TABLE `db_version` (
   `version` varchar(120) default NULL,
   `creature_ai_version` varchar(120) default NULL,
   `cache_id` int(10) default '0',
-  `required_11785_01_mangos_instance_encounters` bit(1) default NULL
+  `required_11813_01_mangos_mangos_string` bit(1) default NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Used DB version notes';
 
 --
@@ -1879,6 +1879,29 @@ LOCK TABLES `gameobject` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `gameobject_addon`
+--
+
+DROP TABLE IF EXISTS `gameobject_addon`;
+CREATE TABLE `gameobject_addon` (
+  `guid` int(10) unsigned NOT NULL default '0',
+  `path_rotation0` float NOT NULL default '0',
+  `path_rotation1` float NOT NULL default '0',
+  `path_rotation2` float NOT NULL default '0',
+  `path_rotation3` float NOT NULL default '1',
+  PRIMARY KEY  (`guid`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Gameobject System';
+
+--
+-- Dumping data for table `gameobject_addon`
+--
+
+LOCK TABLES `gameobject_addon` WRITE;
+/*!40000 ALTER TABLE `gameobject_addon` DISABLE KEYS */;
+/*!40000 ALTER TABLE `gameobject_addon` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `gameobject_battleground`
 --
 
@@ -3712,7 +3735,7 @@ INSERT INTO `mangos_string` VALUES
 (704,'The Arena battle has begun!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (705,'You must wait %s before speaking again.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (706,'This item(s) have problems with equipping/storing in inventory.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(707,'%s wishes to not be disturbed and cannot receive whisper messages: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(707,'%s does not wish to be disturbed: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (708,'%s is Away from Keyboard: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (709,'Do not Disturb',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (710,'Away from Keyboard',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -17991,7 +18014,7 @@ CREATE TABLE `instance_encounters` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
--- Dumping data for table `transports`
+-- Dumping data for table `instance_encounters`
 --
 
 LOCK TABLES `instance_encounters` WRITE;

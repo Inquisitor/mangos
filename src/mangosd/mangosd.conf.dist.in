@@ -37,13 +37,13 @@ ConfVersion=2010100901
 #                    hostname;port;username;password;database
 #                    .;/path/to/unix_socket/DIRECTORY or . for default path;username;password;database - use Unix sockets at Unix/Linux
 #
-#	LoginDatabaseConnections
-#	WorldDatabaseConnections
-#	CharacterDatabaseConnections
-#		 Amount of connections to database which will be used for SELECT queries. Maximum 16 connections per database.
-#		 Please, note, for data consistency only one connection for each database is used for transactions and async SELECTs.
-#		 So formula to find out how many connections will be established: X = n_connections + 1
-#		 Default: 1 connection for SELECT statements
+#   LoginDatabaseConnections
+#   WorldDatabaseConnections
+#   CharacterDatabaseConnections
+#        Amount of connections to database which will be used for SELECT queries. Maximum 16 connections per database.
+#        Please, note, for data consistency only one connection for each database is used for transactions and async SELECTs.
+#        So formula to find out how many connections will be established: X = n_connections + 1
+#        Default: 1 connection for SELECT statements
 #
 #    MaxPingTime
 #        Settings for maximum database-ping interval (minutes between pings)
@@ -889,8 +889,8 @@ LexicsCutterNoActionOnGM = 1
 #        Default: 10
 #
 #    CheckGOInPath
-#        very simple checking for GO in unit path (for avoid problems with teleport throwgh door ).
-#        may use many CPU resources!
+#        Very simple check for gameobjects' presence on unit path (for example to avoid problems with teleport through closed doors).
+#        May use many CPU resources!
 #        Default: 0
 #
 ###################################################################################################################
@@ -1713,6 +1713,12 @@ BattleGround.Random.ResetHour = 6
 #        Default: 0 (disable)
 #                 1500
 #
+#    Arena.RemoveAurasWithDurationLess = 30
+#    At start arena remove auras with duration, less then this value (in seconds)
+#        Default: 30s. (wowwiki reports at 25 s., patchnotes 3.0.2 reports on 30s.)
+#        min:      0s. (not remove)
+#        max:     60s.
+#
 ###################################################################################################################
 
 Arena.MaxRatingDifference = 150
@@ -1728,6 +1734,7 @@ Arena.StartRating = -1
 Arena.StartPersonalRating = -1
 Arena.LoserNoChange = 0
 Arena.LoserHalfChange = 0
+Arena.RemoveAurasWithDurationLess = 30
 
 ###################################################################################################################
 # NETWORK CONFIG

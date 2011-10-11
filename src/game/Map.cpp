@@ -46,8 +46,8 @@ Map::~Map()
     if(!m_scriptSchedule.empty())
         sScriptMgr.DecreaseScheduledScriptCount(m_scriptSchedule.size());
 
-    if (m_persistentState)
-        m_persistentState->SetUsedByMapState(NULL);         // field pointer can be deleted after this
+    if (GetPersistentState())
+        GetPersistentState()->SetUsedByMapState(NULL);         // field pointer can be deleted after this
 
     if(i_data)
     {
@@ -73,7 +73,7 @@ void Map::LoadMapAndVMap(int gx,int gy)
 Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
   : i_mapEntry (sMapStore.LookupEntry(id)), i_spawnMode(SpawnMode),
   i_id(id), i_InstanceId(InstanceId), m_unloadTimer(0),
-  m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE), m_persistentState(NULL),
+  m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE),
   m_activeNonPlayersIter(m_activeNonPlayers.end()),
   i_gridExpiry(expiry), m_TerrainData(sTerrainMgr.LoadTerrain(id)),
   i_data(NULL), i_script_id(0)
@@ -97,8 +97,13 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     //add reference for TerrainData object
     m_TerrainData->AddRef();
 
-    m_persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
-    m_persistentState->SetUsedByMapState(this);
+    MapPersistentState* persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
+    persistentState->SetUsedByMapState(this);
+}
+
+MapPersistentState* Map::GetPersistentState() const
+{
+    return sMapPersistentStateMgr.GetPersistentState(GetId(), GetInstanceId());
 }
 
 void Map::InitVisibilityDistance()
@@ -3384,15 +3389,17 @@ void Map::MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, uint32 langu
  * Function to play sound to all players in map
  *
  * @param soundId Played Sound
+ * @param zoneId Id of the Zone to which the sound should be restricted
  */
-void Map::PlayDirectSoundToMap(uint32 soundId)
+void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/)
 {
     WorldPacket data(SMSG_PLAY_SOUND, 4);
     data << uint32(soundId);
 
     Map::PlayerList const& pList = GetPlayers();
     for (PlayerList::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
-        itr->getSource()->SendDirectMessage(&data);
+        if (!zoneId || itr->getSource()->GetZoneId() == zoneId)
+            itr->getSource()->SendDirectMessage(&data);
 }
 
 Transport* Map::LoadTransportInMap(uint32 transportEntry, uint32 transportPosition/*=0*/, uint32 transportPeriod /*= 0*/, bool IsStoped /* = false*/)

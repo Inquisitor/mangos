@@ -761,9 +761,9 @@ void Player::UpdateArmorPenetration()
     }
 }
 
-void Player::ApplyHealthRegenBonus(int32 amount, bool apply)  
-{  
-    m_baseHealthRegen+= apply ? amount : -amount;  
+void Player::ApplyHealthRegenBonus(int32 amount, bool apply)
+{
+    m_baseHealthRegen+= apply ? amount : -amount;
 }
 
 void Player::ApplyManaRegenBonus(int32 amount, bool apply)
@@ -1134,8 +1134,9 @@ void Pet::UpdateSpellPower()
 {
     Unit* owner = GetOwner();
 
-    if(!owner ||owner->GetTypeId()!=TYPEID_PLAYER || !owner->IsInWorld() || !owner->GetMap())
+    if(!owner ||owner->GetTypeId()!=TYPEID_PLAYER || !owner->IsInWorld())
         return;
+
     MAPLOCK_READ(owner,MAP_LOCK_TYPE_AURAS);
                                                   // Only for displaying in client!
     owner->SetUInt32Value(PLAYER_PET_SPELL_POWER, SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SPELL));

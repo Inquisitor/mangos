@@ -924,8 +924,11 @@ void BattleGround::EndBattleGround(Team winner)
                         ratingChange = loser_change;
                     }
                     std::ostringstream sql_query;
-                    //                                                        gameid,             teamid,                   guid,                                         changeType,             ratingChange,              teamRating,               damageDone,                          deaths,                          healingDone,                          damageTaken,                          healingTaken,                          killingBlows,                          mapId,               start,                   end
-                    sql_query << "INSERT INTO armory_game_chart VALUES ('" << gameID << "', '" << resultTeamID << "', '" << plr->GetObjectGuid().GetCounter()<< "', '" << changeType << "', '" << ratingChange  << "', '" << resultRating << "', '" << itr->second->DamageDone << "', '" << itr->second->Deaths << "', '" << itr->second->HealingDone << "', '" << itr->second->DamageTaken << "', '" << itr->second->HealingTaken << "', '" << itr->second->KillingBlows << "', '" << m_MapId << "', '" << m_StartTime << "', '" << iRealEndTime << "')";
+
+                    sql_query << "INSERT INTO armory_game_chart (gameid, teamid, guid, changeType, ratingChange, teamRating, damageDone, deaths, healingDone, damageTaken, healingTaken, killingBlows, mapId, start, end) VALUES ('" <<
+                    // Actually, "start" is not arena start time, it is arena _duration_ time (in milliseconds). I don't touch this DB field name because some people can use this web wow armory.
+                    //  gameid,             teamid,                   guid,                                         changeType,             ratingChange,              teamRating,               damageDone,                          deaths,                          healingDone,                          damageTaken,                          healingTaken,                          killingBlows,                          mapId,               start,                   end                        
+                        gameID << "', '" << resultTeamID << "', '" << plr->GetObjectGuid().GetCounter()<< "', '" << changeType << "', '" << ratingChange  << "', '" << resultRating << "', '" << itr->second->DamageDone << "', '" << itr->second->Deaths << "', '" << itr->second->HealingDone << "', '" << itr->second->DamageTaken << "', '" << itr->second->HealingTaken << "', '" << itr->second->KillingBlows << "', '" << m_MapId << "', '" << m_StartTime << "', '" << iRealEndTime << "')";
                     CharacterDatabase.Execute(sql_query.str().c_str());
                 }
                 /** World of Warcraft Armory **/
@@ -1432,6 +1435,13 @@ void BattleGround::StartBattleGround()
     sBattleGroundMgr.AddBattleGround(GetInstanceID(), GetTypeID(), this);
 }
 
+void BattleGround::StartTimedAchievement(AchievementCriteriaTypes type, uint32 entry)
+{
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+        if (Player* pPlayer = GetBgMap()->GetPlayer(itr->first))
+            pPlayer->GetAchievementMgr().StartTimedAchievementCriteria(type, entry);
+}
+
 void BattleGround::AddPlayer(Player *plr)
 {
     // remove afk from player
@@ -1699,8 +1709,8 @@ bool BattleGround::AddObject(uint32 type, uint32 entry, float x, float y, float 
     // and when loading it (in go::LoadFromDB()), a new guid would be assigned to the object, and a new object would be created
     // so we must create it specific for this instance
     GameObject * go = new GameObject;
-    if(!go->Create(GetBgMap()->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT),entry, GetBgMap(),
-        PHASEMASK_NORMAL, x,y,z,o,rotation0,rotation1,rotation2,rotation3,GO_ANIMPROGRESS_DEFAULT,GO_STATE_READY))
+    if (!go->Create(GetBgMap()->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT),entry, GetBgMap(),
+        PHASEMASK_NORMAL, x,y,z,o, QuaternionData(rotation0,rotation1,rotation2,rotation3)))
     {
         sLog.outErrorDb("Gameobject template %u not found in database! BattleGround not created!", entry);
         sLog.outError("Cannot create gameobject template %u! BattleGround not created!", entry);

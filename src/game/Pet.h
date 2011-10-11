@@ -246,7 +246,7 @@ class MANGOS_DLL_SPEC Pet : public Creature
         void ApplyExpertizeScalingBonus(bool apply);
         void ApplyPowerregenScalingBonus(bool apply);
         void ApplyHasteScalingBonus(bool apply);
-        bool ReapplyScalingAura(SpellAuraHolder* holder, SpellEntry const *spellproto, SpellEffectIndex index, int32 basePoints);
+        bool ReapplyScalingAura(Aura* aura, int32 basePoints);
         PetScalingData* CalculateScalingData( bool recalculate = false );
         void AddScalingAction(ScalingTarget target, uint32 stat, bool apply);
         void ApplyHappinessBonus(bool apply);
@@ -345,6 +345,14 @@ struct ApplyScalingBonusWithHelper
     void operator()(Unit* unit) const;
     ScalingTarget target;
     uint32 stat;
+    bool apply;
+};
+
+struct ApplyArenaPreparationWithHelper
+{
+    explicit ApplyArenaPreparationWithHelper(bool _apply ) : apply(_apply)
+    {}
+    void operator()(Unit* unit) const;
     bool apply;
 };
 

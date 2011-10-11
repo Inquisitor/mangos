@@ -160,7 +160,7 @@ void DynamicObject::Delay(int32 delaytime)
         Unit *target = GetMap()->GetUnit((*iter));
         if (target)
         {
-            SpellAuraHolder *holder = target->GetSpellAuraHolder(m_spellId, GetCasterGuid());
+            SpellAuraHolderPtr holder = target->GetSpellAuraHolder(m_spellId, GetCasterGuid());
             if (!holder)
             {
                 ++iter;
@@ -170,7 +170,7 @@ void DynamicObject::Delay(int32 delaytime)
             bool foundAura = false;
             for (int32 i = m_effIndex + 1; i < MAX_EFFECT_INDEX; ++i)
             {
-                if ((holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_PERSISTENT_AREA_AURA || holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_ADD_FARSIGHT) && holder->m_auras[i])
+                if ((holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_PERSISTENT_AREA_AURA || holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_ADD_FARSIGHT) && holder->GetAuraByEffectIndex(SpellEffectIndex(i)))
                 {
                     foundAura = true;
                     break;

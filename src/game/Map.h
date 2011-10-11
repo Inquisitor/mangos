@@ -22,8 +22,6 @@
 #include "Common.h"
 #include "Platform/Define.h"
 #include "Policies/ThreadingModel.h"
-#include "ace/RW_Thread_Mutex.h"
-#include "ace/Thread_Mutex.h"
 
 #include "DBCStructure.h"
 #include "GridDefines.h"
@@ -39,6 +37,7 @@
 #include "ScriptMgr.h"
 #include "CreatureLinkingMgr.h"
 #include "Transports.h"
+#include "ObjectLock.h"
 
 #include <bitset>
 #include <set>
@@ -84,13 +83,6 @@ struct WorldTemplate
 enum LevelRequirementVsMode
 {
     LEVELREQUIREMENT_HEROIC = 70
-};
-
-enum MapLockType
-{
-    MAP_LOCK_TYPE_DEFAULT,
-    MAP_LOCK_TYPE_AURAS,
-    MAP_LOCK_TYPE_MAX,
 };
 
 #if defined( __GNUC__ )
@@ -207,7 +199,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         bool IsBattleGroundOrArena() const { return i_mapEntry && i_mapEntry->IsBattleGroundOrArena(); }
 
         // can't be NULL for loaded map
-        MapPersistentState* GetPersistentState() const { return m_persistentState; }
+        MapPersistentState* GetPersistentState() const;
 
         void AddObjectToRemoveList(WorldObject *obj);
 
@@ -271,7 +263,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
         void MonsterYellToMap(ObjectGuid guid, int32 textId, uint32 language, Unit* target);
         void MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, uint32 language, Unit* target, uint32 senderLowGuid = 0);
-        void PlayDirectSoundToMap(uint32 soundId);
+        void PlayDirectSoundToMap(uint32 soundId, uint32 zoneId = 0);
 
         // Loading Transport
         Transport* LoadTransportInMap(uint32 transportEntry, uint32 transportPosition = 0, uint32 transportPeriod = 0, bool IsStoped = false);
@@ -284,11 +276,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void RemoveAttackersStorageFor(ObjectGuid targetGuid);
 
         // multithread locking
-        typedef   ACE_RW_Thread_Mutex          LockType;
-        typedef   ACE_Read_Guard<LockType>     ReadGuard;
-        typedef   ACE_Write_Guard<LockType>    WriteGuard;
-        LockType& GetLock(MapLockType _locktype = MAP_LOCK_TYPE_DEFAULT) { return i_lock[_locktype]; }
-
+        ObjectLockType& GetLock(MapLockType _locktype = MAP_LOCK_TYPE_DEFAULT) { return i_lock[_locktype]; }
 
         // Get Holder for Creature Linking
         CreatureLinkingHolder* GetCreatureLinkingHolder() { return &m_creatureLinkingHolder; }
@@ -340,7 +328,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         uint32 i_InstanceId;
         uint32 m_unloadTimer;
         float m_VisibleDistance;
-        MapPersistentState* m_persistentState;
 
         MapRefManager m_mapRefManager;
         MapRefManager::iterator m_mapRefIter;
@@ -385,7 +372,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         // Holder for information about linked mobs
         CreatureLinkingHolder m_creatureLinkingHolder;
 
-        LockType            i_lock[MAP_LOCK_TYPE_MAX];
+        ObjectLockType      i_lock[MAP_LOCK_TYPE_MAX];
         AttackersMap        m_attackersMap;
 
 };

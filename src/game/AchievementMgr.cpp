@@ -38,8 +38,8 @@
 #include "BattleGround.h"
 #include "BattleGroundAB.h"
 #include "BattleGroundAV.h"
-#include "BattleGroundWS.h"
 #include "BattleGroundSA.h"
+#include "BattleGroundWS.h"
 #include "BattleGroundIC.h"
 #include "Map.h"
 #include "InstanceData.h"
@@ -527,10 +527,10 @@ void AchievementMgr::ResetAchievementCriteria(AchievementCriteriaTypes type, uin
                     case 1153:
                     case 1251:
                     case 1765:
-                    case 2193:
+                    case 1766:
                     case 2189:
                     case 2190:
-                    case 1766:
+                    case 2193:
                     case 3845:
                     case 3848:
                     case 3849:
@@ -1082,7 +1082,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             break;
                         }
                         case 1762:                          // SA, win without losing any siege vehicles
-                        case 2192:
+                        case 2192:                          // SA, win without losing any siege vehicles
                         {
                             if (bg->GetTypeID(true) != BATTLEGROUND_SA)
                                 continue;
@@ -1536,6 +1536,19 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     if(!GetPlayer()->HasOrphan())
                         continue;
 
+                // Defense of the Ancients
+                if(achievementCriteria->referredAchievement == 1757 || achievementCriteria->referredAchievement == 2200)
+                {
+                    // If not in SotA
+                    BattleGround * bg = GetPlayer()->GetBattleGround();
+                    if(!bg || bg->GetTypeID(true) != BATTLEGROUND_SA)
+                        continue;
+
+                    // If hasnt all walls.
+                    if(!((BattleGroundSA*)bg)->winSAwithAllWalls(GetPlayer()->GetTeam()))
+                        continue;
+                }
+
                 change = 1;
                 progressType = PROGRESS_ACCUMULATE;
                 break;
@@ -1832,13 +1845,39 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 if (!miscvalue1)
                     continue;
 
-                // those requirements couldn't be found in the dbc
-                AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                if (!data)
-                    continue;
+                switch(achievementCriteria->referredAchievement)
+                {
+                    case 207:                       // Save The Day
+                    {
+                        BattleGround* bg = GetPlayer()->GetBattleGround();
+                        if (!bg || !unit)
+                            continue;
 
-                if (!data->Meets(GetPlayer(),unit))
-                    continue;
+                        if (bg->GetTypeID(true) != BATTLEGROUND_WS)
+                            continue;
+
+                        switch(GetPlayer()->GetTeam())
+                        {
+                            case ALLIANCE:
+                                if (!(((BattleGroundWS*)bg)->GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_BASE) || !unit->HasAura(23335) || GetPlayer()->GetAreaId() != 4572)
+                                    continue;
+                                break;
+                            case HORDE:
+                                if (!(((BattleGroundWS*)bg)->GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_BASE) || !unit->HasAura(23333) || GetPlayer()->GetAreaId() != 4571)
+                                    continue;
+                                break;
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        // those requirements couldn't be found in the dbc
+                        AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                        if(!data || !data->Meets(GetPlayer(),unit))
+                            continue;
+                        break;
+                    }
+                }
 
                 change = 1;
                 progressType = PROGRESS_ACCUMULATE;
@@ -2036,6 +2075,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     }
 
                 }
+
                 SetCriteriaProgress(achievementCriteria, achievement, miscvalue1, PROGRESS_ACCUMULATE);
                 break;
             }
@@ -2565,6 +2605,7 @@ void AchievementMgr::CompletedAchievement(AchievementEntry const* achievement)
     if (sWorld.getConfig(CONFIG_BOOL_ARMORY_SUPPORT))
         GetPlayer()->WriteWowArmoryDatabaseLog(1, achievement->ID);
     /** World of Warcraft Armory **/
+
     SendAchievementEarned(achievement);
     CompletedAchievementData& ca =  m_completedAchievements[achievement->ID];
     ca.date = time(NULL);
