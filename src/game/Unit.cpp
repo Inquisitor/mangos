@@ -7393,21 +7393,6 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                 if (pVictim->GetHealth() * 100 / pVictim->GetMaxHealth() <= 25)
                     DoneTotalMod *= 4;
             }
-            // Fire and Brimstone
-            if (spellProto->SpellFamilyName == SPELLFAMILY_WARLOCK && spellProto->SpellFamilyFlags & UI64LIT(0x0002004000000000)
-                && pVictim->HasAuraState(AURA_STATE_CONFLAGRATE) )
-            {
-                //Search for Fire and Brimstone dummy aura
-                Unit::AuraList const& dummyAura = GetAurasByType(SPELL_AURA_DUMMY);
-                for(Unit::AuraList::const_iterator i = dummyAura.begin(); i != dummyAura.end(); ++i)
-                {
-                    if ((*i)->GetSpellProto()->SpellIconID == 3173)
-                    {
-                        DoneTotalMod *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
-                        break;
-                    }
-                }
-            }
             break;
         }
         case SPELLFAMILY_PRIEST:
