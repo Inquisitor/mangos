@@ -1174,12 +1174,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     triggered_spell_id = 71879;
                     break;
                 }
-                //Glyph of Scourge Strike
-                case 58642:
-                {
-                        triggered_spell_id = 69961;
-                        break;
-                }
             }
             break;
         }
@@ -1459,12 +1453,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     return SPELL_AURA_PROC_FAILED;
 
                 triggered_spell_id = 26654;
-                break;
-            }
-            // Glyph of Blocking
-            if (dummySpell->Id == 58375)
-            {
-                triggered_spell_id = 58374;
                 break;
             }
              // Glyph of Devastate
@@ -3380,29 +3368,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 triggeredByAura->SetAuraPeriodicTimer(0);
                 return SPELL_AURA_PROC_OK;
             }
-            // Death Rune Mastery
-            if (dummySpell->SpellIconID == 2622)
-            {
-                if(GetTypeId()!=TYPEID_PLAYER)
-                    return SPELL_AURA_PROC_FAILED;
-
-                Player *player = (Player*)this;
-                for (uint32 i = 0; i < MAX_RUNES; ++i)
-                {
-                    RuneType currRune = player->GetCurrentRune(i);
-                    if (currRune == RUNE_UNHOLY || currRune == RUNE_FROST)
-                    {
-                        uint16 cd = player->GetRuneCooldown(i);
-                        if(!cd)
-                            player->ConvertRune(i, RUNE_DEATH, dummySpell->Id);
-                        else // there is a cd
-                            player->SetNeedConvertRune(i, true, dummySpell->Id);
-                        // no break because it converts all
-                    }
-                }
-                triggeredByAura->SetAuraPeriodicTimer(0);
-                return SPELL_AURA_PROC_OK;
-            }
             // Hungering Cold - not break from diseases
             if (dummySpell->SpellIconID == 2797)
             {
@@ -4165,29 +4130,6 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                 trigger_spell_id = 54843;
                 target = pVictim;
             }
-            //Item - Coliseum 25 Heroic Caster Trinket /Item - Coliseum 25 Normal Caster Trinket
-            if (auraSpellInfo->Id == 67712 || auraSpellInfo->Id == 67758 )
-            {
-                if(!pVictim || !pVictim->isAlive())
-                    return SPELL_AURA_PROC_FAILED;
-                bool normal=auraSpellInfo->Id == 67712;
-                int32 stack_spell=normal ? 67713 : 67759; //Mote of Flame / Shard of Flame
-
-                // counting
-                Aura * dummy = GetDummyAura(stack_spell);
-                // release at 3 aura in stack (cont contain in basepoint of trigger aura)
-                if(dummy && (dummy->GetStackAmount() +1) >= (uint32)triggerAmount)
-                {
-                    RemoveAurasDueToSpell(stack_spell);
-                    trigger_spell_id =normal ? 67714 : 67760 ; // Normal/Heroic Pillar of Flame
-                    target = pVictim;
-                }
-                else
-                {
-                    trigger_spell_id=stack_spell;// stacking
-                    target =this;
-                }
-            }
             break;
         }
         case SPELLFAMILY_SHAMAN:
@@ -4518,14 +4460,6 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
             if (!(procFlags & PROC_FLAG_ON_TRAP_ACTIVATION) || !procSpell ||
                 !(procSpell->SchoolMask & SPELL_SCHOOL_MASK_FROST) || !roll_chance_i(triggerAmount))
                 return SPELL_AURA_PROC_FAILED;
-            break;
-        }
-        // Glyph of Death Grip
-        case 58628:
-        {
-            // remove cooldown of Death Grip
-            if (GetTypeId() == TYPEID_PLAYER)
-                ((Player*)this)->RemoveSpellCooldown(49576, true);
             break;
         }
         // Freezing Fog (Rime triggered)
