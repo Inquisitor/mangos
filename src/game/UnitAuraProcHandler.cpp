@@ -3368,12 +3368,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 triggeredByAura->SetAuraPeriodicTimer(0);
                 return SPELL_AURA_PROC_OK;
             }
-            // Hungering Cold - not break from diseases
-            if (dummySpell->SpellIconID == 2797)
-            {
-                if (procSpell && procSpell->Dispel == DISPEL_DISEASE)
-                    return SPELL_AURA_PROC_FAILED;
-            }
             // Blood-Caked Blade
             if (dummySpell->SpellIconID == 138)
             {
@@ -3388,12 +3382,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
             if (dummySpell->Id == 56817)
             {   //Must proc only from Rune strike (56815)
                 if (procSpell && procSpell->Id!= 56815)
-                    return SPELL_AURA_PROC_FAILED;
-            }
-            // Hungering Cold - not break from diseases
-            if (dummySpell->SpellIconID == 2797)
-            {
-                if (procSpell && procSpell->Dispel == DISPEL_DISEASE)
                     return SPELL_AURA_PROC_FAILED;
             }
             break;

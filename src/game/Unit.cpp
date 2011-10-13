@@ -7503,20 +7503,6 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                         DoneTotalMod *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
                     }
                 }
-                // Icy Touch
-                if (spellProto->SpellFamilyFlags.test<CF_MAGE_FINGERS_OF_FROST>())
-                {
-                    // Improved Icy Touch
-                    Unit::AuraList const& dummyAuras = GetAurasByType(SPELL_AURA_DUMMY);
-                    for(Unit::AuraList::const_iterator i = dummyAuras.begin(); i != dummyAuras.end(); ++i)
-                    {
-                        if ((*i)->GetSpellProto()->SpellIconID == 2721)
-                        {
-                            DoneTotalMod *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
-                            break;
-                        }
-                    }
-                }
             }
             // Death Coil (bonus from Item - Death Knight T8 DPS Relic)
             else if (spellProto->SpellFamilyFlags.test<CF_DEATHKNIGHT_DEATH_COIL>())
@@ -9706,7 +9692,6 @@ void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false
     if (CanHaveThreatList())
         m_ThreatManager.addThreat(pVictim, threat, crit, schoolMask, threatSpell);
 }
-
 
 //======================================================================
 
