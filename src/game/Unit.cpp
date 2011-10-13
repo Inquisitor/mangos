@@ -9704,48 +9704,7 @@ void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false
 {
     // Only mobs can manage threat lists
     if (CanHaveThreatList())
-    {
-        if (threatSpell && pVictim && pVictim->GetTypeId() == TYPEID_PLAYER)
-        {
-            float bonus=1.0f;
-            switch (threatSpell->SpellFamilyName)
-            {
-            case SPELLFAMILY_WARRIOR:
-                {
-                    // Heroic Throw
-                    if (threatSpell->Id==57755)
-                        bonus=1.5f;
-                    //Thunder Clap
-                    if (threatSpell->SpellFamilyFlags & UI64LIT(0x80))
-                        bonus=1.85f;
-                };
-                break;
-            case SPELLFAMILY_DEATHKNIGHT:
-                {
-                    //Rune Strike
-                    if (threatSpell->SpellFamilyFlags & UI64LIT(0x2000000000000000))
-                        bonus=1.75f;
-                    // Death and Decay
-                    if (threatSpell->Id==52212)
-                        bonus=1.9f;
-                    // Icy Touch in Frost Presense
-                    if (pVictim->HasAura(48263) && threatSpell->SpellFamilyFlags & UI64LIT(0x2))
-                        bonus=7.0f;
-                };
-                break;
-            case SPELLFAMILY_DRUID:
-                {
-                    if (threatSpell->SpellFamilyFlags & UI64LIT(0x0010000000000000))
-                        bonus=1.5f;
-                };
-                break;
-            };
-
-            threat*=bonus;
-
-        }
         m_ThreatManager.addThreat(pVictim, threat, crit, schoolMask, threatSpell);
-    }
 }
 
 
