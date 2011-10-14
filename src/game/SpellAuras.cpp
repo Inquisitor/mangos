@@ -8460,9 +8460,9 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
         else if (caster && caster->GetTypeId() == TYPEID_PLAYER && spellProto->Id == 47788 &&
             m_removeMode == AURA_REMOVE_BY_EXPIRE)
         {
-            if (Aura *aur = caster->GetAura(63231, EFFECT_INDEX_0))
+            if (Aura *aur = caster->GetAura(63231, EFFECT_INDEX_0))// Glyph of Guardian Spirit
             {
-                ((Player*)caster)->SendModifyCooldown(spellProto->Id,-aur->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_0)*IN_MILLISECONDS);
+                ((Player*)caster)->SendModifyCooldown(spellProto->Id,-(170-aur->GetSpellProto()->CalculateSimpleValue(EFFECT_INDEX_0))*IN_MILLISECONDS);
             }
         }
         // Shield of Runes (Runemaster Molgeim: Ulduar)
