@@ -622,6 +622,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void GetCreatureListWithEntryInGrid(std::list<Creature*>& lList, uint32 uiEntry, float fMaxSearchRange);
 
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
+        void SetActiveObjectState(bool active);
 
         ViewPoint& GetViewPoint() { return m_viewPoint; }
 
@@ -644,7 +645,6 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
         std::string m_name;
 
-        bool m_isActiveObject;
     private:
         Map * m_currMap;                                    //current object's Map location
 
@@ -653,10 +653,9 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         uint32 m_phaseMask;                                 // in area phase state
 
         Position m_position;
-
         ViewPoint m_viewPoint;
-
         WorldUpdateCounter m_updateTracker;
+        bool m_isActiveObject;
 };
 
 #endif

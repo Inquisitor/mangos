@@ -10780,8 +10780,9 @@ Unit* SpellAuraHolder::GetCaster() const
     if (!m_target)
         return NULL;
 
-    if (GetCasterGuid() == m_target->GetObjectGuid())
-        return m_target;
+    if (m_target->IsInWorld())
+        if (GetCasterGuid() == m_target->GetObjectGuid())
+            return m_target;
 
     return ObjectAccessor::GetUnit(*m_target, m_casterGuid);// player will search at any maps
 }
@@ -12016,7 +12017,8 @@ void SpellAuraHolder::HandleBoundUnit(bool apply)
 
 SpellAuraHolder::~SpellAuraHolder()
 {
-    DEBUG_LOG("SpellAuraHolder:: destructor for spell %u called.", GetId());
+    m_aurasStorage.clear();
+//    DEBUG_LOG("SpellAuraHolder:: destructor for SpellAuraHolder of spell %u called.", GetId());
 }
 
 void SpellAuraHolder::Update(uint32 diff)
