@@ -9447,12 +9447,12 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     // Absorb shield for totems
                     for(int itr = 0; itr < MAX_TOTEM_SLOT; ++itr)
                         if (Totem* totem = unitTarget->GetTotem(TotemSlot(itr)))
-                            m_caster->CastCustomSpell(totem, 55277, &damage, NULL, NULL, true);
+                            totem->CastCustomSpell(totem, 55277, &damage, NULL, NULL, true);
                     // Glyph of Stoneclaw Totem
                     if (Aura* auraGlyph = unitTarget->GetAura(63298, EFFECT_INDEX_0))
                     {
                         int32 playerAbsorb = damage * auraGlyph->GetModifier()->m_amount;
-                        m_caster->CastCustomSpell(unitTarget, 55277, &playerAbsorb, NULL, NULL, true);
+                        unitTarget->CastCustomSpell(unitTarget, 55277, &playerAbsorb, NULL, NULL, true);
                     }
                     return;
                 }
