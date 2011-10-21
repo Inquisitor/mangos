@@ -1239,18 +1239,39 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         }
 
         // TODO: Store auras by interrupt flag to speed this up.
-        SpellAuraHolderMap& vAuras = pVictim->GetSpellAuraHolderMap();
-        for (SpellAuraHolderMap::const_iterator i = vAuras.begin(), next; i != vAuras.end(); i = next)
+        if (pVictim)
         {
-            const SpellEntry *se = i->second->GetSpellProto();
-            next = i; ++next;
-            if (spellProto && spellProto->Id == se->Id) // Not drop auras added by self
-                continue;
-
-            if (!se->procFlags && (se->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE))
+            std::set<uint32> spellsToRemove;
+            if (pVictim->IsInWorld())
             {
-                pVictim->RemoveAurasDueToSpell(i->second->GetId());
-                next = vAuras.begin();
+                MAPLOCK_READ(pVictim,MAP_LOCK_TYPE_AURAS);
+                SpellAuraHolderMap const& vAuras = pVictim->GetSpellAuraHolderMap();
+                for (SpellAuraHolderMap::const_iterator i = vAuras.begin(), next; i != vAuras.end(); ++i)
+                {
+                    SpellAuraHolderPtr holder = i->second;
+                    if (!holder || holder->IsDeleted())
+                        continue;
+
+                    if (spellProto && spellProto->Id == holder->GetId()) // Not drop auras added by self
+                        continue;
+
+                    if (holder->GetSpellProto()->procFlags)
+                        continue;
+
+                    if (SpellProcEventEntry const* spellProcEvent = sSpellMgr.GetSpellProcEvent(holder->GetId()))
+                        if (spellProcEvent->procFlags)
+                            continue;
+
+                    if (holder->GetSpellProto()->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE)
+                    {
+                        spellsToRemove.insert(holder->GetId());
+                    }
+                }
+            }
+            if (!spellsToRemove.empty())
+            {
+                for(std::set<uint32>::const_iterator i = spellsToRemove.begin(); i != spellsToRemove.end(); ++i)
+                    pVictim->RemoveAurasDueToSpell(*i);
             }
         }
 
@@ -3355,19 +3376,15 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit *pVictim, SpellEntry const *spell)
     tmp += resist_mech;
     if (roll < tmp)
         return SPELL_MISS_RESIST;
-
     bool canDodge = true;
     bool canParry = true;
 
-    // Same spells cannot be parry/dodge
-    if (spell->Attributes & SPELL_ATTR_IMPOSSIBLE_DODGE_PARRY_BLOCK)
-        return SPELL_MISS_NONE;
-
-
     bool from_behind = !pVictim->HasInArc(M_PI_F,this);
 
-    // Ranged attack cannot be parry/dodge only deflect
-    if (attType == RANGED_ATTACK)
+    // Ranged attack cannot be parry/dodge, only deflect
+    // Some spells cannot be parry/dodge/blocked, but may be deflected
+    if (spell->Attributes & SPELL_ATTR_IMPOSSIBLE_DODGE_PARRY_BLOCK
+        || attType == RANGED_ATTACK)
     {
         // only if in front or special ability
         if (!from_behind || pVictim->HasAuraType(SPELL_AURA_MOD_PARRY_FROM_BEHIND_PERCENT))

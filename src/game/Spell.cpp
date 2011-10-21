@@ -8266,7 +8266,7 @@ void Spell::FillRaidOrPartyHealthPriorityTargets(UnitList &targetUnitMap, Unit* 
         Unit* unit = *itr;
         if (!unit)
             continue;
-        if (unit->isDead())
+        if (unit->isDead() || !unit->IsInWorld())
             continue;
         healthQueue.push(PrioritizeHealthUnitWraper(unit));
     }
