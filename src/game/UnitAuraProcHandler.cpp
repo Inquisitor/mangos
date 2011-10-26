@@ -1455,12 +1455,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 triggered_spell_id = 26654;
                 break;
             }
-             // Glyph of Devastate
-            if (dummySpell->Id == 58388)
-            {
-                triggered_spell_id = 58567;
-                break;
-            }
             // Glyph of Sunder Armor
             if (dummySpell->Id == 58387)
             {
