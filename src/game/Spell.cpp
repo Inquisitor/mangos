@@ -7003,7 +7003,7 @@ SpellCastResult Spell::CheckRange(bool strict)
                     (m_spellInfo->FacingCasterFlags & SPELL_FACING_FLAG_INFRONT) && !m_caster->HasInArc(M_PI_F, target))
                     return SPELL_FAILED_UNIT_NOT_INFRONT;
 
-                float range_mod = strict ? 0.0f : 5.0f;
+                float range_mod = strict ? 1.25f : 5.0f;
                 float base = ATTACK_DISTANCE;
                 if (Player* modOwner = m_caster->GetSpellModOwner())
                     range_mod += modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_RANGE, base, this);
