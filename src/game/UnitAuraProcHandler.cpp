@@ -1143,7 +1143,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 // Item - Shadowmourne Legendary
                 case 71903:
                 {
-                    if (!roll_chance_i(triggerAmount))
+                    if (!roll_chance_i(triggerAmount) || HasAura(73422))
                         return SPELL_AURA_PROC_FAILED;
 
                     triggered_spell_id = 71905;             // Soul Fragment
