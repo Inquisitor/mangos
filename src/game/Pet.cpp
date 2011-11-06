@@ -2537,7 +2537,7 @@ void Pet::ApplyAllScalingBonuses(bool apply)
     ApplySpellHitScalingBonus(apply);
     ApplyExpertizeScalingBonus(apply);
     ApplyPowerregenScalingBonus(apply);
-    ApplyHasteScalingBonus(apply);
+    ApplyAttackSpeedScalingBonus(apply);
 }
 
 void Pet::ApplyHitScalingBonus(bool apply)
@@ -2652,7 +2652,7 @@ void Pet::ApplyPowerregenScalingBonus(bool apply)
         UpdateManaRegen();
 }
 
-void Pet::ApplyHasteScalingBonus(bool apply)
+void Pet::ApplyAttackSpeedScalingBonus(bool apply)
 {
     Unit* owner = GetOwner();
 
@@ -2660,24 +2660,18 @@ void Pet::ApplyHasteScalingBonus(bool apply)
     if (!owner || owner->GetTypeId() != TYPEID_PLAYER || m_removed)
         return;
 
-    int32 m_AttackSpeed = owner->GetTotalAuraModifier(SPELL_AURA_HASTE_ALL);
-    m_AttackSpeed +=  ((Player*)owner)->GetRatingBonusValue(CR_HASTE_MELEE);
+    int32 m_attackspeed = int32((1.0f - owner->m_modAttackSpeedPct[BASE_ATTACK])*100.0f);
 
-    if (m_baseBonusData->attackspeedScale == m_AttackSpeed && !apply)
+    if (m_baseBonusData->attackspeedScale == m_attackspeed && !apply)
         return;
 
-    m_baseBonusData->attackspeedScale = m_AttackSpeed;
+    m_baseBonusData->attackspeedScale = m_attackspeed;
 
-    int32 basePoints = int32(m_baseBonusData->attackspeedScale * (CalculateScalingData()->attackspeedScale / 100.0f));
-
-    bool needRecalculateStat = false;
-
-    if (basePoints == 0)
-        needRecalculateStat = true;
+    int32 basePoints = int32((float)m_baseBonusData->attackspeedScale * float(CalculateScalingData()->attackspeedScale) / 100.0f);
 
     if (Aura* aura = GetScalingAura(SPELL_AURA_HASTE_ALL))
-        if (ReapplyScalingAura(aura, basePoints))
-            needRecalculateStat = true;
+        ReapplyScalingAura(aura, basePoints);
+
 }
 
 bool Pet::Summon()
@@ -2880,6 +2874,7 @@ bool Pet::ReapplyScalingAura(Aura* aura, int32 basePoints)
         return false;
 
     SetCanModifyStats(false);
+    DEBUG_LOG("Pet::ReapplyScalingAura pet %u, spell %u, index %u, oldValue %u, newValue %u", GetObjectGuid().GetCounter(), holder->GetId(), aura->GetEffIndex(), aura->GetModifier()->m_amount, basePoints);
     holder->SetInUse(true);
     {
         MAPLOCK_READ(this,MAP_LOCK_TYPE_AURAS);
@@ -3169,7 +3164,7 @@ void Pet::ApplyScalingBonus(ScalingAction* action)
         case SCALING_TARGET_POWERREGEN:
             ApplyPowerregenScalingBonus(action->apply);
         case SCALING_TARGET_ATTACKSPEED:
-            ApplyHasteScalingBonus(action->apply);
+            ApplyAttackSpeedScalingBonus(action->apply);
             break;
         case SCALING_TARGET_MAX:
         default:

@@ -74,6 +74,12 @@ enum BG_WS_FlagState
     BG_WS_FLAG_STATE_ON_GROUND    = 3
 };
 
+enum BG_WS_Objectives
+{
+    WS_OBJECTIVE_CAPTURE_FLAG     = 42,
+    WS_OBJECTIVE_RETURN_FLAG      = 44
+};
+
 enum BG_WS_Graveyards
 {
     WS_GRAVEYARD_FLAGROOM_ALLIANCE = 769,
@@ -158,6 +164,8 @@ class BattleGroundWS : public BattleGround
         // For Achievement "capture flag for 75 sec"
         uint32 GetFlagCaptureTime(Team team) const      { return m_FlagCaptureTime[GetTeamIndexByTeamId(team)]; }
     private:
+        void PickOrReturnFlag(Player* pPlayer, Team forTeam, bool pickedUp, bool fromGround = false);
+
         ObjectGuid m_FlagKeepers[BG_TEAMS_COUNT];
 
         ObjectGuid m_DroppedFlagGuid[BG_TEAMS_COUNT];
@@ -177,4 +185,5 @@ class BattleGroundWS : public BattleGround
         uint32 m_FocusedAssault;
         bool   m_FocusedAssaultExtra;
 };
+
 #endif

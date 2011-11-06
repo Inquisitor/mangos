@@ -85,7 +85,6 @@ enum BG_AB_ObjectType
     BG_AB_OBJECT_MAX                     = 16,
 };
 
-
 /* node events */
 // node-events are just event1=BG_AB_Nodes, event2=BG_AB_NodeStatus
 // so we don't need to define the constants here :)
@@ -134,6 +133,12 @@ enum BG_AB_Sounds
     BG_AB_SOUND_NODE_ASSAULTED_ALLIANCE = 8212,
     BG_AB_SOUND_NODE_ASSAULTED_HORDE    = 8174,
     BG_AB_SOUND_NEAR_VICTORY            = 8456
+};
+
+enum BG_AB_Objectives
+{
+    AB_OBJECTIVE_ASSAULT_BASE = 122,
+    AB_OBJECTIVE_DEFEND_BASE  = 123
 };
 
 #define BG_AB_NotABBGWeekendHonorTicks      330

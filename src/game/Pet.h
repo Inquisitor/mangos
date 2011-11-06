@@ -245,7 +245,7 @@ class MANGOS_DLL_SPEC Pet : public Creature
         void ApplySpellHitScalingBonus(bool apply);
         void ApplyExpertizeScalingBonus(bool apply);
         void ApplyPowerregenScalingBonus(bool apply);
-        void ApplyHasteScalingBonus(bool apply);
+        void ApplyAttackSpeedScalingBonus(bool apply);
         bool ReapplyScalingAura(Aura* aura, int32 basePoints);
         PetScalingData* CalculateScalingData( bool recalculate = false );
         void AddScalingAction(ScalingTarget target, uint32 stat, bool apply);
