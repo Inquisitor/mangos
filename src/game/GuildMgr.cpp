@@ -189,6 +189,7 @@ void GuildMgr::LoadGuilds()
         delete tabs_result;
         delete items_result;
         delete GuildEventlog_result;
+        delete GuildBankEventlog;
     }
     delete result;
     delete guildRanksResult;
