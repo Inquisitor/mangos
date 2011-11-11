@@ -5911,7 +5911,7 @@ void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
                 break;
 
             case GAMEOBJECT_TYPE_TRAP:
-                if (lockType == LOCKTYPE_DISARM_TRAP)
+                if (lockType == LOCKTYPE_DISARM_TRAP || gameObjTarget->GetEntry() == 190752)
                 {
                     gameObjTarget->SetLootState(GO_JUST_DEACTIVATED);
                     return;
@@ -11961,46 +11961,6 @@ void Spell::EffectModifyThreatPercent(SpellEffectIndex /*eff_idx*/)
 
 void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
 {
-    // Special handler for Place Seaforium Charge, Place Seaforium Bomb, Place Huge Seaforium Bomb
-    if (m_spellInfo->Id == 52410 || m_spellInfo->Id == 66268 || m_spellInfo->Id == 66674)
-    {
-        if (!((Player*)m_caster)->InBattleGround())
-            return;
-
-        if (BattleGround *bg = ((Player*)m_caster)->GetBattleGround())
-        {
-            uint32 type = bg->GetTypeID(true);
-            if (type == BATTLEGROUND_SA)
-                if (bg->GetDefender() == ((Player*)m_caster)->GetTeam())
-                    return;
-            if (type == BATTLEGROUND_SA || type == BATTLEGROUND_IC)
-            {
-                uint32 team = 0;
-                if (m_caster->GetTypeId()==TYPEID_PLAYER)
-                {
-                    if (((Player*)m_caster)->GetTeam() == HORDE)
-                        team = 83;
-                    if (((Player*)m_caster)->GetTeam() == ALLIANCE)
-                        team = 84;
-                }
-                float fx, fy, fz;
-                m_caster->GetPosition(fx, fy, fz);
-                uint32 bombId = 0;
-                if (m_spellInfo->Id == 52410) { bombId = 50000;}
-                if (m_spellInfo->Id == 66268) { bombId = 50001;}
-                if (m_spellInfo->Id == 66674) { bombId = 49999;}
-                Creature* cBomb = m_caster->SummonCreature(bombId, fx, fy, fz, 0, TEMPSUMMON_DEAD_DESPAWN, 0);
-                if (!cBomb)
-                    return;
-                cBomb->setFaction(team);
-                cBomb->SetCharmerGuid(m_caster->GetGUID());
-                bg->EventSpawnGOSA(((Player*)m_caster),cBomb,fx,fy,fz);
-            }
-        }
-        return;
-    }
-    // Normal processing
-
     uint32 name_id = m_spellInfo->EffectMiscValue[eff_idx];
 
     GameObjectInfo const* goinfo = ObjectMgr::GetGameObjectInfo(name_id);
@@ -12063,7 +12023,8 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
 
     Map *cMap = m_caster->GetMap();
 
-    if (goinfo->type == GAMEOBJECT_TYPE_SUMMONING_RITUAL)
+    // if gameobject is summoning object or Seaforium Charge (SotA), it should be spawned right on caster's position
+    if (goinfo->type == GAMEOBJECT_TYPE_SUMMONING_RITUAL || m_spellInfo->Id == 52410)
     {
         m_caster->GetPosition(fx, fy, fz);
     }

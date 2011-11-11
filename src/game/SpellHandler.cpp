@@ -400,7 +400,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     if (mover->GetTypeId()==TYPEID_PLAYER)
     {
         // not have spell in spellbook or spell passive and not casted by client
-        if ( ((Player*)mover)->GetUInt16Value(PLAYER_FIELD_BYTES2, 0) == 0 && !((Player*)mover)->HasActiveSpell (spellId) || IsPassiveSpell(spellInfo))
+        if ( (((Player*)mover)->GetUInt16Value(PLAYER_FIELD_BYTES2, 0) == 0 && !((Player*)mover)->HasActiveSpell(spellId) || IsPassiveSpell(spellInfo)) && (spellId != 1843))
         {
             sLog.outError("World: Player %u casts spell %u which he shouldn't have", mover->GetGUIDLow(), spellId);
             //cheater? kick? ban?
@@ -410,8 +410,8 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     }
     else
     {
-        // not have spell in spellbook or spell passive and not casted by client
-        if (!((Creature*)mover)->HasSpell(spellId) || IsPassiveSpell(spellInfo))
+        // not have spell in spellbook or spell passive and not casted by client        // hack for Sota Seaforium disarming
+        if ((!((Player*)mover)->HasActiveSpell(spellId) || IsPassiveSpell(spellInfo)) && spellId != 1843)
         {
             //cheater? kick? ban?
             recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
