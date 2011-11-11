@@ -11420,7 +11420,7 @@ void Unit::ProcDamageAndSpellFor( bool isVictim, Unit * pTarget, uint32 procFlag
             if (!holder || holder->IsDeleted())
                 continue;
 
-            SpellProcEventEntry const* spellProcEvent =sSpellMgr.GetSpellProcEvent(holder->GetSpellProto()->Id);
+            SpellProcEventEntry const* spellProcEvent = sSpellMgr.GetSpellProcEvent(holder->GetId());
             if(!IsTriggeredAtSpellProcEvent(pTarget, holder, procSpell, procFlag, procExtra, attType, isVictim, spellProcEvent))
                continue;
 
