@@ -1870,6 +1870,9 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 break;
                         }
                         break;
+
+                        if (!((Player*)unit)->HasAura(52418))
+                             continue;
                     }
                     default:
                     {

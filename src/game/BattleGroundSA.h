@@ -24,6 +24,8 @@ class BattleGround;
 #define BG_SA_GRY_MAX 3
 #define BG_SA_GATE_MAX 6
 #define BG_SA_MAX_WS 4
+#define BG_SA_EVENT_START_BATTLE_1      23748
+#define BG_SA_EVENT_START_BATTLE_2      21702
 
 enum BG_SA_WorldStates
 {
@@ -87,8 +89,10 @@ enum BG_SA_GraveYard
 
 enum BG_SA_Timers
 {
-    BG_SA_ROUNDLENGTH = 600000,
-    BG_SA_BOAT_START = 70000
+    BG_SA_ROUNDLENGTH                   = 600000,
+    BG_SA_BOAT_START                    = 65000,
+    BG_SA_PILLAR_START                  = 90000
+
 };
 
 enum BG_SA_GateStatus
@@ -126,7 +130,8 @@ enum BG_SA_Events
     SA_EVENT_ADD_NPC = 7,
     SA_EVENT_ADD_GO = 8,
     SA_EVENT_ADD_VECH_E = 9,
-    SA_EVENT_ADD_VECH_W = 10
+    SA_EVENT_ADD_VECH_W = 10,
+    SA_EVENT_OP_DOOR = 253
 };
 
 enum BG_SA_Boats
@@ -221,7 +226,7 @@ class BattleGroundSA : public BattleGround
         virtual void AddPlayer(Player *plr);
         virtual void StartingEventCloseDoors();
         virtual void StartingEventOpenDoors();
-        virtual void EventPlayerDamageGO(Player *player, GameObject* target_obj, uint32 eventId, uint32 doneBy = 0);
+        virtual void EventPlayerDamageGO(Player *player, GameObject* target_obj, uint32 eventId);
         virtual void FillInitialWorldStates(WorldPacket& data, uint32& count);
         virtual void EventPlayerClickedOnFlag(Player *source, GameObject* target_obj);
         virtual void HandleKillUnit(Creature* unit, Player* killer);
@@ -248,6 +253,7 @@ class BattleGroundSA : public BattleGround
         bool shipsStarted;
         bool relicGateDestroyed;
         uint32 shipsTimer;
+        uint32 pillarOpenTimer;
         bool isDemolisherDestroyed[2];
         /* Scorekeeping */
         void UpdatePlayerScore(Player *Source, uint32 type, uint32 value);
@@ -259,7 +265,7 @@ class BattleGroundSA : public BattleGround
         // Send packet to player for destroy boats (client part)
         void SendTransportsRemove(Player * player);
         /* For SendWarningToAll */
-        void SendWarningToAllSA(uint8 gyd, int status, Team team, bool isDoor = false, int door = NULL, bool destroyed = false);
+        void SendWarningToAllSA(uint8 gyd, uint32 status, Team team, bool isDoor = false, uint32 door = 0, bool destroyed = false);
         /* For vehicle's faction*/
         uint32 GetCorrectFactionSA(uint8 vehicleType) const;
         /* This teleports player to correct loc in function of BG status and it resurects player if necesary */

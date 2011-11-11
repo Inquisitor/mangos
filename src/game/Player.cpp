@@ -51,6 +51,7 @@
 #include "Weather.h"
 #include "BattleGround.h"
 #include "BattleGroundAV.h"
+#include "BattleGroundSA.h"
 #include "BattleGroundMgr.h"
 #include "ArenaTeam.h"
 #include "Chat.h"
@@ -7963,6 +7964,10 @@ void Player::ApplyItemOnStoreSpell(Item *item, bool apply)
 void Player::DestroyItemWithOnStoreSpell(Item* item, uint32 spellId)
 {
     if (!item)
+        return;
+
+    // hack for seaforium bombs
+    if(item->GetEntry() == 39213)
         return;
 
     ItemPrototype const *proto = item->GetProto();

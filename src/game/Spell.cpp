@@ -2525,7 +2525,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             {
                 float fMaxDist = GetSpellMaxRange(sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex));
 
-                MaNGOS::GameObjectInRangeCheck check(m_caster, x, y, z, radius + 5.0f);
+                MaNGOS::GameObjectInRangeCheck check(m_caster, x, y, z, radius);
                 MaNGOS::GameObjectListSearcher<MaNGOS::GameObjectInRangeCheck> searcher(tempTargetGOList, check);
                 Cell::VisitAllObjects(m_caster, searcher, radius + fMaxDist);
             }

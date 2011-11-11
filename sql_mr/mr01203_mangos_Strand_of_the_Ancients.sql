@@ -1,4 +1,4 @@
--- Strand of the Ancients
+﻿-- Strand of the Ancients
 DELETE FROM battleground_template WHERE id = 9;
 INSERT INTO battleground_template (id, MinPlayersPerTeam, MaxPlayersPerTeam, AllianceStartLoc, AllianceStartO, HordeStartLoc, HordeStartO) VALUES (9, 5, 15, 1367, 0, 1368, 0);
 -- Rigger Sparklight
@@ -57,12 +57,12 @@ INSERT INTO npc_spellclick_spells VALUES
 DELETE FROM gameobject WHERE guid IN (200001, 200002, 200003, 200004, 200005, 200006, 200007);
 INSERT INTO gameobject VALUES
 (200001, 192829, 607, 3, 1, 836.502, -108.811, 111.587, 0.121379, 0, 0, 0.0606524, 0.998159, 5, 0, 1),
-(200002, 190727, 607, 3, 1, 1054.47, -107.76, 82.16, 0.06, 0, 0, 0.008726535, 0.9999619, 600, 0, 1),
-(200003, 190726, 607, 3, 1, 1228.62, -212.12, 55.34, 0.48, 0, 0, 0.008726535, 0.9999619, 600, 0, 1),
-(200004, 190723, 607, 3, 1, 1215.82, 80.64, 53.38, 5.68, 0, 0, 0.008726535, 0.9999619, 600, 0, 1),
-(200005, 190724, 607, 3, 1, 1431.05, -219.21, 30.89, 0.83, 0, 0, 0.008726535, 0.9999619, 600, 0, 1),
-(200006, 190722, 607, 3, 1, 1413.15, 107.78, 28.69, 5.42, 0, 0, 0.008726535, 0.9999619, 600, 0, 1),
-(200007, 192549, 607, 3, 1, 873.3, -108.286, 117.171, 0.00894308, 0, 0, 0.00447152, 0.99999, 600, 0, 1);
+(200002, 190727, 607, 3, 1, 1056.47, -107.76, 82.16, 0.06, 0, 0, 0.008726535, 0.9999619, 600, 0, 1),
+(200003, 190726, 607, 3, 1, 1230.62, -211.12, 55.34, 0.48, 0, 0, 0.245, 0.9699619, 600, 0, 1),
+(200004, 190723, 607, 3, 1, 1216.82, 80.04, 53.38, 5.68, 0, 0, 0.255, -0.9999619, 600, 0, 1),
+(200005, 190724, 607, 3, 1, 1432.25, -217.21, 30.89, 0.83, 0, 0, 0.4424, 0.8999619, 600, 0, 1),
+(200006, 190722, 607, 3, 1, 1414.15, 106.78, 28.69, 5.42, 0, 0, 0.421, -0.9099619, 600, 0, 1),
+(200007, 192549, 607, 3, 1, 875.3, -108.286, 117.171, 0.00894308, 0, 0, 0.00447152, 0.99999, 600, 0, 1);
 
 DELETE FROM gameobject_battleground WHERE guid in (200001, 200002, 200003, 200004, 200005, 200006, 200007);
 INSERT INTO gameobject_battleground VALUES
@@ -144,7 +144,9 @@ INSERT INTO battleground_events (map, event1, event2, description) VALUES
 (607, 7, 0, 'Spawn all NPC'),
 (607, 8, 0, 'Spawn all GO'),
 (607, 9, 0, 'Spawn Vehicle E'),
-(607, 10, 0, 'Spawn Vehicle W');
+(607, 10, 0, 'Spawn Vehicle W'),
+(607, 253, 0, 'OP_DOOR'),
+(607, 254, 0, 'DOOR');
 
 
 -- Horde and Alliance Spirit Guide
@@ -197,19 +199,19 @@ INSERT INTO mangos_string (entry, content_default, content_loc1, content_loc2, c
 (20018, 'The Horde won the first round, the Relic of Titan was captured!', NULL, NULL, 'Die Horde hat die erste Runde gewonnen, das Titanenportal erobert!', NULL, NULL, '¡La Horda gana la primera ronda! ¡La reliquia de Titán ha sido capturada!', '¡La Horda gana la primera ronda! ¡La reliquia de Titán ha sido capturada!', 'Первый раунд за Ордой! Реликвия Титана захвачена!'),
 (20019, 'The Alliance won the second round, the Relic of Titan was captured!', NULL, NULL, 'Die Allianz hat die zweite Runde gewonnen, das Titanenportal erobert!', NULL, NULL, '¡La Horda gana la segunda ronda! ¡La reliquia de Titán ha sido capturada!', '¡La Horda gana la segunda ronda! ¡La reliquia de Titán ha sido capturada!', 'Второй раунд за Альянсом! Реликвия Титана захвачена!'),
 (20020, 'The Horde won the second round, the Relic of Titan was captured!', NULL, NULL, 'Die Horde hat die zweite Runde gewonnen, das Titanenportal erobert!', NULL, NULL, '¡La Alianza gana la segunda ronda! ¡La reliquia de Titán ha sido capturada!', '¡La Alianza gana la segunda ronda! ¡La reliquia de Titán ha sido capturada!', 'Второй раунд за Ордой! Реликвия Титана захвачена!'),
-(20021, 'The Eastern Graveyard has been captured by the Horde!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Horda ha capturado el cementerio oriental!',  '¡La Horda ha capturado el cementerio oriental!',  NULL),
-(20022, 'The Western Graveyard has been captured by the Horde!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Horda ha capturado el cementerio occidental!', '¡La Horda ha capturado el cementerio occidental!',  NULL),
-(20023, 'The Southern Graveyard has been captured by the Horde!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Horda ha capturado el cementerio sur!', '¡La Horda ha capturado el cementerio sur!',  NULL),
-(20024, 'The Eastern Graveyard has been captured by the Alliance!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Alianza ha capturado el cementerio oriental!', '¡La Alianza ha capturado el cementerio oriental!',  NULL),
-(20025, 'The Western Graveyard has been captured by the Alliance!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Alianza ha capturado el cementerio occidental!', '¡La Alianza ha capturado el cementerio occidental!',  NULL),
-(20026, 'The Southern Graveyard has been captured by the Alliance!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Alianza ha capturado el cementerio sur!', '¡La Alianza ha capturado el cementerio sur!',  NULL),
-(20027, 'The chamber has been breached! The Titan Relic is vulnerable!',  NULL,  NULL,  NULL,  NULL,  NULL,  '¡La puerta de la Cámara de Reliquias antiguas ha sido destruida! ¡La reliquia de titán es vulnerable!',  '¡La puerta de la Cámara de Reliquias antiguas ha sido destruida! ¡La reliquia de titán es vulnerable!',  NULL),
+(20021, 'The Eastern Graveyard has been captured by the Horde!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Horda ha capturado el cementerio oriental!',  '¡La Horda ha capturado el cementerio oriental!',  'Орда захватила Восточное кладбище!'),
+(20022, 'The Western Graveyard has been captured by the Horde!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Horda ha capturado el cementerio occidental!', '¡La Horda ha capturado el cementerio occidental!',  'Орда захватила Западное кладбище!'),
+(20023, 'The Southern Graveyard has been captured by the Horde!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Horda ha capturado el cementerio sur!', '¡La Horda ha capturado el cementerio sur!', 'Орда захватила Южное кладбище!'),
+(20024, 'The Eastern Graveyard has been captured by the Alliance!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Alianza ha capturado el cementerio oriental!', '¡La Alianza ha capturado el cementerio oriental!',  'Альянс захватил Восточное кладбище!'),
+(20025, 'The Western Graveyard has been captured by the Alliance!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Alianza ha capturado el cementerio occidental!', '¡La Alianza ha capturado el cementerio occidental!', 'Альянс захватил Западное кладбище!'),
+(20026, 'The Southern Graveyard has been captured by the Alliance!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La Alianza ha capturado el cementerio sur!', '¡La Alianza ha capturado el cementerio sur!', 'Альянс захватил Южное кладбище!'),
+(20027, 'The chamber has been breached! The Titan Relic is vulnerable!',  NULL,  NULL,  NULL,  NULL,  NULL,  '¡La puerta de la Cámara de Reliquias antiguas ha sido destruida! ¡La reliquia de titán es vulnerable!',  '¡La puerta de la Cámara de Reliquias antiguas ha sido destruida! ¡La reliquia de titán es vulnerable!',  'Комната древних святынь разрушена!'),
 (20028, 'The Gate of the Green Emerald was destroyed!', NULL, NULL, 'Das Tor des Smaragdhorizonts ist zerstort!', NULL, NULL, '¡La puerta de la Esmeralda Verde ha sido destruida!', '¡La puerta de la Esmeralda Verde ha sido destruida!', 'Врата Зеленого Изумруда разрушены!'),
 (20029, 'The Gate of the Blue Sapphire was destroyed!', NULL, NULL, 'Das Tor des Saphirhimmels ist zerstort!', NULL, NULL, '¡La puerta del Zafiro Azul ha sido destruida!', '¡La puerta del Zafiro Azul ha sido destruida!', 'Врата Синего Сапфира разрушены!'),
 (20030, 'The Gate of the Purple Amethyst was destroyed!', NULL, NULL, 'Das Tor des Amethyststerns ist zerstort worden', NULL, NULL, '¡La puerta de la Amatista Púrpura ha sido destruida!', '¡La puerta de la Amatista Púrpura ha sido destruida!', 'Врата Лилового Аметиста разрушены!'),
 (20031, 'The Gate of the Red Sun was destroyed!', NULL, NULL, 'Das Tor der Rubinsonne ist zerstort worden!', NULL, NULL, '¡La puerta del Sol Rojo ha sido destruida!', '¡La puerta del Sol Rojo ha sido destruida!', 'Врата Красного Солнца разрушены!'),
 (20032, 'The Gate of the Yellow Moon was destroyed!', NULL, NULL, 'Das Tor des Goldmondes ist zerstort worden!', NULL, NULL, '¡La puerta de la Luna Amarilla ha sido destruida!', '¡La puerta de la Luna Amarilla ha sido destruida!', 'Врата Желтой Луны разрушены!'),
-(20033, 'The Chamber of Ancient Relics is under attack!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La puerta de la Cámara de Reliquias antiguas esta siendo asediada!',  '¡La puerta de la Cámara de Reliquias antiguas esta siendo asediada!',  NULL),
+(20033, 'The Chamber of Ancient Relics is under attack!',  NULL,  NULL,  NULL,  NULL,  NULL, '¡La puerta de la Cámara de Reliquias antiguas esta siendo asediada!',  '¡La puerta de la Cámara de Reliquias antiguas esta siendo asediada!',  'Комната древних святынь повреждена!'),
 (20034, 'The Gate of the Green Emerald is damaged!', NULL, NULL, 'Das Tor des Smaragdhorizonts ist beschadigt worden', NULL, NULL, '¡La puerta de la Esmeralda Verde ha sido dañada!', '¡La puerta de la Esmeralda Verde ha sido dañada!', 'Врата Зеленого Изумруда повреждены!'),
 (20035, 'The Gate of the Blue Sapphire is damaged!', NULL, NULL, 'Das Tor des Saphirhimmels ist beschadigt worden!', NULL, NULL, '¡La puerta del Zafiro Azul ha sido dañada!', '¡La puerta del Zafiro Azul ha sido dañada!', 'Врата Синего Сапфира повреждены!'),
 (20036, 'The Gate of the Purple Amethyst is damaged!', NULL, NULL, 'Das Tor des Amethyststerns ist beschadigt worden!', NULL, NULL, '¡La puerta de la Amatista Púrpura ha sido dañada!', '¡La puerta de la Amatista Púrpura ha sido dañada!', 'Врата Лилового Аметиста повреждены!'),
@@ -219,7 +221,7 @@ INSERT INTO mangos_string (entry, content_default, content_loc1, content_loc2, c
 (20040, 'The Alliance won the first round, the Relic of Titan was no captured!', NULL, NULL, 'Runde 1 - Beendet!', NULL, NULL, '¡Ronda 1 acabada!', '¡Ronda 1 acabada!', 'Первый раунд за Альянсом! Реликвия Титана не была захвачена!'),
 (20041, 'The Horde won the second round, the Relic of Titan was no captured!', NULL, NULL, 'Runde 2 - Beendet!', NULL, NULL, '¡Ronda 2 acabada!', '¡Ronda 2 acabada!', 'Второй раунд за Ордой! Реликвия Титана не была захвачена!'),
 (20042, 'The Alliance won the second round, the Relic of Titan was no captured!', NULL, NULL, 'Runde 2 - Beendet!', NULL, NULL, '¡Ronda 2 acabada!', '¡Ronda 2 acabada!', 'Второй раунд за Альянсом! Реликвия Титана не была захвачена!'),
-(20043, 'Round 1 - Finished!',  NULL,  NULL,  'Runde 1 - Beendet!',  NULL,  NULL,  '¡Ronda 1 acabada!', '¡Ronda 1 acabada!', NULL),
+(20043, 'Round 1 - Finished!',  NULL,  NULL,  'Runde 1 - Beendet!',  NULL,  NULL,  '¡Ronda 1 acabada!', '¡Ronda 1 acabada!', 'Первый раунд окончен'),
 (20044, 'The game has ended in a draw!', NULL, NULL, 'Das Spiel ist unentschieden!!!', NULL, NULL, '¡El campo de batalla ha acabado en empate!', '¡El campo de batalla ha acabado en empate!', 'Ничья!!!');
 
 DELETE FROM gameobject WHERE guid BETWEEN 200008 AND 200028;
@@ -332,9 +334,8 @@ INSERT INTO gameobject_battleground VALUES
 (200082, 6, 1),
 (200083, 6, 1),
 
--- (200084, 254, 0),
--- (200085, 254, 0),
--- (200086, 254, 0);
+(200084, 253, 0),
+(200085, 253, 0),
 
 (200087, 6, 1),
 (200088, 6, 1),
@@ -444,7 +445,7 @@ INSERT INTO gameobject VALUES
 (200032, 191575, 607, 3, 1, 1255.73, -233.153, 56.4357, 5.01833, 0, 0, 0.591105, -0.806595, 25, 0, 1),
 (200033, 191575, 607, 3, 1, 1065.02, -89.9522, 81.0758, 1.58771, 0, 0, 0.71306, 0.701103, 25, 0, 1),
 (200034, 191575, 607, 3, 1, 880.162, -95.979, 109.835, 3.14672, 0, 0, 0.999997, -0.00256531, 25, 0, 1),
-(200035, 191575, 607, 3, 1, 880.68, -120.799, 109.835, 3.16636, 0, 0, 0.999923, -0.0123816, 25, 0, 1);
+(200035, 191575, 607, 3, 1, 868.162, -120.979, 109.835, 3.16636, 0, 0, 0.999923, -0.0123816, 25, 0, 1);
 
 -- Seaforium Bomb
 
@@ -503,7 +504,10 @@ INSERT INTO gameobject (guid, id, map, spawnMask, phaseMask, position_x, positio
 (200081 , 190753 , 607 , 3 , 1 , 1582.33 , -91.951 , 8.49353 , 1.1844 , 0 , 0 , 0 , 0 , 0 , 0 , 0),
 (200082 , 194086 , 607 , 3 , 1 , 1592.49 , 47.5969 , 7.52271 , 4.63218 , 0 , 0 , 0 , 0 , 0 , 0 , 0),
 (200083 , 194086 , 607 , 3 , 1 , 1593.91 , 47.8036 , 7.65856 , 4.63218 , 0 , 0 , 0 , 0 , 0 , 0 , 0),
--- 200084 - 200086???
+
+(200084, 300000, 607, 3, 1, 1803.93, -168.457, 60.549, 2.74522, 0, 0, 0.980426, 0.196889, 250000, 0, 1),
+(200085, 300000, 607, 3, 1, 1803.71, 118.601, 59.8234, 3.56313, 0, 0, 0.97787, -0.209212, 250000, 0, 1),
+
 (200087 , 194086 , 607 , 3 , 1 , 1593.13 , 46.8106 , 7.54073 , 4.63218 , 0 , 0 , 0 , 0 , 0 , 0 , 0),
 (200088 , 194086 , 607 , 3 , 1 , 1589.22 , 36.3616 , 7.45975 , 4.64396 , 0 , 0 , 0 , 0 , 0 , 0 , 0),
 (200089 , 194086 , 607 , 3 , 1 , 1588.24 , 35.5842 , 7.55613 , 4.79564 , 0 , 0 , 0 , 0 , 0 , 0 , 0),
