@@ -658,6 +658,8 @@ void Unit::RemoveSpellbyDamageTaken(AuraType auraType, uint32 damage)
             {
                 tmp = itr;
                 tmp++;
+                if (!(*itr))
+                    continue;
                 switch ((*itr)->GetId())
                 {
                     case 62283:                               // Iron Roots (Freya)
