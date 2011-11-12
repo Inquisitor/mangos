@@ -2580,6 +2580,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     targetUnitMap.push_back(owner);
             }
             else
+            if (m_spellInfo->Id ==70728 || m_spellInfo->Id ==70840)
+            { //70728 Exploit Weakness and  70840 Devious Minds  only affect pet and owner
+                targetUnitMap.push_back(m_caster);
+                if (Pet* pet = m_caster->GetPet())
+                    targetUnitMap.push_back(pet);
+            }
+            else
             {
                 FillRaidOrPartyTargets(targetUnitMap, m_caster, m_caster, radius, false, true, true);
             }
