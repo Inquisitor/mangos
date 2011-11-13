@@ -638,53 +638,6 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType, SpellAuraHolderPtr except)
         RemoveAurasDueToSpell(*i, except);
 }
 
-/* Called by DealDamage for auras that have a chance to be dispelled on damage taken. */
-void Unit::RemoveSpellbyDamageTaken(AuraType auraType, uint32 damage)
-{
-    if(!HasAuraType(auraType))
-        return;
-
-    // The chance to dispel an aura depends on the damage taken with respect to the casters level.
-    uint32 max_dmg = getLevel() > 8 ? 25 * getLevel() - 150 : 50;
-    float chance = float(damage) / max_dmg * 100.0f;
-    if (roll_chance_f(chance))
-    {
-        // manually remove auras except ones that shouldn't be removed. TODO: better way of removing except some auras
-        if (auraType == SPELL_AURA_MOD_ROOT)
-        {
-            AuraList const &auras = GetAurasByType(SPELL_AURA_MOD_ROOT);
-            AuraList::const_iterator tmp;
-            for (AuraList::const_iterator itr = auras.begin(); itr != auras.end();)
-            {
-                tmp = itr;
-                tmp++;
-                if (!(*itr))
-                    continue;
-                switch ((*itr)->GetId())
-                {
-                    case 62283:                               // Iron Roots (Freya)
-                    case 62930:
-                    case 62438:
-                    case 62861:
-                    case 58373:                               // Glyph of Hamstring
-                    case 23694:                               // Improved Hamstring
-                    case 61969:                               // Flash Freeze (Hodir)
-                    case 62469:                               // Freeze (Hodir)
-                        // don't remove
-                        break;
-                    default:
-                        RemoveAurasDueToSpell((*itr)->GetId());
-                        break;
-                }
-                itr = tmp;
-            }
-            return;
-        }
-
-        RemoveSpellsCausingAura(auraType);
-    }
-}
-
 void Unit::DealDamageMods(Unit *pVictim, uint32 &damage, uint32* absorb)
 {
     if (!pVictim->isAlive() || pVictim->IsTaxiFlying() || (pVictim->GetTypeId() == TYPEID_UNIT && ((Creature*)pVictim)->IsInEvadeMode()))
@@ -767,12 +720,6 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             return 0;
         }
     }
-    if (!spellProto || !IsSpellHaveAura(spellProto,SPELL_AURA_MOD_FEAR))
-        pVictim->RemoveSpellbyDamageTaken(SPELL_AURA_MOD_FEAR, damage);
-    // root type spells do not dispel the root effect
-    if (!spellProto || !(spellProto->Mechanic == MECHANIC_ROOT || IsSpellHaveAura(spellProto,SPELL_AURA_MOD_ROOT)))
-        pVictim->RemoveSpellbyDamageTaken(SPELL_AURA_MOD_ROOT, damage);
-
     // no xp,health if type 8 /critters/
     if (pVictim->GetTypeId() == TYPEID_UNIT && pVictim->GetCreatureType() == CREATURE_TYPE_CRITTER)
     {
@@ -1178,19 +1125,6 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
 
             // if damage pVictim call AI reaction
             pVictim->AttackedBy(this);
-        }
-
-        // polymorphed, hex and other negative transformed cases
-        uint32 morphSpell = pVictim->getTransForm();
-        if (morphSpell && !IsPositiveSpell(morphSpell))
-        {
-            if (SpellEntry const* morphEntry = sSpellStore.LookupEntry(morphSpell))
-            {
-                if (IsSpellHaveAura(morphEntry, SPELL_AURA_MOD_CONFUSE))
-                    pVictim->RemoveAurasDueToSpell(morphSpell);
-                else if (IsSpellHaveAura(morphEntry, SPELL_AURA_MOD_PACIFY_SILENCE))
-                    pVictim->RemoveSpellbyDamageTaken(SPELL_AURA_MOD_PACIFY_SILENCE, damage);
-            }
         }
 
         if(damagetype == DIRECT_DAMAGE || damagetype == SPELL_DIRECT_DAMAGE)
