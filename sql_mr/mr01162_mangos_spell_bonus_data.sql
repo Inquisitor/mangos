@@ -29,7 +29,7 @@ INSERT INTO `spell_bonus_data`(`entry`,`direct_bonus`,`dot_bonus`,`ap_bonus`,`ap
     ( '16614','0','0','0','0','Item - Storm Gauntlets - Lightning Strike')
 ;
 
---by Warlord
+-- by Warlord
 DELETE FROM `spell_bonus_data` WHERE entry IN (7294,467);
 INSERT INTO `spell_bonus_data`(`entry`,`direct_bonus`,`dot_bonus`,`ap_bonus`,`ap_dot_bonus`,`comments`) VALUES 
 (467, 0.033, 0, 0, 0,'Druid - Thorns'),
