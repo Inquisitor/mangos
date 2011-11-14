@@ -11624,48 +11624,6 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
         }
         case SPELLFAMILY_DEATHKNIGHT:
         {
-            // Frost Fever and Blood Plague
-            if(GetSpellProto()->IsFitToFamily<SPELLFAMILY_DEATHKNIGHT, CF_DEATHKNIGHT_FF_BP_ACTIVE>())
-            {
-                // Can't proc on self
-                if (GetCasterGuid() == m_target->GetObjectGuid())
-                    return;
-                Unit * caster = GetCaster();
-                if (!caster)
-                    return;
-
-                Aura * aurEff = NULL;
-                // Ebon Plaguebringer / Crypt Fever
-                Unit::AuraList const& TalentAuras = caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-                for(Unit::AuraList::const_iterator itr = TalentAuras.begin(); itr != TalentAuras.end(); ++itr)
-                {
-                    if ((*itr)->GetMiscValue() == 7282)
-                    {
-                        aurEff = *itr;
-                        // Ebon Plaguebringer - end search if found
-                        if ((*itr)->GetSpellProto()->SpellIconID == 1766)
-                            break;
-                    }
-                }
-                if (aurEff)
-                {
-                    uint32 spellId = 0;
-                    switch (aurEff->GetId())
-                    {
-                        // Ebon Plague
-                        case 51161: spellId1 = 51735; break;
-                        case 51160: spellId1 = 51734; break;
-                        case 51099: spellId1 = 51726; break;
-                        // Crypt Fever
-                        case 49632: spellId1 = 50510; break;
-                        case 49631: spellId1 = 50509; break;
-                        case 49032: spellId1 = 50508; break;
-                        default:
-                            sLog.outError("Unknown rank of Crypt Fever/Ebon Plague %d", aurEff->GetId());
-                    }
-               //     caster->CastSpell(m_target, spellId, true, 0, GetPartAura(0));
-                }
-            }
             // second part of spell apply
             switch (GetId())
             {
