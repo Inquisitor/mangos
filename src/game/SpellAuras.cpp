@@ -6480,18 +6480,8 @@ void Aura::HandlePeriodicHeal(bool apply, bool /*Real*/)
             int32 healthBonus = int32 (0.0032f * caster->GetMaxHealth());
             m_modifier.m_amount += healthBonus;
         }
-        // Lifeblood
-        if (GetSpellProto()->SpellIconID == 3088 && GetSpellProto()->SpellVisual[0] == 8145)
-        {
-            int32 healthBonus = int32 (0.0032f * caster->GetMaxHealth());
-            m_modifier.m_amount += healthBonus;
-        }
 
-        //Lifebloom special stacking
-        if(GetSpellProto()->SpellFamilyName == SPELLFAMILY_DRUID && (GetSpellProto()->SpellFamilyFlags & UI64LIT(0x1000000000)) && GetStackAmount() > 1)
-            m_modifier.m_amount += (GetStackAmount() == 2) ? m_modifier.m_amount : (m_modifier.m_amount / 2);
-        else
-            m_modifier.m_amount = caster->SpellHealingBonusDone(target, GetSpellProto(), m_modifier.m_amount, DOT, GetStackAmount());
+        m_modifier.m_amount = caster->SpellHealingBonusDone(target, GetSpellProto(), m_modifier.m_amount, DOT, GetStackAmount());
 
         // Rejuvenation
         if (GetSpellProto()->IsFitToFamily<SPELLFAMILY_DRUID, CF_DRUID_REJUVENATION>())
@@ -10740,8 +10730,6 @@ void SpellAuraHolder::SetStackAmount(uint32 stackAmount)
                 if (amount != aur->GetModifier()->m_amount)
                 {
                     aur->ApplyModifier(false, true);
-                    // Lifebloom has special amount calculation in final bloom
-                    if(m_spellProto->SpellFamilyName != SPELLFAMILY_DRUID && !(m_spellProto->SpellFamilyFlags & UI64LIT(0x1000000000)))
                     aur->GetModifier()->m_amount = amount;
                     aur->ApplyModifier(true, true);
 
