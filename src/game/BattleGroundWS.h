@@ -164,7 +164,6 @@ class BattleGroundWS : public BattleGround
         // For Achievement "capture flag for 75 sec"
         uint32 GetFlagCaptureTime(Team team) const      { return m_FlagCaptureTime[GetTeamIndexByTeamId(team)]; }
     private:
-        void PickOrReturnFlag(Player* pPlayer, Team forTeam, bool pickedUp, bool fromGround = false);
 
         ObjectGuid m_FlagKeepers[BG_TEAMS_COUNT];
 
