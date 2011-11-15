@@ -123,6 +123,29 @@ void GuildMgr::LoadGuilds()
     //                                                                      0       1     2   3       4
     QueryResult* guildBankTabRightsResult = CharacterDatabase.Query("SELECT guildid,TabId,rid,gbright,SlotPerDay FROM guild_bank_right ORDER BY guildid ASC, TabId ASC");
 
+    //delete unused LogGuid records in guild_eventlog and guild_bank_eventlog table
+    //you can comment these lines if you don't plan to change CONFIG_UINT32_GUILD_EVENT_LOG_COUNT and CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT
+    CharacterDatabase.PExecute("DELETE FROM guild_eventlog WHERE LogGuid > '%u'", sWorld.getConfig(CONFIG_UINT32_GUILD_EVENT_LOG_COUNT));
+    CharacterDatabase.PExecute("DELETE FROM guild_bank_eventlog WHERE LogGuid > '%u'", sWorld.getConfig(CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT));
+
+    QueryResult* tabs_result;
+    QueryResult* items_result;
+    QueryResult* GuildEventlog_result;
+    QueryResult *GuildBankEventlog;
+
+    //Optimize guild load by memory cost.
+    if (sWorld.getConfig(CONFIG_BOOL_FAST_GUILD_LOAD_ENABLE))
+    {
+     //fix TabId for money events
+     CharacterDatabase.PExecute("UPDATE guild_bank_eventlog SET TabId='%u' WHERE EventType>='%u' AND EventType<='%u'", GUILD_BANK_MONEY_LOGS_TAB,GUILD_BANK_LOG_DEPOSIT_MONEY, GUILD_BANK_LOG_REPAIR_MONEY);
+
+     tabs_result = CharacterDatabase.PQuery("SELECT TabId, TabName, TabIcon, TabText, guildid FROM guild_bank_tab ORDER BY guildid,TabId");
+     items_result = CharacterDatabase.PQuery("SELECT data, text, TabId, SlotId, item_guid, item_entry , guildid FROM guild_bank_item JOIN item_instance ON item_guid = guid ORDER BY guildid, TabId");
+     GuildEventlog_result = CharacterDatabase.PQuery("SELECT LogGuid, EventType, PlayerGuid1, PlayerGuid2, NewRank, TimeStamp,guildid FROM guild_eventlog ORDER BY guildid ASC,TimeStamp DESC,LogGuid");
+     GuildBankEventlog = CharacterDatabase.PQuery("SELECT LogGuid, EventType, PlayerGuid, ItemOrMoney, ItemStackCount, DestTabId, TimeStamp, TabId, guildid FROM guild_bank_eventlog ORDER BY guildid ASC, TabId ASC ,TimeStamp DESC,LogGuid DESC");
+
+    }
+
     BarGoLink bar(result->GetRowCount());
 
     do
@@ -145,21 +168,33 @@ void GuildMgr::LoadGuilds()
             continue;
         }
 
-        newGuild->LoadGuildEventLogFromDB();
-        newGuild->LoadGuildBankEventLogFromDB();
-        newGuild->LoadGuildBankFromDB();
+        if (sWorld.getConfig(CONFIG_BOOL_FAST_GUILD_LOAD_ENABLE))
+        {
+
+            newGuild->FastLoadGuildEventLogFromDB(GuildEventlog_result);
+            newGuild->FastLoadGuildBankEventLogFromDB(GuildBankEventlog);
+            newGuild->FastLoadGuildBankFromDB(tabs_result,items_result);
+        }
+        else
+        {
+            newGuild->LoadGuildEventLogFromDB();
+            newGuild->LoadGuildBankEventLogFromDB();
+            newGuild->LoadGuildBankFromDB();
+        }
         AddGuild(newGuild);
     } while(result->NextRow());
 
+    if (sWorld.getConfig(CONFIG_BOOL_FAST_GUILD_LOAD_ENABLE))
+    {
+        delete tabs_result;
+        delete items_result;
+        delete GuildEventlog_result;
+        delete GuildBankEventlog;
+    }
     delete result;
     delete guildRanksResult;
     delete guildMembersResult;
     delete guildBankTabRightsResult;
-
-    //delete unused LogGuid records in guild_eventlog and guild_bank_eventlog table
-    //you can comment these lines if you don't plan to change CONFIG_UINT32_GUILD_EVENT_LOG_COUNT and CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT
-    CharacterDatabase.PExecute("DELETE FROM guild_eventlog WHERE LogGuid > '%u'", sWorld.getConfig(CONFIG_UINT32_GUILD_EVENT_LOG_COUNT));
-    CharacterDatabase.PExecute("DELETE FROM guild_bank_eventlog WHERE LogGuid > '%u'", sWorld.getConfig(CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT));
 
     sLog.outString();
     sLog.outString(">> Loaded %u guild definitions", count);

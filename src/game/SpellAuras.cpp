@@ -1234,10 +1234,6 @@ void Aura::HandleAddModifier(bool apply, bool Real)
 
     if (apply)
     {
-        uint64 modMask0 = 0;
-        uint64 modMask1 = 0;
-        uint64 modMask2 = 0;
-
         SpellEntry const* spellProto = GetSpellProto();
 
         // Add custom charges for some mod aura
@@ -1255,9 +1251,6 @@ void Aura::HandleAddModifier(bool apply, bool Real)
             case 57761:                                     // Fireball!
             case 64823:                                     // Elune's Wrath (Balance druid t8 set
                 GetHolder()->SetAuraCharges(1);
-                break;
-            case 53257:                                     // Cobra strike 2 stack on apply (maximal value! not +2)
-                GetHolder()->SetStackAmount(2);
                 break;
             default:
                 break;
@@ -6487,18 +6480,8 @@ void Aura::HandlePeriodicHeal(bool apply, bool /*Real*/)
             int32 healthBonus = int32 (0.0032f * caster->GetMaxHealth());
             m_modifier.m_amount += healthBonus;
         }
-        // Lifeblood
-        if (GetSpellProto()->SpellIconID == 3088 && GetSpellProto()->SpellVisual[0] == 8145)
-        {
-            int32 healthBonus = int32 (0.0032f * caster->GetMaxHealth());
-            m_modifier.m_amount += healthBonus;
-        }
 
-        //Lifebloom special stacking
-        if(GetSpellProto()->SpellFamilyName == SPELLFAMILY_DRUID && (GetSpellProto()->SpellFamilyFlags & UI64LIT(0x1000000000)) && GetStackAmount() > 1)
-            m_modifier.m_amount += (GetStackAmount() == 2) ? m_modifier.m_amount : (m_modifier.m_amount / 2);
-        else
-            m_modifier.m_amount = caster->SpellHealingBonusDone(target, GetSpellProto(), m_modifier.m_amount, DOT, GetStackAmount());
+        m_modifier.m_amount = caster->SpellHealingBonusDone(target, GetSpellProto(), m_modifier.m_amount, DOT, GetStackAmount());
 
         // Rejuvenation
         if (GetSpellProto()->IsFitToFamily<SPELLFAMILY_DRUID, CF_DRUID_REJUVENATION>())
@@ -7486,9 +7469,6 @@ void Aura::HandleModCombatSpeedPct(bool apply, bool /*Real*/)
 
         target->m_modAttackSpeedPct[NONSTACKING_MOD_ALL] = amount;
     }
-
-    if (target->IsInWorld())
-        target->CallForAllControlledUnits(ApplyScalingBonusWithHelper(SCALING_TARGET_ATTACKSPEED, 0, false),CONTROLLED_PET|CONTROLLED_GUARDIANS);
 }
 
 void Aura::HandleModAttackSpeed(bool apply, bool /*Real*/)
@@ -10364,9 +10344,6 @@ m_permanent(false), m_isRemovedOnShapeLost(true), m_deleted(false), m_in_use(0)
             m_stackAmount = m_spellProto->StackAmount;
             break;
     }
-
-    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
-        RemoveAura(SpellEffectIndex(i));
 }
 
 void SpellAuraHolder::AddAura(Aura aura, SpellEffectIndex index)
@@ -10466,13 +10443,7 @@ void SpellAuraHolder::_AddSpellAuraHolder()
         }
     }
 
-    uint8 flags = 0;
-    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
-    {
-        if (GetAuraByEffectIndex(SpellEffectIndex(i)))
-            flags |= (1 << i);
-    }
-    flags |= ((GetCasterGuid() == GetTarget()->GetObjectGuid()) ? AFLAG_NOT_CASTER : AFLAG_NONE) | ((GetSpellMaxDuration(m_spellProto) > 0 && !(m_spellProto->AttributesEx5 & SPELL_ATTR_EX5_NO_DURATION)) ? AFLAG_DURATION : AFLAG_NONE) | (IsPositive() ? AFLAG_POSITIVE : AFLAG_NEGATIVE);
+    uint8 flags = GetAuraFlags() | ((GetCasterGuid() == GetTarget()->GetObjectGuid()) ? AFLAG_NOT_CASTER : AFLAG_NONE) | ((GetSpellMaxDuration(m_spellProto) > 0 && !(m_spellProto->AttributesEx5 & SPELL_ATTR_EX5_NO_DURATION)) ? AFLAG_DURATION : AFLAG_NONE) | (IsPositive() ? AFLAG_POSITIVE : AFLAG_NEGATIVE);
     SetAuraFlags(flags);
 
     SetAuraLevel(caster ? caster->getLevel() : sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
@@ -10756,8 +10727,6 @@ void SpellAuraHolder::SetStackAmount(uint32 stackAmount)
                 if (amount != aur->GetModifier()->m_amount)
                 {
                     aur->ApplyModifier(false, true);
-                    // Lifebloom has special amount calculation in final bloom
-                    if(m_spellProto->SpellFamilyName != SPELLFAMILY_DRUID && !(m_spellProto->SpellFamilyFlags & UI64LIT(0x1000000000)))
                     aur->GetModifier()->m_amount = amount;
                     aur->ApplyModifier(true, true);
 
@@ -11128,10 +11097,16 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
             }
             else if (!apply && m_spellProto->SpellFamilyFlags.test<CF_MAGE_ARCANE_MISSILES_CHANNEL>())
             {
-                // Remove missile barrage
                 if (Unit * caster = GetCaster())
+                {
+                    // Remove missile barrage
                     if (caster->HasAura(44401))
                         caster->RemoveAurasByCasterSpell(44401, caster->GetObjectGuid());
+
+                    // Remove Arcane Blast
+                    if (caster->HasAura(36032))
+                        caster->RemoveAurasByCasterSpell(36032, caster->GetObjectGuid());
+                }
             }
 
             switch(GetId())
@@ -11634,48 +11609,6 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
         }
         case SPELLFAMILY_DEATHKNIGHT:
         {
-            // Frost Fever and Blood Plague
-            if(GetSpellProto()->IsFitToFamily<SPELLFAMILY_DEATHKNIGHT, CF_DEATHKNIGHT_FF_BP_ACTIVE>())
-            {
-                // Can't proc on self
-                if (GetCasterGuid() == m_target->GetObjectGuid())
-                    return;
-                Unit * caster = GetCaster();
-                if (!caster)
-                    return;
-
-                Aura * aurEff = NULL;
-                // Ebon Plaguebringer / Crypt Fever
-                Unit::AuraList const& TalentAuras = caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
-                for(Unit::AuraList::const_iterator itr = TalentAuras.begin(); itr != TalentAuras.end(); ++itr)
-                {
-                    if ((*itr)->GetMiscValue() == 7282)
-                    {
-                        aurEff = *itr;
-                        // Ebon Plaguebringer - end search if found
-                        if ((*itr)->GetSpellProto()->SpellIconID == 1766)
-                            break;
-                    }
-                }
-                if (aurEff)
-                {
-                    uint32 spellId = 0;
-                    switch (aurEff->GetId())
-                    {
-                        // Ebon Plague
-                        case 51161: spellId1 = 51735; break;
-                        case 51160: spellId1 = 51734; break;
-                        case 51099: spellId1 = 51726; break;
-                        // Crypt Fever
-                        case 49632: spellId1 = 50510; break;
-                        case 49631: spellId1 = 50509; break;
-                        case 49032: spellId1 = 50508; break;
-                        default:
-                            sLog.outError("Unknown rank of Crypt Fever/Ebon Plague %d", aurEff->GetId());
-                    }
-               //     caster->CastSpell(m_target, spellId, true, 0, GetPartAura(0));
-                }
-            }
             // second part of spell apply
             switch (GetId())
             {
@@ -12173,6 +12106,12 @@ bool SpellAuraHolder::IsAreaAura() const
 
 bool SpellAuraHolder::IsPositive() const
 {
+    if (GetAuraFlags() & AFLAG_POSITIVE)
+        return true;
+    else if (GetAuraFlags() & AFLAG_NEGATIVE)
+        return false;
+
+    // check, if no aura flags defined
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
         if (Aura const* aur = GetAura(SpellEffectIndex(i)))
             if (!aur->IsPositive())

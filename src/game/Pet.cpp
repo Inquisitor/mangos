@@ -3163,6 +3163,7 @@ void Pet::ApplyScalingBonus(ScalingAction* action)
             break;
         case SCALING_TARGET_POWERREGEN:
             ApplyPowerregenScalingBonus(action->apply);
+            break;
         case SCALING_TARGET_ATTACKSPEED:
             ApplyAttackSpeedScalingBonus(action->apply);
             break;

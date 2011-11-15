@@ -2401,3 +2401,224 @@ bool GuildItemPosCount::isContainedIn(GuildItemPosCountVec const &vec) const
 
     return false;
 }
+void Guild::FastLoadGuildBankFromDB(QueryResult* GuildTabs_result,QueryResult* GuildItems_result)
+{
+    //                                                     0      1        2        3
+    // result = CharacterDatabase.PQuery("SELECT TabId, TabName, TabIcon, TabText FROM guild_bank_tab WHERE guildid='%u' ORDER BY TabId", m_Id);
+    if (!GuildTabs_result)
+    {
+        m_TabListMap.clear();
+        return;
+    }
+
+    do
+    {
+        Field *fields = GuildTabs_result->Fetch();
+
+        // prevent crash when all tabs in result are already processed
+        if (!fields)
+            break;
+        uint32 guildId     = fields[4].GetUInt32();
+        if (guildId < m_Id)
+        {
+            m_TabListMap.clear();
+            continue;
+        }
+        if (guildId > m_Id)
+            // we loaded all tabs for this guild bank already, break cycle
+            break;
+
+        uint8 tabId = fields[0].GetUInt8();
+        if (tabId >= GetPurchasedTabs())
+        {
+            sLog.outError("Table `guild_bank_tab` have not purchased tab %u for guild %u, skipped", tabId, m_Id);
+            continue;
+        }
+
+        GuildBankTab *NewTab = new GuildBankTab;
+
+        NewTab->Name = fields[1].GetCppString();
+        NewTab->Icon = fields[2].GetCppString();
+        NewTab->Text = fields[3].GetCppString();
+
+        m_TabListMap[tabId] = NewTab;
+    } while (GuildTabs_result->NextRow());
+
+
+
+    // data needs to be at first place for Item::LoadFromDB
+    //                                        0     1     2      3       4          5
+    if (!GuildItems_result)
+        return;
+
+    do
+    {
+        Field *fields = GuildItems_result->Fetch();
+        // prevent crash when all items in result are already processed
+        if (!fields)
+            break;
+        uint32 guildId     = fields[6].GetUInt32();
+        if (guildId < m_Id)
+        {
+            continue;
+        }
+        if (guildId > m_Id)
+            // we loaded all tabs for this guild bank already, break cycle
+            break;
+        uint8 TabId = fields[2].GetUInt8();
+        uint8 SlotId = fields[3].GetUInt8();
+        uint32 ItemGuid = fields[4].GetUInt32();
+        uint32 ItemEntry = fields[5].GetUInt32();
+
+        if (TabId >= GetPurchasedTabs())
+        {
+            sLog.outError( "Guild::LoadGuildBankFromDB: Invalid tab for item (GUID: %u id: #%u) in guild bank, skipped.", ItemGuid,ItemEntry);
+            continue;
+        }
+
+        if (SlotId >= GUILD_BANK_MAX_SLOTS)
+        {
+            sLog.outError( "Guild::LoadGuildBankFromDB: Invalid slot for item (GUID: %u id: #%u) in guild bank, skipped.", ItemGuid,ItemEntry);
+            continue;
+        }
+
+        ItemPrototype const *proto = ObjectMgr::GetItemPrototype(ItemEntry);
+
+        if (!proto)
+        {
+            sLog.outError( "Guild::LoadGuildBankFromDB: Unknown item (GUID: %u id: #%u) in guild bank, skipped.", ItemGuid,ItemEntry);
+            continue;
+        }
+
+        Item *pItem = NewItemOrBag(proto);
+        if (!pItem->LoadFromDB(ItemGuid, fields))
+        {
+            CharacterDatabase.PExecute("DELETE FROM guild_bank_item WHERE guildid='%u' AND TabId='%u' AND SlotId='%u'", m_Id, uint32(TabId), uint32(SlotId));
+            sLog.outError("Item GUID %u not found in item_instance, deleting from Guild Bank!", ItemGuid);
+            delete pItem;
+            continue;
+        }
+
+        pItem->AddToWorld();
+        m_TabListMap[TabId]->Slots[SlotId] = pItem;
+    } while (GuildItems_result->NextRow());
+
+}
+
+//Fast load guild eventlog from DB
+void Guild::FastLoadGuildEventLogFromDB(QueryResult *GuildEventlog_result)
+{
+    //                                                     0        1          2            3            4        5
+
+    if (!GuildEventlog_result)
+        return;
+    bool isNextLogGuidSet = false;
+    //uint32 configCount = sWorld.getConfig(CONFIG_UINT32_GUILD_EVENT_LOG_COUNT);
+    // First event in list will be the oldest and the latest event is last event in list
+    do
+    {
+        Field *fields = GuildEventlog_result->Fetch();
+        // prevent crash when all tabs in result are already processed
+        if (!fields)
+            break;
+
+        uint32 guildId     = fields[6].GetUInt32();
+        if (guildId < m_Id)
+        {
+            continue;
+        }
+        if (guildId > m_Id)
+            // we loaded all tabs for this guild bank already, break cycle
+            break;
+        if (!isNextLogGuidSet)
+        {
+            m_GuildEventLogNextGuid = fields[0].GetUInt32();
+            isNextLogGuidSet = true;
+        }
+        // Fill entry
+        GuildEventLogEntry NewEvent;
+        NewEvent.EventType = fields[1].GetUInt8();
+        NewEvent.PlayerGuid1 = fields[2].GetUInt32();
+        NewEvent.PlayerGuid2 = fields[3].GetUInt32();
+        NewEvent.NewRank = fields[4].GetUInt8();
+        NewEvent.TimeStamp = fields[5].GetUInt64();
+
+        // There can be a problem if more events have same TimeStamp the ORDER can be broken when fields[0].GetUInt32() == configCount, but
+        // events with same timestamp can appear when there is lag, and we naively suppose that mangos isn't laggy
+        // but if problem appears, player will see set of guild events that have same timestamp in bad order
+
+        // Add entry to list
+        m_GuildEventLog.push_front(NewEvent);
+
+    } while( GuildEventlog_result->NextRow() );
+}
+
+
+void Guild::FastLoadGuildBankEventLogFromDB(QueryResult *GuildBankEventlog )
+{
+    // Money log is in TabId = GUILD_BANK_MONEY_LOGS_TAB
+
+    // uint32 configCount = sWorld.getConfig(CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT);
+    // cycle through all purchased guild bank item tabs
+
+        if (!GuildBankEventlog)
+            return;
+
+        uint32 current_tabId= GUILD_BANK_MONEY_LOGS_TAB+1;
+        do
+        {
+            Field *fields = GuildBankEventlog->Fetch();
+
+            // prevent crash when all tabs in result are already processed
+            if (!fields)
+                break;
+
+            uint32 guildId     = fields[8].GetUInt32();
+            if (guildId < m_Id)
+            {
+                continue;
+            }
+            if (guildId > m_Id)
+                // we loaded all tabs for this guild bank already, break cycle
+                break;
+
+            GuildBankEventLogEntry NewEvent;
+            NewEvent.EventType = fields[1].GetUInt8();
+            NewEvent.PlayerGuid = fields[2].GetUInt32();
+            NewEvent.ItemOrMoney = fields[3].GetUInt32();
+            NewEvent.ItemStackCount = fields[4].GetUInt8();
+            NewEvent.DestTabId = fields[5].GetUInt8();
+            NewEvent.TimeStamp = fields[6].GetUInt64();
+            uint32 tabId= fields[7].GetUInt8();
+
+            if (!(tabId < GetPurchasedTabs() || tabId == GUILD_BANK_MONEY_LOGS_TAB)) //wrong TabId
+                continue;
+
+            // add event to list
+            // events are ordered from oldest (in beginning) to latest (in the end)
+            if (tabId == GUILD_BANK_MONEY_LOGS_TAB)
+            {
+                // if newEvent is not moneyEvent, then report error
+                if (!NewEvent.isMoneyEvent())
+                    sLog.outError("GuildBankEventLog ERROR: MoneyEvent LogGuid %u for Guild %u is not MoneyEvent - ignoring...", fields[0].GetUInt32(), m_Id);
+                else
+                    // add event to list
+                    // events are ordered from oldest (in beginning) to latest (in the end)
+                    m_GuildBankEventLog_Money.push_front(NewEvent);
+            }
+            else
+                m_GuildBankEventLog_Item[tabId].push_front(NewEvent);
+
+            if (current_tabId!=tabId)
+            {   uint32 log=fields[0].GetUInt32();
+
+            if (tabId== GUILD_BANK_MONEY_LOGS_TAB)
+                m_GuildBankEventLogNextGuid_Money = log;
+            else
+                m_GuildBankEventLogNextGuid_Item[tabId] = log;
+
+                current_tabId=tabId;
+            }
+
+        } while (GuildBankEventlog->NextRow());
+}
