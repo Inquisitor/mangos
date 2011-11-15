@@ -242,7 +242,7 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
             if (m_stats.rating < 1500)
                 newmember.personal_rating = 0;
             else
-                newmember.personal_rating = 1500;
+                newmember.personal_rating = 1000;
         }
         else
         {
