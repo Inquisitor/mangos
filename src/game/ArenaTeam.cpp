@@ -239,14 +239,14 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
     {
         if (sWorld.getConfig(CONFIG_UINT32_ARENA_SEASON_ID) >= 6)
         {
-            if (m_stats.rating < 1500)
+            if (m_stats.rating < 1000)
                 newmember.personal_rating = 0;
             else
-                newmember.personal_rating = 1500;
+                newmember.personal_rating = 1000;
         }
         else
         {
-            newmember.personal_rating = 1500;
+            newmember.personal_rating = 1000;
         }
     }
     else
