@@ -281,7 +281,10 @@ void BattleGroundSA::Update(uint32 diff)
         {
             Phase = 2;
             SpawnEvent(BG_EVENT_DOOR, 0, false);
-            SpawnEvent(SA_EVENT_ADD_NPC, 0, true);
+            SpawnEvent(SA_EVENT_ADD_NPC_CANNON, 0, true);
+            SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, true);
+            SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, false, 30);
+            SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, true);
             SpawnEvent(SA_EVENT_ADD_BOMB, (GetDefender() == ALLIANCE ? 1 : 0), true);
             ToggleTimer();
 
@@ -336,7 +339,10 @@ void BattleGroundSA::StartingEventCloseDoors()
 void BattleGroundSA::StartingEventOpenDoors()
 {
     SpawnEvent(BG_EVENT_DOOR, 0, false);
-    SpawnEvent(SA_EVENT_ADD_NPC, 0, true);
+    SpawnEvent(SA_EVENT_ADD_NPC_CANNON, 0, true);
+    SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, true);
+    SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, false, 30);
+    SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, true);
     SpawnEvent(SA_EVENT_ADD_BOMB, (GetDefender() == ALLIANCE ? 1 : 0), true);
     ToggleTimer();
 }
@@ -413,7 +419,7 @@ void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
             plr->DestroyItemCount(39213, 1, true);
     }
 
-    uint32 npcEvent = MAKE_PAIR32(SA_EVENT_ADD_NPC, 0);
+    uint32 npcEvent = MAKE_PAIR32(SA_EVENT_ADD_NPC_DEMOL, 0);
     for(std::vector<ObjectGuid>::iterator itr = m_EventObjects[npcEvent].creatures.begin(); itr != m_EventObjects[npcEvent].creatures.end(); ++itr)
     {
         if(Creature * pEventCreature = GetBgMap()->GetCreature((*itr)))
@@ -455,7 +461,6 @@ void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
 
 
     UpdatePhase();
-    ResetWorldStates();
 }
 
 void BattleGroundSA::Reset()
@@ -467,7 +472,8 @@ void BattleGroundSA::Reset()
     relicGateDestroyed = false;
 
     m_ActiveEvents[SA_EVENT_ADD_GO] = BG_EVENT_NONE;
-    m_ActiveEvents[SA_EVENT_ADD_NPC] = BG_EVENT_NONE;
+    m_ActiveEvents[SA_EVENT_ADD_NPC_DEMOL] = BG_EVENT_NONE;
+    m_ActiveEvents[SA_EVENT_ADD_NPC_CANNON] = BG_EVENT_NONE;
     m_ActiveEvents[SA_EVENT_ADD_SPIR] = BG_EVENT_NONE;
     m_ActiveEvents[SA_EVENT_ADD_BOMB] = BG_EVENT_NONE;
     m_ActiveEvents[SA_EVENT_ADD_VECH_E] = BG_EVENT_NONE;
@@ -484,7 +490,8 @@ void BattleGroundSA::UpdatePhase()
         SpawnEvent(SA_EVENT_ADD_VECH_W, 0, false);
         SpawnEvent(SA_EVENT_ADD_BOMB, 0, false);
         SpawnEvent(SA_EVENT_ADD_BOMB, 1, false);
-        SpawnEvent(SA_EVENT_ADD_NPC, 0, false);
+        SpawnEvent(SA_EVENT_ADD_NPC_CANNON, 0, false);
+        SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, false);
         SpawnEvent(BG_EVENT_DOOR, 0, true);
 
         Round_timer = (BG_SA_ROUNDLENGTH - RoundScores[0].time);
@@ -502,20 +509,22 @@ void BattleGroundSA::UpdatePhase()
 
         m_BannerTimers[i].timer = 0;
         SpawnEvent(i, (GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_CONTESTED : BG_SA_GARVE_STATUS_HORDE_CONTESTED), true);
-        m_ActiveEvents[i] = GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_OCCUPIED : BG_SA_GARVE_STATUS_HORDE_OCCUPIED;
+        m_ActiveEvents[i] = GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_CONTESTED : BG_SA_GARVE_STATUS_HORDE_CONTESTED;
         m_Gyd[i] = ((GetDefender() == ALLIANCE) ? BG_SA_GARVE_STATUS_ALLY_CONTESTED : BG_SA_GARVE_STATUS_HORDE_CONTESTED);
     }
 
     // (Re)spawn graveyard at the beach.
-    SpawnEvent(SA_EVENT_ADD_SPIR, (GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_HORDE_CONTESTED : BG_SA_GARVE_STATUS_ALLY_CONTESTED), true);
+    SpawnEvent(SA_EVENT_ADD_SPIR, (GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_CONTESTED : BG_SA_GARVE_STATUS_HORDE_CONTESTED), true);
 
     // spirit healers at the relic
     SpawnEvent(BG_SA_GARVE_A, (GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_CONTESTED : BG_SA_GARVE_STATUS_HORDE_CONTESTED), true);
 
-    m_ActiveEvents[5] = GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_OCCUPIED : BG_SA_GARVE_STATUS_HORDE_OCCUPIED;
+    m_ActiveEvents[5] = GetDefender() == ALLIANCE ? BG_SA_GARVE_STATUS_ALLY_CONTESTED : BG_SA_GARVE_STATUS_HORDE_CONTESTED;
 
     SpawnEvent(SA_EVENT_ADD_GO, 0, false);
     SpawnEvent(SA_EVENT_ADD_GO, 0, true);
+
+    ResetWorldStates();
 }
 
 bool BattleGroundSA::SetupBattleGround()
@@ -610,6 +619,10 @@ void BattleGroundSA::EventPlayerClickedOnFlag(Player *source, GameObject* target
 
     BattleGroundTeamIndex teamIndex = GetTeamIndexByTeamId(source->GetTeam());
 
+    if (gyd == 0 || gyd == 1)
+        if (GetGateStatus(BG_SA_GO_GATES_T_GREEN_EMERALD) != BG_SA_GO_GATES_DESTROY && GetGateStatus(BG_SA_GO_GATES_T_BLUE_SAPHIRE) != BG_SA_GO_GATES_DESTROY)
+            return;
+
     if (gyd == 2)
         if (GetGateStatus(BG_SA_GO_GATES_T_MAUVE_AMETHYST) != BG_SA_GO_GATES_DESTROY && GetGateStatus(BG_SA_GO_GATES_T_RED_SUN) != BG_SA_GO_GATES_DESTROY)
             return;
@@ -637,8 +650,20 @@ void BattleGroundSA::EventPlayerClickedOnFlag(Player *source, GameObject* target
         }
         switch(gyd)
         {
-            case 0: SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);break;
-            case 1: SpawnEvent(SA_EVENT_ADD_VECH_E, 0, true);break;
+            case 0:
+                {
+                    SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);
+                    SpawnEvent(SA_EVENT_ADD_VECH_W, 0, false, 30);
+                    SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);
+                    break;
+                }
+            case 1:
+                {
+                    SpawnEvent(SA_EVENT_ADD_VECH_E, 0, true);
+                    SpawnEvent(SA_EVENT_ADD_VECH_E, 0, false, 30);
+                    SpawnEvent(SA_EVENT_ADD_VECH_E, 0, true);
+                    break;
+                }
         }
     }
 }
@@ -1133,14 +1158,12 @@ void BattleGroundSA::SendTransportsRemove(Player * player)
         {
             boat1->BuildOutOfRangeUpdateBlock(&transData);
             boat1->SetRespawnTime(0);
-            boat1->DestroyForPlayer(player);
             boat1->Delete();
         }
         if (GameObject * boat2 = GetBGObject(BG_SA_BOAT_TWO))
         {
             boat2->BuildOutOfRangeUpdateBlock(&transData);
             boat2->SetRespawnTime(0);
-            boat2->DestroyForPlayer(player);
             boat2->Delete();
         }
         WorldPacket packet;

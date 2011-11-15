@@ -1904,7 +1904,7 @@ void BattleGround::OpenDoorEvent(uint8 event1, uint8 event2 /*=0*/)
     }
 }
 
-void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
+void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn, uint32 spawnTime)
 {
     // stop if we want to spawn something which was already spawned
     // or despawn something which was already despawned
@@ -1923,10 +1923,10 @@ void BattleGround::SpawnEvent(uint8 event1, uint8 event2, bool spawn)
 
     BGCreatures::const_iterator itr = m_EventObjects[MAKE_PAIR32(event1, event2)].creatures.begin();
     for(; itr != m_EventObjects[MAKE_PAIR32(event1, event2)].creatures.end(); ++itr)
-        SpawnBGCreature(*itr, (spawn) ? RESPAWN_IMMEDIATELY : RESPAWN_ONE_DAY);
+        SpawnBGCreature(*itr, (spawn) ? ((spawnTime == 0) ? RESPAWN_IMMEDIATELY : spawnTime) : ((spawnTime == 0) ? RESPAWN_ONE_DAY : spawnTime));
     BGObjects::const_iterator itr2 = m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.begin();
     for(; itr2 != m_EventObjects[MAKE_PAIR32(event1, event2)].gameobjects.end(); ++itr2)
-        SpawnBGObject(*itr2, (spawn) ? RESPAWN_IMMEDIATELY : RESPAWN_ONE_DAY);
+        SpawnBGObject(*itr2, (spawn) ? ((spawnTime == 0) ? RESPAWN_IMMEDIATELY : spawnTime) : ((spawnTime == 0) ? RESPAWN_ONE_DAY : spawnTime));
 
     //start time achievement
     if (event1 == BG_EVENT_DOOR && spawn == false)

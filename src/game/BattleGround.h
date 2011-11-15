@@ -588,7 +588,7 @@ class BattleGround
         void OnObjectDBLoad(Creature* /*creature*/);
         void OnObjectDBLoad(GameObject* /*obj*/);
         // (de-)spawns creatures and gameobjects from an event
-        void SpawnEvent(uint8 event1, uint8 event2, bool spawn);
+        void SpawnEvent(uint8 event1, uint8 event2, bool spawn, uint32 spawnTime = 0);
         bool IsActiveEvent(uint8 event1, uint8 event2)
         {
             if (m_ActiveEvents.find(event1) == m_ActiveEvents.end())
