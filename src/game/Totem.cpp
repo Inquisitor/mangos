@@ -23,7 +23,6 @@
 #include "Player.h"
 #include "ObjectMgr.h"
 #include "SpellMgr.h"
-#include "SpellAuras.h"
 #include "CreatureAI.h"
 #include "InstanceData.h"
 
