@@ -461,6 +461,7 @@ void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
 
 
     UpdatePhase();
+    ResetWorldStates();
 }
 
 void BattleGroundSA::Reset()
@@ -524,7 +525,6 @@ void BattleGroundSA::UpdatePhase()
     SpawnEvent(SA_EVENT_ADD_GO, 0, false);
     SpawnEvent(SA_EVENT_ADD_GO, 0, true);
 
-    ResetWorldStates();
 }
 
 bool BattleGroundSA::SetupBattleGround()
