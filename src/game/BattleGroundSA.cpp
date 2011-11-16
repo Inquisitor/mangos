@@ -525,6 +525,7 @@ void BattleGroundSA::UpdatePhase()
     SpawnEvent(SA_EVENT_ADD_GO, 0, false);
     SpawnEvent(SA_EVENT_ADD_GO, 0, true);
 
+    ResetWorldStates();
 }
 
 bool BattleGroundSA::SetupBattleGround()
