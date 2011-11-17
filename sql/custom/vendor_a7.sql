@@ -40,7 +40,7 @@ INSERT INTO npc_vendor (entry, item, ExtendedCost) VALUES
 (33937, 48513, 2454),
 (33937, 48507, 2454);
 
-//change cost A8 3vs3 and 5vs5 ==> 2vs2
+-- change cost A8 3vs3 and 5vs5 ==> 2vs2
 UPDATE npc_vendor SET ExtendedCost=2636 where ExtendedCost=2937;
 UPDATE npc_vendor SET ExtendedCost=2632 where ExtendedCost=2939;
 UPDATE npc_vendor SET ExtendedCost=2633 where ExtendedCost=2940;
