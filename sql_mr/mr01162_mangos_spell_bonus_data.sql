@@ -34,3 +34,21 @@ DELETE FROM `spell_bonus_data` WHERE entry IN (7294,467);
 INSERT INTO `spell_bonus_data`(`entry`,`direct_bonus`,`dot_bonus`,`ap_bonus`,`ap_dot_bonus`,`comments`) VALUES 
 (467, 0.033, 0, 0, 0,'Druid - Thorns'),
 (7294, 0.033, 0, 0, 0,'Paladin - Retribution Aura');
+
+REPLACE INTO spell_bonus_data(entry, direct_bonus, dot_bonus, ap_bonus, ap_dot_bonus, comments) VALUES
+(2947, 0.033, 0, 0, 0, 'Warlock - Fire Shield (Imp)'),
+(16614, 0, 0, 0, 0, 'Item - Storm Gauntlets - Lightning Strike'),
+(16827, 0, 0, 0.3, 0, 'Claw (Rank 1)-Hunter pet hack'),
+(17253, 0, 0, 0.3, 0, 'Bite (Rank 1)-Hunter pet hack'),
+(35290, 0, 0, 0.3, 0, 'Gore (Rank 1)-Hunter pet hack'),
+(45055, 0, 0, 0, 0, 'Item - Timbal''s Focusing Crystal'),
+(49966, 0, 0, 0.3, 0, 'Smack(Rank 1)-Hunter pet hack'),
+(50256, 0, 0, 0.3, 0, 'Swipe(Rank 1)-Hunter pet hack'),
+(50271, 0, 0, 0.3, 0, 'Tendon Rip(Rank 1)-Hunter pet hack'),
+(50518, 0, 0, 0.3, 0, 'Ravage (Rank 1)-Hunter pet hack'),
+(50541, 0, 0, 0.3, 0, 'Snatch (Rank 1))-Hunter pet hack'),
+(54680, 0, 0, 0.3, 0, 'Monstrous Bite-Hunter pet hack'),
+(56626, 0, 0, 0.3, 0, 'Sting-Hunter pet hack'),
+(57386, 0, 0, 0.3, 0, 'Stampede (Rank 1)-Hunter pet hack'),
+(59881, 0, 0, 0.3, 0, 'Rake (Rank 1)-Hunter pet hack'),
+(60488, 0, 0, 0, 0, 'Item - Extract of Necromatic Power');
