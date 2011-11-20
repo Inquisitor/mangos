@@ -28,3 +28,5 @@ INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
     ( '12183','Achievement_Criteria.dbc','2 56','Fix Achi 3855 - need Kill (not XK)')
    ,( '12068','Achievement_Criteria.dbc','2 56','Fix Achi 3850 - need Kill (not XK)')
 ;
+-- by Warlord
+REPLACE INTO spell_patch VALUES (64962,'Spell.dbc','87 1','Item - Death Knight T8 DPS Relic-64962 (Update EffectImplicitTargetA2 Fix dummy aura targeting)');
