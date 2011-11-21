@@ -501,5 +501,6 @@ class Guild
         InventoryResult _CanStoreItem_InSpecificSlot( uint8 tab, uint8 slot, GuildItemPosCountVec& dest, uint32& count, bool swap, Item *pSrcItem ) const;
         InventoryResult _CanStoreItem_InTab( uint8 tab, GuildItemPosCountVec& dest, uint32& count, bool merge, Item *pSrcItem, uint8 skip_slot ) const;
         Item* _StoreItem( uint8 tab, uint8 slot, Item *pItem, uint32 count, bool clone );
+        bool BankLoaded;
 };
 #endif
