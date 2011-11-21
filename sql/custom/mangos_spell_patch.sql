@@ -82,3 +82,5 @@ REPLACE INTO spell_patch VALUES (50138,'Spell.dbc','87 1','Nerves of Cold Steel-
 
 REPLACE INTO spell_patch VALUES (46865,'Spell.dbc','88 1','Strength of Arms-46865 (Update EffectImplicitTargetA3 )');
 REPLACE INTO spell_patch VALUES (46866,'Spell.dbc','88 1','Strength of Arms-46866 (Update EffectImplicitTargetA3 )');
+
+REPLACE INTO spell_patch VALUES (65917,'Spell.dbc','71 0 72 0','Magic Rooster-65917 (Update Effect1 Effect2 )');
