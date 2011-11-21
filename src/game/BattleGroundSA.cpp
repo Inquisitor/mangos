@@ -170,6 +170,17 @@ void BattleGroundSA::EndBattleGround(Team winner)
     RewardHonorToTeam(GetBonusHonorFromKill(2), HORDE);
     RewardXpToTeam(0, 0.8f, ALLIANCE);
     RewardXpToTeam(0, 0.8f, HORDE);
+
+    for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+    {
+        Player *plr = sObjectMgr.GetPlayer(itr->first);
+
+        if (!plr)
+            continue;
+
+        if (plr->GetItemByEntry(39213) != NULL)
+            plr->DestroyItemCount(39213, 1, true);
+    }
     
     BattleGround::EndBattleGround(winner);
 }
@@ -288,6 +299,9 @@ void BattleGroundSA::Update(uint32 diff)
             SpawnEvent(SA_EVENT_ADD_BOMB, (GetDefender() == ALLIANCE ? 1 : 0), true);
             ToggleTimer();
 
+            // Players that join battleground after start are not eligible to get achievement.
+            StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_EVENT_START_BATTLE_2);
+
             SetStatus(STATUS_IN_PROGRESS); // Start round two
             PlaySoundToAll(SOUND_BG_START);
             SendWarningToAll(LANG_BG_SA_HAS_BEGUN);
@@ -345,6 +359,10 @@ void BattleGroundSA::StartingEventOpenDoors()
     SpawnEvent(SA_EVENT_ADD_NPC_DEMOL, 0, true);
     SpawnEvent(SA_EVENT_ADD_BOMB, (GetDefender() == ALLIANCE ? 1 : 0), true);
     ToggleTimer();
+
+    RoundScores[0].time = BG_SA_ROUNDLENGTH;
+    // Players that join battleground after start are not eligible to get achievement.
+    StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_EVENT_START_BATTLE_1);
 }
 
 void BattleGroundSA::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
@@ -889,10 +907,9 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
 
 void BattleGroundSA::HandleKillPlayer(Player* player, Player* killer)
 {
+    BattleGround::HandleKillPlayer(player, killer);
 
     player->CastSpell(player, 52417, false);
-
-    BattleGround::HandleKillPlayer(player, killer);
 }
 
 void BattleGroundSA::HandleKillUnit(Creature* unit, Player* killer)
@@ -904,6 +921,8 @@ void BattleGroundSA::HandleKillUnit(Creature* unit, Player* killer)
     {
         UpdatePlayerScore(killer, SCORE_DEMOLISHERS_DESTROYED, 1);
         isDemolisherDestroyed[killer->GetTeam() == HORDE ? 0 : 1] = true;
+
+        killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, unit->GetEntry(), 1, unit);
     }
 }
 

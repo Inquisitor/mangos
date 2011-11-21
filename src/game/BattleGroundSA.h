@@ -273,6 +273,8 @@ class BattleGroundSA : public BattleGround
         void TeleportPlayerToCorrectLoc(Player *player, bool resetBattle = false);
         // for achievement - win with all walls
         bool winSAwithAllWalls(Team team);
+        // for achievement - Storm Beach
+        uint32 GetFirstRoundTime() const { return RoundScores[0].time; }
     private:
         uint8 m_Gyd[BG_SA_GRY_MAX];
         uint8 m_prevGyd[BG_SA_GRY_MAX]; // used for performant wordlstate-updating

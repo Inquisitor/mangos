@@ -163,6 +163,7 @@ class BattleGroundWS : public BattleGround
         void RemovePoint(Team team, uint32 Points = 1)  { m_TeamScores[GetTeamIndexByTeamId(team)] -= Points; }
         // For Achievement "capture flag for 75 sec"
         uint32 GetFlagCaptureTime(Team team) const      { return m_FlagCaptureTime[GetTeamIndexByTeamId(team)]; }
+        uint32 GetEndTime() const                       { return m_EndTimer; }
     private:
 
         ObjectGuid m_FlagKeepers[BG_TEAMS_COUNT];

@@ -1053,6 +1053,8 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
+                        case 204:
+                            break;
                         default:
                         {
                             // those requirements couldn't be found in the dbc
@@ -1108,23 +1110,10 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 if(achievementCriteria->kill_creature.creatureID != miscvalue1)
                     continue;
 
-                switch(achievement->ID)                    //this is hack for kill vehicle on SA
-                {
-                    case 1763:
-                    case 2189:
-                        if(miscvalue1 == 28781)
-                            if(GetPlayer()->GetVehicle())
-                                break;
-                        else
-                            continue;
-                    default:
-                        {
-                            // those requirements couldn't be found in the dbc
-                            AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                            if(!data || !data->Meets(GetPlayer(),unit))
-                                continue;
-                        }
-                }
+                // those requirements couldn't be found in the dbc
+                AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                if(!data || !data->Meets(GetPlayer(),unit))
+                    continue;
 
                 change = miscvalue2;
                 progressType = PROGRESS_ACCUMULATE;
@@ -1450,6 +1439,12 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
 
                             break;
                         }
+                    case 1502:
+                        if(miscvalue1 == 23335)
+                            break;
+                    case 202:
+                        if(miscvalue1 == 23333)
+                            break;
                     case 2193:
                     case 1761:
                         if(miscvalue1 == 60937)            //this is hack for damage from bomb
@@ -1477,7 +1472,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             if (!bg)
                                 continue;
 
-                            if(((BattleGroundSA*)bg)->Round_timer > (4 * MINUTE * IN_MILLISECONDS))
+                            if(((BattleGroundSA*)bg)->Round_timer + ((BattleGroundSA*)bg)->GetFirstRoundTime() - BG_SA_ROUNDLENGTH > (4 * MINUTE * IN_MILLISECONDS))
                                 continue;
                             break;
                         }
@@ -2111,10 +2106,24 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                         if (bg->GetTypeID(true) != BATTLEGROUND_WS)
                             continue;
                                                          // WS, capture 3 flags without dying
-                        if (achievementCriteria->referredAchievement == 204)
+                        switch(achievementCriteria->referredAchievement)
                         {
-                            if (!(bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS) == 0 && bg->GetPlayerScore(GetPlayer(), SCORE_FLAG_CAPTURES) >= 3))
-                                continue;
+                            case 204:
+                                {
+                                    if (!(bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS) == 0))
+                                        continue;
+
+                                    break;
+                                }
+                            case 202:                    // WS, capture flag for 75 sec, ally
+                            case 1502:                   // WS, capture flag for 75 sec, horde
+                                {
+                                    time = (((BattleGroundWS*)bg)->GetFlagCaptureTime(GetPlayer()->GetTeam()) - ((BattleGroundWS*)bg)->GetEndTime());
+                                    if(time > 75 * IN_MILLISECONDS)
+                                        continue;
+
+                                    break;
+                                }
                         }
                         break;
                     }
@@ -2155,20 +2164,11 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             }
                             case 216:                    // EY, capture 3 flags without dying
                             {
-                                if (!(bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS) == 0 && bg->GetPlayerScore(GetPlayer(), SCORE_FLAG_CAPTURES) >= 3))
+                                if (!(bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS) == 0))
                                     continue;
                                 break;
                             }
                         }
-                        break;
-                    }
-                    case 202:                    // WS, capture flag for 75 sec, ally
-                    case 1502:                   // WS, capture flag for 75 sec, horde
-                    {
-                        time = ((BattleGroundWS*)bg)->GetStartTime() - ((BattleGroundWS*)bg)->GetFlagCaptureTime(GetPlayer()->GetTeam());
-                        if(time > 75 * IN_MILLISECONDS)
-                            continue;
-                        miscvalue1 = time;
                         break;
                     }
                 }
