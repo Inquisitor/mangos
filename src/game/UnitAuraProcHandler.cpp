@@ -5220,7 +5220,6 @@ SpellAuraProcResult Unit::HandleDamageShieldAuraProc(Unit* pVictim, uint32 damag
     SendMessageToSet(&data, true );
 
     DealDamage(pVictim, retdamage, &cleanDamage, SPELL_DIRECT_DAMAGE, GetSpellSchoolMask(spellProto), spellProto, true);
-    SendSpellNonMeleeDamageLog(pVictim, spellProto->Id, retdamage, GetSpellSchoolMask(spellProto), absorb, resist, false, 0);
 
     return SPELL_AURA_PROC_OK;
 }

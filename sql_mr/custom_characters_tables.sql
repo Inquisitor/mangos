@@ -101,6 +101,8 @@ CREATE TABLE IF NOT EXISTS `autobroadcast` (
 CREATE TABLE IF NOT EXISTS `item_soulbound_trade_data` (
     `itemGuid` int(16) unsigned NOT NULL DEFAULT '0',
     `allowedPlayers` varchar(255) NOT NULL DEFAULT '',
+    `item_template` MEDIUMINT(8) UNSIGNED DEFAULT '0' NOT NULL,
+    `datetime` TIMESTAMP NOT NULL,
     PRIMARY KEY (`itemGuid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='BOP item trade cache';
 

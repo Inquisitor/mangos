@@ -1014,7 +1014,10 @@ bool Pet::InitStatsForLevel(uint32 petlevel, Unit* owner)
         {
             SetByteValue(UNIT_FIELD_BYTES_0, 1, CLASS_MAGE);
             if (cinfo->family == CREATURE_FAMILY_GHOUL)
+            {
                 setPowerType(POWER_ENERGY);
+                SetByteValue(UNIT_FIELD_BYTES_0, 1, CLASS_WARRIOR);
+            }
             break;
         }
         case HUNTER_PET:

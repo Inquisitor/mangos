@@ -11658,8 +11658,10 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
 
             // save data
             std::ostringstream ss;
-            ss << "REPLACE INTO `item_soulbound_trade_data` VALUES (";
+            ss << "REPLACE INTO `item_soulbound_trade_data` (`itemGuid`, `item_template`, `allowedPlayers`) VALUES (";
             ss << pItem->GetGUIDLow();
+            ss << ", ";
+            ss << pItem->GetEntry();
             ss << ", '";
             for (AllowedLooterSet::iterator itr = allowedLooters->begin(); itr != allowedLooters->end(); ++itr)
                 ss << *itr << " ";
