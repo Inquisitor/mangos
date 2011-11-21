@@ -973,6 +973,14 @@ bool Pet::UpdateStats(Stats stat)
         default:
             break;
     }
+
+    if(stat == STAT_STAMINA || stat == STAT_INTELLECT )
+        if (HasAura(35696)) // Demonic Knowledge
+            if(Unit* owner=GetOwner())
+            {
+                owner->RemoveAurasDueToSpell(35696);
+                CastPetAuras(true);
+            }
     return true;
 }
 
