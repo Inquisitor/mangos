@@ -124,7 +124,7 @@ void BattleGroundWS::Update(uint32 diff)
             else
             {
                 // if 0 => tie
-                EndBattleGround(m_FirstCapturedFlagTeam);
+                EndBattleGround(m_LastCapturedFlagTeam);
             }
         }
         else
