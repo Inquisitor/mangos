@@ -411,8 +411,8 @@ void BattleGroundSA::UpdatePlayerScore(Player* Source, uint32 type, uint32 value
 void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
 {
     Phase = SA_ROUND_TWO;
-    shipsTimer = 60000;
-    pillarOpenTimer = 90000;
+    shipsTimer = BG_SA_BOAT_START;
+    pillarOpenTimer = BG_SA_PILLAR_START;
     shipsStarted = false;
 
     for (int32 i = 0; i < BG_SA_GATE_MAX; ++i)
