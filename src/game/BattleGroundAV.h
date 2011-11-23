@@ -28,7 +28,7 @@
 #define BG_AV_EVENT_START_BATTLE            9166
 
 #define BG_AV_CAPTIME                       240000          // 4 minutes
-#define BG_AV_SNOWFALL_FIRSTCAP             300000          // 5 minutes but i also have seen 4:05
+#define BG_AV_SNOWFALL_FIRSTCAP             240000          // 5 minutes but i also have seen 4:05
 
 #define BG_AV_SCORE_INITIAL_POINTS          600
 #define BG_AV_SCORE_NEAR_LOSE               120

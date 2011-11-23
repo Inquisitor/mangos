@@ -1,5 +1,5 @@
 ﻿DELETE from npc_vendor where ExtendedCost in (2450, 2451, 2452, 2454, 2455);
-INSERT INTO npc_vendor (entry, item, ExtendedCost) VALUES 
+INSERT INTO npc_vendor (entry, item, ExtendedCost) VALUES
 (33937, 48517, 2450),
 (33937, 48414, 2450),
 (33937, 48523, 2450),
