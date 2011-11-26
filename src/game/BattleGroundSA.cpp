@@ -365,9 +365,8 @@ void BattleGroundSA::StartingEventOpenDoors()
     StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_EVENT_START_BATTLE_1);
 }
 
-void BattleGroundSA::RemovePlayer(Player* plr, ObjectGuid /*guid*/)
+void BattleGroundSA::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
 {
-     plr->DestroyItemCount(39213, 1, true);
 }
 
 void BattleGroundSA::AddPlayer(Player *plr)
