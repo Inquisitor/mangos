@@ -748,22 +748,18 @@ void Transport::DoEventIfAny(WayPointMap::value_type const& node, bool departure
     }
 }
 
-void Transport::BuildMovementPacket(Map const* targetMap, bool isMoving /*= false*/)
+void Transport::BuildStartMovePacket(Map const* targetMap)
 {
-    if (isMoving)
-    {
-        SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
-        SetGoState(GO_STATE_ACTIVE);
-        SetStopped(false);
-        UpdateForMap(targetMap);
-    }
-    else
-    {
-        RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
-        SetGoState(GO_STATE_READY);
-        SetStopped(true);
-        UpdateForMap(targetMap);
-    }
+    SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+    SetGoState(GO_STATE_ACTIVE);
+    UpdateForMap(targetMap);
+}
+
+void Transport::BuildStopMovePacket(Map const* targetMap)
+{
+    RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+    SetGoState(GO_STATE_READY);
+    UpdateForMap(targetMap);
 }
 
 void Transport::RemoveFromWorld()

@@ -165,6 +165,7 @@ class BattleGroundWS : public BattleGround
         uint32 GetFlagCaptureTime(Team team) const      { return m_FlagCaptureTime[GetTeamIndexByTeamId(team)]; }
         uint32 GetEndTime() const                       { return m_EndTimer; }
     private:
+        void PickOrReturnFlag(Player* pPlayer, Team forTeam, bool pickedUp, bool fromGround = false);
 
         ObjectGuid m_FlagKeepers[BG_TEAMS_COUNT];
 

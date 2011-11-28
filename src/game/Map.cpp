@@ -3523,9 +3523,9 @@ Transport* Map::LoadTransportInMap(uint32 transportEntry, uint32 transportPositi
 
     trans->SetMap(this);
     if (!IsStoped)
-        trans->BuildMovementPacket(this, true);
+        trans->BuildStartMovePacket(this);
     else
-        trans->BuildMovementPacket(this);
+        trans->BuildStopMovePacket(this);
 
     return trans;
 }

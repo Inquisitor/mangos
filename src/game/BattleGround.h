@@ -29,6 +29,8 @@
 #define BG_EVENT_NONE 255
 // those generic events should get a high event id
 #define BG_EVENT_DOOR 254
+#define IC_EVENT_BOSS_A 251
+#define IC_EVENT_BOSS_H 252
 // only arena event
 // cause this buff apears 90sec after start in every bg i implement it here
 #define ARENA_BUFF_EVENT 253
@@ -208,16 +210,9 @@ enum ScoreType
     SCORE_TOWERS_ASSAULTED      = 13,
     SCORE_TOWERS_DEFENDED       = 14,
     SCORE_SECONDARY_OBJECTIVES  = 15,
-    /** World of Warcraft Armory **/
-    SCORE_DAMAGE_TAKEN          = 16,
-    SCORE_HEALING_TAKEN         = 17,
     //SA
-    SCORE_GATES_DESTROYED       = 18,
-    SCORE_DEMOLISHERS_DESTROYED = 19,
-    //IC
-    SCORE_BASE_ASSAULTED        = 20,
-    SCORE_BASE_DEFENDED         = 21
-
+    SCORE_GATES_DESTROYED       = 16,
+    SCORE_DEMOLISHERS_DESTROYED = 17
 };
 
 enum BattleGroundType
@@ -237,6 +232,21 @@ enum BattleGroundTeamIndex
 {
     BG_TEAM_ALLIANCE        = 0,
     BG_TEAM_HORDE           = 1
+};
+
+enum VehicleFactions
+{
+    VEHICLE_FACTION_NEUTRAL = 35,
+    VEHICLE_FACTION_ALLIANCE = 3,
+    VEHICLE_FACTION_HORDE = 6
+};
+
+enum VehicleTypes
+{
+    VEHICLE_UNK = 0,
+    VEHICLE_BG_DEMOLISHER = 1,
+    VEHICLE_SA_CANNON = 2,
+    VEHICLE_IC_CATAPULT = 3,
 };
 
 #define BG_TEAMS_COUNT  2
@@ -569,7 +579,7 @@ class BattleGround
         virtual void DoAction(uint32 action, uint64 var) {}
 
         virtual void HandlePlayerResurrect(Player* player) {}
-        virtual void EventPlayerDamageGO(Player* /*player*/, GameObject* /*target_obj*/, uint32 /*eventId*/) {}
+        virtual void EventPlayerDamageGO(Player* /*player*/, GameObject* /*target_obj*/, uint32 /*eventId*/, uint32 /*bySpellId*/) {}
         virtual void EventSpawnGOSA(Player* /*owner*/, Creature* /*obj*/, float /*x*/, float /*y*/, float /*z*/) {}
 
         /* Death related */
@@ -614,7 +624,7 @@ class BattleGround
         Creature* AddCreature(uint32 entry, uint32 type, uint32 teamval, float x, float y, float z, float o, uint32 respawntime = 0);
         bool AddSpiritGuide(uint32 type, float x, float y, float z, float o, uint32 team);
         bool DelObject(uint32 type);
-        bool DelCreature(uint32 type);
+        void MakeInteractive(uint8 event1, uint8 event2, bool interactive);
 
         void DoorOpen(ObjectGuid guid);
         void DoorClose(ObjectGuid guid);

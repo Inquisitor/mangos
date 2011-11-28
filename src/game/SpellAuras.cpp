@@ -5883,10 +5883,6 @@ void Aura::HandleAuraModUseNormalSpeed(bool /*apply*/, bool Real)
 void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
 {
     uint32 misc  = m_modifier.m_miscvalue;
-    // Forbearance
-    // in DBC wrong mechanic immune since 3.0.x
-    if (GetId() == 25771)
-        misc = MECHANIC_IMMUNE_SHIELD;
 
     Unit *target = GetTarget();
 

@@ -1371,6 +1371,8 @@ void BattleGround::Reset()
 
     // door-event2 is always 0
     m_ActiveEvents[BG_EVENT_DOOR] = 0;
+    m_ActiveEvents[IC_EVENT_BOSS_A] = 0;
+    m_ActiveEvents[IC_EVENT_BOSS_H] = 0;
     if (isArena())
     {
         m_ActiveEvents[ARENA_BUFF_EVENT] = BG_EVENT_NONE;
@@ -1440,7 +1442,6 @@ void BattleGround::AddPlayer(Player *plr)
     {
         plr->RemoveArenaSpellCooldowns();
         plr->RemoveArenaAuras();
-        plr->RemoveAllEnchantments(TEMP_ENCHANTMENT_SLOT, true);
         if (team == ALLIANCE)                               // gold
         {
             if (plr->GetTeam() == HORDE)
@@ -1862,7 +1863,7 @@ void BattleGround::OnObjectDBLoad(GameObject* obj)
 
 bool BattleGround::IsDoor(uint8 event1, uint8 event2)
 {
-    if (event1 == BG_EVENT_DOOR)
+    if (event1 == BG_EVENT_DOOR || event1 == IC_EVENT_BOSS_A || event1 == IC_EVENT_BOSS_H)
     {
         if (event2 > 0)
         {
@@ -1990,23 +1991,11 @@ void BattleGround::SpawnBGCreature(ObjectGuid guid, uint32 respawntime)
         obj->SetRespawnDelay(respawntime);
         obj->SetDeathState(JUST_DIED);
         obj->RemoveCorpse();
-    }
-}
 
-bool BattleGround::DelCreature(uint32 type)
-{
-    if (m_BgCreatures[type].IsEmpty())
-        return true;
-
-    Creature *cr = GetBgMap()->GetCreature(m_BgCreatures[type]);
-    if (!cr)
-    {
-        sLog.outError("Can't find creature guid: %u", uint64((m_BgCreatures[type]).GetHigh()));
-        return false;
+        float x, y, z, o;
+        obj->GetRespawnCoord(x,y,z,&o);
+        obj->NearTeleportTo(x,y,z,o);
     }
-    cr->AddObjectToRemoveList();
-    m_BgCreatures[type].Clear();
-    return true;
 }
 
 bool BattleGround::DelObject(uint32 type)
@@ -2025,6 +2014,28 @@ bool BattleGround::DelObject(uint32 type)
     obj->Delete();
     m_BgObjects[type].Clear();
     return true;
+}
+
+void BattleGround::MakeInteractive(uint8 event1, uint8 event2, bool interactive)
+{
+    // make the gameobject clickable
+    uint32 objEvent = MAKE_PAIR32(event1, event2);
+    for (std::vector<ObjectGuid>::iterator itr = m_EventObjects[objEvent].gameobjects.begin(); itr != m_EventObjects[objEvent].gameobjects.end(); ++itr)
+    {
+        if (GameObject * pEventGameObject = GetBgMap()->GetGameObject((*itr)))
+        {
+            if (interactive)
+            {
+                if (pEventGameObject->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT))
+                    pEventGameObject->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+            }
+            else
+            {
+                if (!pEventGameObject->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT))
+                    pEventGameObject->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+            }
+        }
+    }
 }
 
 void BattleGround::SendMessageToAll(int32 entry, ChatMsg type, Player const* source)

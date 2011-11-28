@@ -39,9 +39,9 @@
 #include "BattleGroundAB.h"
 #include "BattleGroundAV.h"
 #include "BattleGroundEY.h"
+#include "BattleGroundIC.h"
 #include "BattleGroundSA.h"
 #include "BattleGroundWS.h"
-#include "BattleGroundIC.h"
 #include "Map.h"
 #include "InstanceData.h"
 #include "Vehicle.h"
@@ -1039,17 +1039,25 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
-                        case 3846:
-                        case 4176:
+                        case 3846:                          // IoC, win while controlling each 5 nodes (alliance)
+                        case 4176:                          // IoC, win while controlling each 5 nodes (horde)
                         {
-                            if(!((BattleGroundIC*)bg)->GetWinHaveAllResource(GetPlayer()->GetTeam()))
+                            if (bg->GetTypeID(true) != BATTLEGROUND_IC)
+                                continue;
+
+                            int8 team = bg->GetTeamIndexByTeamId(GetPlayer()->GetTeam());
+                            if(!((BattleGroundIC*)bg)->hasAllResNodes(team))
                                 continue;
                             break;
                         }
-                        case 3851:
-                        case 4177:
+                        case 3851:              // IoC, win while controlling each 5 nodes (alliance)
+                        case 4177:              // IoC, win while controlling each 5 nodes (horde)
                         {
-                            if(!((BattleGroundIC*)bg)->GetWinHaveAllNodes(GetPlayer()->GetTeam()))
+                            if (bg->GetTypeID(true) != BATTLEGROUND_IC)
+                                continue;
+
+                            int8 team = bg->GetTeamIndexByTeamId(GetPlayer()->GetTeam());
+                            if(!((BattleGroundIC*)bg)->hasAllNodes(team))
                                 continue;
                             break;
                         }

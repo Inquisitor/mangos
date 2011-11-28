@@ -16263,11 +16263,13 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     _LoadBGData(holder->GetResult(PLAYER_LOGIN_QUERY_LOADBGDATA));
 
+    bool player_at_bg = false;
+
     if (m_bgData.bgInstanceID)                              //saved in BattleGround
     {
         BattleGround *currentBg = sBattleGroundMgr.GetBattleGround(m_bgData.bgInstanceID, BATTLEGROUND_TYPE_NONE);
 
-        bool player_at_bg = currentBg && currentBg->IsPlayerInBattleGround(GetObjectGuid());
+        player_at_bg = currentBg && currentBg->IsPlayerInBattleGround(GetObjectGuid());
 
         if (player_at_bg && currentBg->GetStatus() != STATUS_WAIT_LEAVE)
         {
@@ -16286,7 +16288,10 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
         {
             // leave bg
             if (player_at_bg)
+            {
                 currentBg->RemovePlayerAtLeave(GetObjectGuid(), false, true);
+                player_at_bg = false;
+            }
 
             // move to bg enter point
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
@@ -16397,8 +16402,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
     // load the player's map here if it's not already loaded
     SetMap(sMapMgr.CreateMap(GetMapId(), this));
 
-    // if the player is in an instance and it has been reset in the meantime teleport him to the entrance
-    if (GetInstanceId() && !state)
+    // if the player not at BG and is in an instance and it has been reset in the meantime teleport him to the entrance
+    if (!player_at_bg && GetInstanceId() && !state)
     {
         AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(GetMapId());
         if (at)

@@ -1,11 +1,11 @@
-UPDATE mangos_string set content_loc8="аль€нс" WHERE entry=650;
-UPDATE mangos_string set content_loc8="орда" WHERE entry=651;
+UPDATE mangos_string set content_loc8="Aль€нс" WHERE entry=650;
+UPDATE mangos_string set content_loc8="Oрда" WHERE entry=651;
 UPDATE mangos_string set content_loc8="стойла" WHERE entry=652;
 UPDATE mangos_string set content_loc8="кузницу" WHERE entry=653;
 UPDATE mangos_string set content_loc8="ферму" WHERE entry=654;
 UPDATE mangos_string set content_loc8="лесопилку" WHERE entry=655;
 UPDATE mangos_string set content_loc8="золотой рудник" WHERE entry=656;
-UPDATE mangos_string set content_loc8="%n захватывает %n" WHERE entry=657;
+UPDATE mangos_string set content_loc8="%s захватывает %s" WHERE entry=657;
 UPDATE mangos_string set content_loc8="$n защищает %s" WHERE entry=658;
 UPDATE mangos_string set content_loc8="$n осаждает %s" WHERE entry=659;
 UPDATE mangos_string set content_loc8="$n осаждает %s! ≈сли не вернуть контроль, %s будет захвачена через 1 минуту!" WHERE entry=660;

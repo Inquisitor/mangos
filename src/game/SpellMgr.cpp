@@ -699,6 +699,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 63138:                                         // Sara's Fervor (Ulduar - Yogg Saron encounter)
         case 63134:                                         // Sara's Blessing (Ulduar - Yogg Saron encounter)
         case 63355:                                         // Crunch Armor
+        case 66271:                                         // Carrying Seaforium (IoC)
         case 66406:                                         // Snobolled! (Trial of the Crusader, Gormok the Impaler encounter)
         case 68377:                                         // Carrying Huge Seaforium (IoC)
         case 71010:                                         // Web Wrap (Icecrown Citadel, trash mob Nerub'ar Broodkeeper)
@@ -4510,26 +4511,6 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
         else
             // not have expected aura
             return !player->HasAura(-auraSpell, EFFECT_INDEX_0);
-    }
-
-    // Extra conditions -- leaving the possibility add extra conditions...
-    switch(spellId)
-    {
-        case 68719: // Oil Refinery - Isle of Conquest.
-        case 68720: // Quarry - Isle of Conquest.
-        {
-            if (player->GetBattleGroundTypeId() != BATTLEGROUND_IC || !player->GetBattleGround())
-                return false;
-
-            uint8 nodeType = spellId == 68719 ? NODE_TYPE_REFINERY : NODE_TYPE_QUARRY;
-            uint8 nodeState = player->GetTeamId() == TEAM_ALLIANCE ? NODE_STATE_CONTROLLED_A : NODE_STATE_CONTROLLED_H;
-
-            BattleGroundIC* pIC = static_cast<BattleGroundIC*>(player->GetBattleGround());
-            if (pIC->GetNodeState(nodeType) == nodeState)
-                return true;
-
-            return false;
-        }
     }
 
     return true;

@@ -1295,7 +1295,7 @@ void GameObject::Use(Unit* user)
                         if (BattleGround *bg = player->GetBattleGround())
                         {
                             if (bg->GetTypeID(true) == BATTLEGROUND_SA)
-                                bg->EventPlayerDamageGO(player, this, info->goober.eventId);
+                                bg->EventPlayerDamageGO(player, this, info->goober.eventId, 0);
                         }
                     }
                 }
@@ -1570,11 +1570,6 @@ void GameObject::Use(Unit* user)
                 user->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
 
             AddUse();
-            // For Isle of Conquest teleports
-            if (user->GetTypeId() == TYPEID_PLAYER)
-                if (((Player*)user)->InBattleGround())
-                    if (BattleGround *bg = ((Player*)user)->GetBattleGround())
-                        ((BattleGroundIC*)bg)->EventPlayerUsedGO(((Player*)user), this);
             break;
         }
         case GAMEOBJECT_TYPE_MEETINGSTONE:                  //23
@@ -1963,7 +1958,7 @@ bool GameObject::IsInRange(float x, float y, float z, float radius) const
         && dz < info->maxZ + radius && dz > info->minZ - radius;
 }
 
-void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
+void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage, uint32 spellId)
 {
     if (GetGoType() != GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING || !m_health)
         return;
@@ -1984,7 +1979,7 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
          // For Strand of the Ancients and probably Isle of Conquest
          if (pWho)
              if (BattleGround *bg = pWho->GetBattleGround())
-                 bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damageEvent);
+                 bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damagedEvent, spellId);
     }
 
     else
@@ -2005,9 +2000,7 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
                 if (BattleGround *bg = pWho->GetBattleGround())
                 {
                     if(bg->GetTypeID(true) == BATTLEGROUND_SA)
-                        bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
-                    if(bg->GetTypeID(true) == BATTLEGROUND_IC)
-                        ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                        bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent, spellId);
                 }
 
             }
@@ -2035,9 +2028,7 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage)
                 if (BattleGround *bg = pWho->GetBattleGround())
                 {
                     if(bg->GetTypeID(true) == BATTLEGROUND_SA)
-                        bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damagedEvent);
-                    if(bg->GetTypeID(true) == BATTLEGROUND_IC)
-                        ((BattleGroundIC*)bg)->DestroyGate(pWho, this, m_goInfo->destructibleBuilding.destroyedEvent);
+                        bg->EventPlayerDamageGO(pWho, this, m_goInfo->destructibleBuilding.damageEvent, spellId);
                 }
          }
     }
