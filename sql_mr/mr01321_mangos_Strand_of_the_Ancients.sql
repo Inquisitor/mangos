@@ -1,4 +1,4 @@
--- Strand of the Ancients
+﻿-- Strand of the Ancients
 DELETE FROM battleground_template WHERE id = 9;
 INSERT INTO battleground_template (id, MinPlayersPerTeam, MaxPlayersPerTeam, AllianceStartLoc, AllianceStartO, HordeStartLoc, HordeStartO) VALUES (9, 5, 15, 1367, 0, 1368, 0);
 -- Rigger Sparklight
@@ -33,8 +33,8 @@ UPDATE gameobject_template SET flags = 0 WHERE entry IN (191310, 191309);
 
 -- Vehicles support
 -- Battleground Demolisher
-UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, speed_run = 1, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, ScriptName = 'npc_sa_demolisher', RegenHealth = 0 WHERE entry = 28781;
-UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, speed_run = 1, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, RegenHealth = 0, ScriptName = '' WHERE entry = 32796;
+UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, speed_run = 1, spell1 = 52338, spell2 = 60206, resistance2 = 500, resistance3 = 500, resistance4 = 500, resistance5 = 500, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, ScriptName = 'npc_sa_demolisher', RegenHealth = 0 WHERE entry = 28781;
+UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, speed_run = 1, spell1 = 52338, spell2 = 60206, resistance2 = 500, resistance3 = 500, resistance4 = 500, resistance5 = 500, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, RegenHealth = 0, ScriptName = '' WHERE entry = 32796;
 DELETE FROM npc_spellclick_spells WHERE npc_entry IN (28781, 32796);
 INSERT INTO npc_spellclick_spells VALUES
 (28781, 60968, 0, 0, 0, 0),
