@@ -96,6 +96,7 @@ Guild::Guild()
     m_GuildBankEventLogNextGuid_Money = 0;
     for (uint8 i = 0; i < GUILD_BANK_MAX_TABS; ++i)
         m_GuildBankEventLogNextGuid_Item[i] = 0;
+    BankLoaded=!sWorld.getConfig(CONFIG_BOOL_FAST_GUILD_LOAD_ENABLE);
 }
 
 Guild::~Guild()
@@ -1061,6 +1062,13 @@ Item* Guild::GetItem(uint8 TabId, uint8 SlotId)
 
 void Guild::DisplayGuildBankTabsInfo(WorldSession *session)
 {
+    if (!BankLoaded)
+    {
+        LoadGuildEventLogFromDB();
+        LoadGuildBankEventLogFromDB();
+        LoadGuildBankFromDB();
+        BankLoaded=true;
+    }
     WorldPacket data(SMSG_GUILD_BANK_LIST, 500);
 
     data << uint64(GetGuildBankMoney());

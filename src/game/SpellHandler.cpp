@@ -411,7 +411,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     else
     {
         // not have spell in spellbook or spell passive and not casted by client        // hack for Sota Seaforium disarming
-        if ((!((Player*)mover)->HasActiveSpell(spellId) || IsPassiveSpell(spellInfo)) && spellId != 1843)
+        if ((!((Creature*)mover)->HasSpell(spellId) || IsPassiveSpell(spellInfo)) && spellId != 1843)
         {
             //cheater? kick? ban?
             recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet

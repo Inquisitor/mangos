@@ -138,12 +138,12 @@ void GuildMgr::LoadGuilds()
     {
      //fix TabId for money events
      CharacterDatabase.PExecute("UPDATE guild_bank_eventlog SET TabId='%u' WHERE EventType>='%u' AND EventType<='%u'", GUILD_BANK_MONEY_LOGS_TAB,GUILD_BANK_LOG_DEPOSIT_MONEY, GUILD_BANK_LOG_REPAIR_MONEY);
-
+/*
      tabs_result = CharacterDatabase.PQuery("SELECT TabId, TabName, TabIcon, TabText, guildid FROM guild_bank_tab ORDER BY guildid,TabId");
      items_result = CharacterDatabase.PQuery("SELECT data, text, TabId, SlotId, item_guid, item_entry , guildid FROM guild_bank_item JOIN item_instance ON item_guid = guid ORDER BY guildid, TabId");
      GuildEventlog_result = CharacterDatabase.PQuery("SELECT LogGuid, EventType, PlayerGuid1, PlayerGuid2, NewRank, TimeStamp,guildid FROM guild_eventlog ORDER BY guildid ASC,TimeStamp DESC,LogGuid");
      GuildBankEventlog = CharacterDatabase.PQuery("SELECT LogGuid, EventType, PlayerGuid, ItemOrMoney, ItemStackCount, DestTabId, TimeStamp, TabId, guildid FROM guild_bank_eventlog ORDER BY guildid ASC, TabId ASC ,TimeStamp DESC,LogGuid DESC");
-
+*/
     }
 
     BarGoLink bar(result->GetRowCount());
@@ -170,10 +170,11 @@ void GuildMgr::LoadGuilds()
 
         if (sWorld.getConfig(CONFIG_BOOL_FAST_GUILD_LOAD_ENABLE))
         {
-
+            /*
             newGuild->FastLoadGuildEventLogFromDB(GuildEventlog_result);
             newGuild->FastLoadGuildBankEventLogFromDB(GuildBankEventlog);
             newGuild->FastLoadGuildBankFromDB(tabs_result,items_result);
+            */
         }
         else
         {
@@ -183,14 +184,17 @@ void GuildMgr::LoadGuilds()
         }
         AddGuild(newGuild);
     } while(result->NextRow());
-
+    /*
     if (sWorld.getConfig(CONFIG_BOOL_FAST_GUILD_LOAD_ENABLE))
     {
+
         delete tabs_result;
         delete items_result;
         delete GuildEventlog_result;
         delete GuildBankEventlog;
+
     }
+    */
     delete result;
     delete guildRanksResult;
     delete guildMembersResult;
