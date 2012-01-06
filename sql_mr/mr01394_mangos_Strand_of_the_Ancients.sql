@@ -340,7 +340,14 @@ INSERT INTO gameobject VALUES
 (@GAMEOBJECT+176, 194086 , 607 , 3 , 1 , 985.23 , 4.65898 , 86.8368 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
 (@GAMEOBJECT+177, 194086 , 607 , 3 , 1 , 984.556 , 3.54097 , 86.8137 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0);
 
-DELETE FROM gameobject_battleground WHERE guid BETWEEN @GAMEOBJECT AND @GAMEOBJECT+177;
+-- Pillars
+DELETE FROM gameobject WHERE guid BETWEEN @GAMEOBJECT+178 AND @GAMEOBJECT+179;
+INSERT INTO gameobject (guid, id, map, spawnMask, phaseMask, position_x, position_y, position_z, orientation, rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state) VALUES
+(@GAMEOBJECT+178, 300000, 607, 3, 1, 1803.93, -168.457, 60.549, 2.74522, 0, 0, 0.980426, 0.196889, 250000, 0, 1),
+(@GAMEOBJECT+179, 300000, 607, 3, 1, 1803.71, 118.601, 59.8234, 3.56313, 0, 0, 0.97787, -0.209212, 250000, 0, 1);
+
+
+DELETE FROM gameobject_battleground WHERE guid BETWEEN @GAMEOBJECT AND @GAMEOBJECT+179;
 INSERT INTO gameobject_battleground VALUES
 -- Titan Relic & Doors
 (@GAMEOBJECT, 14, 1),
@@ -529,7 +536,9 @@ INSERT INTO gameobject_battleground VALUES
 (@GAMEOBJECT+174, 7, 4),
 (@GAMEOBJECT+175, 7, 4),
 (@GAMEOBJECT+176, 7, 4),
-(@GAMEOBJECT+177, 7, 4);
+(@GAMEOBJECT+177, 7, 4),
+(@GAMEOBJECT+178, 253, 0),
+(@GAMEOBJECT+179, 253, 0);
 
 DELETE FROM battleground_events WHERE map = 607;
 INSERT INTO battleground_events (map, event1, event2, description) VALUES
@@ -563,7 +572,9 @@ INSERT INTO battleground_events (map, event1, event2, description) VALUES
 (607, 12, 0, 'E base demolishers'),
 (607, 13, 0, 'W base demolishers'),
 (607, 14, 1, 'Titan Relic - A attacking'),
-(607, 14, 2, 'Titan Relic - H attacking');
+(607, 14, 2, 'Titan Relic - H attacking'),
+(607, 253, 0, 'OP_DOOR'),
+(607, 254, 0, 'DOOR');
 
 -- Fix Rotation for all Objects in Map
 UPDATE gameobject SET rotation0=0, rotation1=0, rotation2=SIN(orientation*0.5), rotation3=COS(orientation*0.5) WHERE map = 607;
