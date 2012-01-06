@@ -34,7 +34,7 @@
 float ThreatCalcHelper::CalcThreat(Unit* pHatedUnit, Unit* /*pHatingUnit*/, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const *pThreatSpell)
 {
     // all flat mods applied early
-    if (!threat)
+    if (fabs(threat) < M_NULL_F)
         return 0.0f;
 
     if (pThreatSpell)
@@ -107,13 +107,13 @@ void HostileReference::addThreat(float pMod)
     // if the link was cut before relink it again
     if(!isOnline())
         updateOnlineStatus();
-    if(pMod != 0.0f)
+    if(fabs(pMod) > M_NULL_F)
     {
         ThreatRefStatusChangeEvent event(UEV_THREAT_REF_THREAT_CHANGE, this, pMod);
         fireStatusChanged(event);
     }
 
-    if(isValid() && pMod >= 0)
+    if(isValid() && pMod >= 0.0f)
     {
         Unit* victim_owner = getTarget()->GetOwner();
         if(victim_owner && victim_owner->isAlive())
@@ -301,15 +301,14 @@ bool ThreatContainer::IsSecondChoiceTarget(Creature* pAttacker, Unit* pTarget, b
 HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, HostileReference* pCurrentVictim)
 {
     HostileReference* pCurrentRef = NULL;
-    bool bFound = false;
-    bool bNoPriorityTargetFound = false;
-    bool bCheckedCurrentVictim = false;
-    bool bIsAttackerStationary = pAttacker->IsCombatStationary();
+    bool found = false;
+    bool onlySecondChoiceTargetsFound = false;
+    bool checkedCurrentVictim = false;
 
     ThreatList::const_iterator lastRef = iThreatList.end();
     lastRef--;
 
-    for(ThreatList::const_iterator iter = iThreatList.begin(); iter != iThreatList.end() && !bFound;)
+    for (ThreatList::const_iterator iter = iThreatList.begin(); iter != iThreatList.end() && !found;)
     {
         pCurrentRef = (*iter);
 
@@ -318,14 +317,16 @@ HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, Hostile
 
         MAPLOCK_READ(pTarget, MAP_LOCK_TYPE_DEFAULT);
         // some units are prefered in comparison to others
-        if (!bNoPriorityTargetFound && IsSecondChoiceTarget(pAttacker, pTarget, pCurrentRef == pCurrentVictim, bIsAttackerStationary))
+        // if (checkThreatArea) consider IsOutOfThreatArea - expected to be only set for pCurrentVictim
+        //     This prevents dropping valid targets due to 1.1 or 1.3 threat rule vs invalid current target
+        if (!onlySecondChoiceTargetsFound && pAttacker->IsSecondChoiceTarget(pTarget, pCurrentRef == pCurrentVictim))
         {
             if (iter != lastRef)
                 ++iter;
             else
             {
                 // if we reached to this point, everyone in the threatlist is a second choice target. In such a situation the target with the highest threat should be attacked.
-                bNoPriorityTargetFound = true;
+                onlySecondChoiceTargetsFound = true;
                 iter = iThreatList.begin();
             }
 
@@ -344,49 +345,49 @@ HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, Hostile
                 // normal case: pCurrentRef is still valid and most hated
                 if (pCurrentVictim == pCurrentRef)
                 {
-                    bFound = true;
+                    found = true;
                     break;
                 }
 
                 // we found a valid target, but only compare its threat if the currect victim is also a valid target
                 // Additional check to prevent unneeded comparision in case of valid current victim
-                if (!bCheckedCurrentVictim)
+                if (!checkedCurrentVictim)
                 {
                     Unit* pCurrentTarget = pCurrentVictim->getTarget();
                     MANGOS_ASSERT(pCurrentTarget);
-                    if (IsSecondChoiceTarget(pAttacker, pCurrentTarget, true, bIsAttackerStationary))
+                    if (pAttacker->IsSecondChoiceTarget(pCurrentTarget, true))
                     {
                         // CurrentVictim is invalid, so return CurrentRef
-                        bFound = true;
+                        found = true;
                         break;
                     }
-                    bCheckedCurrentVictim = true;
+                    checkedCurrentVictim = true;
                 }
 
                 // list sorted and and we check current target, then this is best case
                 if (pCurrentRef->getThreat() <= 1.1f * pCurrentVictim->getThreat())
                 {
                     pCurrentRef = pCurrentVictim;
-                    bFound = true;
+                    found = true;
                     break;
                 }
 
                 if (pCurrentRef->getThreat() > 1.3f * pCurrentVictim->getThreat() ||
                     (pCurrentRef->getThreat() > 1.1f * pCurrentVictim->getThreat() && pAttacker->CanReachWithMeleeAttack(pTarget)))
                 {                                           // implement 110% threat rule for targets in melee range
-                    bFound = true;                          // and 130% rule for targets in ranged distances
+                    found = true;                           // and 130% rule for targets in ranged distances
                     break;                                  // for selecting alive targets
                 }
             }
             else                                            // select any
             {
-                bFound = true;
+                found = true;
                 break;
             }
         }
         ++iter;
     }
-    if (!bFound)
+    if (!found)
         pCurrentRef = NULL;
 
     return pCurrentRef;
@@ -437,7 +438,7 @@ void ThreatManager::addThreat(Unit* pVictim, float pThreat, bool crit, SpellScho
 
     float threat = ThreatCalcHelper::CalcThreat(pVictim, iOwner, pThreat, crit, schoolMask, pThreatSpell);
 
-    if (threat > 0.0f)
+    if (threat > M_NULL_F)
     {
         if (float redirectedMod = pVictim->getHostileRefManager().GetThreatRedirectionMod())
         {
@@ -519,7 +520,7 @@ void ThreatManager::tauntApply(Unit* pTaunter)
         if(getCurrentVictim() && (ref->getThreat() < getCurrentVictim()->getThreat()))
         {
             // Ok, temp threat is unused
-            if(ref->getTempThreatModifyer() == 0.0f)
+            if(fabs(ref->getTempThreatModifyer()) < M_NULL_F)
             {
                 ref->setTempThreat(getCurrentVictim()->getThreat()*1.4f);
                 iUpdateNeed = true;

@@ -1442,12 +1442,13 @@ void Pet::_SaveAuras()
 
     for(SpellAuraHolderMap::const_iterator itr = auraHolders.begin(); itr != auraHolders.end(); ++itr)
     {
-        SpellAuraHolderPtr holder = itr->second;
+        if (!itr->second || itr->second->IsDeleted())
+            continue;
 
         bool save = true;
         for (int32 j = 0; j < MAX_EFFECT_INDEX; ++j)
         {
-            SpellEntry const* spellInfo = holder->GetSpellProto();
+            SpellEntry const* spellInfo = itr->second->GetSpellProto();
             if (spellInfo->EffectApplyAuraName[j] == SPELL_AURA_MOD_STEALTH ||
                         spellInfo->Effect[j] == SPELL_EFFECT_APPLY_AREA_AURA_OWNER ||
                         spellInfo->Effect[j] == SPELL_EFFECT_APPLY_AREA_AURA_PET )
@@ -1459,7 +1460,7 @@ void Pet::_SaveAuras()
 
         //skip all holders from spells that are passive or channeled
         //do not save single target holders (unless they were cast by the player)
-        if (save && !holder->IsPassive() && !IsChanneledSpell(holder->GetSpellProto()) && (holder->GetCasterGuid() == GetObjectGuid() || !holder->IsSingleTarget()))
+        if (save && !itr->second->IsPassive() && !IsChanneledSpell(itr->second->GetSpellProto()) && (itr->second->GetCasterGuid() == GetObjectGuid() || !itr->second->IsSingleTarget()))
         {
             int32  damage[MAX_EFFECT_INDEX];
             uint32 periodicTime[MAX_EFFECT_INDEX];
@@ -1470,10 +1471,10 @@ void Pet::_SaveAuras()
                 damage[i] = 0;
                 periodicTime[i] = 0;
 
-                if (Aura *aur = holder->GetAuraByEffectIndex(SpellEffectIndex(i)))
+                if (Aura *aur = itr->second->GetAuraByEffectIndex(SpellEffectIndex(i)))
                 {
                     // don't save not own area auras
-                    if (aur->IsAreaAura() && holder->GetCasterGuid() != GetObjectGuid())
+                    if (aur->IsAreaAura() && itr->second->GetCasterGuid() != GetObjectGuid())
                         continue;
 
                     damage[i] = aur->GetModifier()->m_amount;
@@ -1486,11 +1487,11 @@ void Pet::_SaveAuras()
                 continue;
 
             stmt.addUInt32(m_charmInfo->GetPetNumber());
-            stmt.addUInt64(holder->GetCasterGuid().GetRawValue());
-            stmt.addUInt32(holder->GetCastItemGuid().GetCounter());
-            stmt.addUInt32(holder->GetId());
-            stmt.addUInt32(holder->GetStackAmount());
-            stmt.addUInt8(holder->GetAuraCharges());
+            stmt.addUInt64(itr->second->GetCasterGuid().GetRawValue());
+            stmt.addUInt32(itr->second->GetCastItemGuid().GetCounter());
+            stmt.addUInt32(itr->second->GetId());
+            stmt.addUInt32(itr->second->GetStackAmount());
+            stmt.addUInt8(itr->second->GetAuraCharges());
 
             for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
                 stmt.addInt32(damage[i]);
@@ -1498,8 +1499,8 @@ void Pet::_SaveAuras()
             for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
                 stmt.addUInt32(periodicTime[i]);
 
-            stmt.addInt32(holder->GetAuraMaxDuration());
-            stmt.addInt32(holder->GetAuraDuration());
+            stmt.addInt32(itr->second->GetAuraMaxDuration());
+            stmt.addInt32(itr->second->GetAuraDuration());
             stmt.addUInt32(effIndexMask);
             stmt.Execute();
         }
@@ -2037,6 +2038,8 @@ bool Pet::IsPermanentPetFor(Player* owner)
                     return GetCreatureInfo()->type == CREATURE_TYPE_DEMON;
                 case CLASS_DEATH_KNIGHT:
                     return GetCreatureInfo()->type == CREATURE_TYPE_UNDEAD;
+                case CLASS_MAGE:
+                    return GetCreatureInfo()->Entry == 37994;
                 default:
                     return false;
             }

@@ -429,7 +429,7 @@ void BattleGroundSA::ResetBattle(uint32 winner, Team teamDefending)
         GateStatus[i] = BG_SA_GO_GATES_NORMAL;
 
     SetStartTime(0);
-    defender = (teamDefending == ALLIANCE) ? HORDE : ALLIANCE;
+    defender = (teamDefending  == ALLIANCE) ?  HORDE : ALLIANCE;
     relicGateDestroyed = false;
     ToggleTimer();
 
@@ -501,7 +501,7 @@ void BattleGroundSA::Reset()
     defender = ((urand(0,1)) ? ALLIANCE : HORDE);
     relicGateDestroyed = false;
 
-    for (uint8 i = 0; i <= SA_EVENT_ADD_VECH_W; ++i)
+    for (uint8 i = 0; i <= SA_EVENT_ADD_RELIC; ++i)
         m_ActiveEvents[i] = BG_EVENT_NONE;
 
     UpdatePhase();
@@ -512,7 +512,7 @@ void BattleGroundSA::UpdatePhase()
     if (Phase == SA_ROUND_TWO)
     {
         // despawn everything
-        for (uint8 i = 0; i <= SA_EVENT_ADD_VECH_W; ++i)
+        for (uint8 i = 0; i <= SA_EVENT_ADD_RELIC; ++i)
             for (uint8 j = 0; j < 5; ++j)
                 SpawnEvent(i, j, false);
 
@@ -534,9 +534,6 @@ void BattleGroundSA::UpdatePhase()
     // Spawn banners and graveyards
     for (uint8 i = 0; i < BG_SA_GRY_MAX; ++i)
     {
-        for (uint8 z = 1; z < 5; ++z)
-            SpawnEvent(i, z, false);
-
         m_BannerTimers[i].timer = 0;
         SpawnEvent(i, (GetDefender() == ALLIANCE) ? BG_SA_GRAVE_STATUS_ALLY_CONTESTED : BG_SA_GRAVE_STATUS_HORDE_CONTESTED, true);
         m_Gyd[i] = ((GetDefender() == ALLIANCE) ? BG_SA_GRAVE_STATUS_ALLY_CONTESTED : BG_SA_GRAVE_STATUS_HORDE_CONTESTED);
@@ -550,6 +547,8 @@ void BattleGroundSA::UpdatePhase()
 
     SpawnEvent(SA_EVENT_ADD_GO, 0, true);
     SpawnEvent(SA_EVENT_ADD_CANNON, 0, true);
+    SpawnEvent(SA_EVENT_ADD_RELIC, (GetDefender() == ALLIANCE) ? 2 : 1, true);
+    MakeInteractive(SA_EVENT_ADD_RELIC, (GetDefender() == ALLIANCE) ? 2 : 1, false);
 }
 
 void BattleGroundSA::HandleInteractivity()
@@ -725,16 +724,17 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                     }
                     break;
                 case 19836:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type);
                     UpdateWorldState(BG_SA_GateStatus[type], (GetDefender() == HORDE) ? 5 : 2);
                     GateStatus[type] = BG_SA_GO_GATES_DAMAGE;
                     break;
                 case 19837:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type, true);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type, true);
                     UpdateWorldState(BG_SA_GateStatus[type], (GetDefender() == HORDE) ? 6 : 3);
                     GateStatus[type] = BG_SA_GO_GATES_DESTROY;
                     UpdatePlayerScore(player, SCORE_GATES_DESTROYED, 1);
                     RewardHonorToTeam(100, (teamIndex == 0) ? ALLIANCE : HORDE);
+                    MakeInteractive(SA_EVENT_ADD_RELIC, (GetDefender() == ALLIANCE) ? 2 : 1, true);
                     relicGateDestroyed = true;
                     break;
             }
@@ -753,11 +753,11 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                     }
                     break;
                 case 19041:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DAMAGE);
                     break;
                 case 19046:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type, true);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type, true);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DESTROY);
                     UpdatePlayerScore(player, SCORE_GATES_DESTROYED, 1);
                     RewardHonorToTeam(85, (teamIndex == 0) ? ALLIANCE : HORDE);
@@ -781,11 +781,11 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                     }
                     break;
                 case 19040:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DAMAGE);
                     break;
                 case 19045:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type, true);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type, true);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DESTROY);
                     UpdatePlayerScore(player, SCORE_GATES_DESTROYED, 1);
                     RewardHonorToTeam(85, (teamIndex == 0) ? ALLIANCE : HORDE);
@@ -809,11 +809,11 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                     }
                     break;
                 case 19043:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DAMAGE);
                     break;
                 case 19048:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type, true);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type, true);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DESTROY);
                     UpdatePlayerScore(player, SCORE_GATES_DESTROYED, 1);
                     RewardHonorToTeam(85, (teamIndex == 0) ? ALLIANCE : HORDE);
@@ -836,11 +836,11 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                     }
                     break;
                 case 19042:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DAMAGE);
                     break;
                 case 19047:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type, true);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type, true);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DESTROY);
                     UpdatePlayerScore(player, SCORE_GATES_DESTROYED, 1);
                     RewardHonorToTeam(85, (teamIndex == 0) ? ALLIANCE : HORDE);
@@ -863,11 +863,11 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                     }
                     break;
                 case 19044:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DAMAGE);
                     break;
                 case 19049:
-                    SendWarningToAllSA(0, TEAM_NONE, true, type, true);
+                    SendWarningToAllSA(NULL, TEAM_NONE, true, type, true);
                     UpdateWorldState(BG_SA_GateStatus[type], GateStatus[type] = BG_SA_GO_GATES_DESTROY);
                     UpdatePlayerScore(player, SCORE_GATES_DESTROYED, 1);
                     RewardHonorToTeam(85, (teamIndex == 0) ? ALLIANCE : HORDE);
@@ -875,9 +875,10 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
             }
             break;
         }
-        case BG_SA_GO_TITAN_RELIC:
+        case BG_SA_GO_TITAN_RELIC_A:
+        case BG_SA_GO_TITAN_RELIC_H:
         {
-            if (eventId == 22097 && player->GetTeam() != GetDefender())
+            if (eventId == 20572 && player->GetTeam() != GetDefender())
             {
                 if (!relicGateDestroyed)
                 {
@@ -1043,7 +1044,7 @@ void BattleGroundSA::_GydOccupied(uint8 node, Team team)
     }
 }
 
-void BattleGroundSA::SendWarningToAllSA(uint8 gyd, Team team, bool isDoor, uint32 door, bool destroyed)
+void BattleGroundSA::SendWarningToAllSA(uint8 gyd, Team team, bool isDoor, int door, bool destroyed)
 {
     if (!isDoor)
     {
@@ -1120,6 +1121,20 @@ void BattleGroundSA::TeleportPlayerToCorrectLoc(Player *plr, bool resetBattle)
         plr->CombatStopWithPets(true);
     }
 
+    if (!shipsStarted)
+    {
+        if (!plr->isAlive())
+        {
+            plr->ResurrectPlayer(1.0f);
+            plr->SpawnCorpseBones();
+        }
+
+        plr->RemoveArenaAuras(true);
+        plr->SetHealth(plr->GetMaxHealth());
+        plr->SetPower(POWER_MANA, plr->GetMaxPower(POWER_MANA));
+        plr->CombatStopWithPets(true);
+    }
+
     if (plr->GetTeam() == GetDefender())
         plr->TeleportTo(607, 1209.7f, -65.16f, 70.1f, 0.0f, 0); // Defenders position
     else
@@ -1138,13 +1153,8 @@ void BattleGroundSA::TeleportPlayerToCorrectLoc(Player *plr, bool resetBattle)
             else
                 plr->TeleportTo(607, 1803.71f, 118.61f, 59.83f, 3.56f, 0); // Pillar Right
         }
-        else // If BG starts in 30 sec it teleports directly at the beach
-        {
-            if (urand(0,1))
-                plr->TeleportTo(607, 1597.64f, -106.35f, 8.89f, 4.13f, 0);
-            else
-                plr->TeleportTo(607, 1606.61f, 50.13f, 7.58f, 2.39f, 0);
-        }
+        else
+            plr->TeleportTo(607, 1209.7f, -65.16f, 70.1f, 0.0f, 0);
     }
     // AddPlayer is called before SetupShips, so this check is needed for the 1st round to prevent console spam
     if (shipsSpawned)
@@ -1156,12 +1166,10 @@ void BattleGroundSA::SendTransportInit(Player *player)
     if (GetBGObject(BG_SA_BOAT_ONE) || GetBGObject(BG_SA_BOAT_TWO))
     {
         UpdateData transData;
-
         if (GetBGObject(BG_SA_BOAT_ONE))
             GetBGObject(BG_SA_BOAT_ONE)->BuildCreateUpdateBlockForPlayer(&transData, player);
         if (GetBGObject(BG_SA_BOAT_TWO))
             GetBGObject(BG_SA_BOAT_TWO)->BuildCreateUpdateBlockForPlayer(&transData, player);
-
         WorldPacket packet;
         transData.BuildPacket(&packet);
         player->GetSession()->SendPacket(&packet);

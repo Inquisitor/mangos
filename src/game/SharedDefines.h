@@ -293,7 +293,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY    0x00008000            // 15 remove auras on immunity
 #define SPELL_ATTR_EX_UNAFFECTED_BY_SCHOOL_IMMUNE 0x00010000            // 16 unaffected by school immunity
 #define SPELL_ATTR_EX_UNK17                       0x00020000            // 17 for auras SPELL_AURA_TRACK_CREATURES, SPELL_AURA_TRACK_RESOURCES and SPELL_AURA_TRACK_STEALTHED select non-stacking tracking spells
-#define SPELL_ATTR_EX_UNK18                       0x00040000            // 18
+#define SPELL_ATTR_EX_BREAKABLE_BY_ANY_DAMAGE     0x00040000            // 18 auras with this attribute breaked by any damage (not CrowdControl auras)
 #define SPELL_ATTR_EX_UNK19                       0x00080000            // 19
 #define SPELL_ATTR_EX_REQ_TARGET_COMBO_POINTS     0x00100000            // 20 Req combo points on target
 #define SPELL_ATTR_EX_UNK21                       0x00200000            // 21
@@ -1257,6 +1257,7 @@ enum Targets
     TARGET_AREAEFFECT_GO_AROUND_DEST   = 52,                // gameobject around destination, select by spell_script_target
     TARGET_CURRENT_ENEMY_COORDINATES   = 53,                // set unit coordinates as dest, only 16 target B imlemented
     TARGET_LARGE_FRONTAL_CONE          = 54,
+    TARGET_LEAP_FORWARD                = 55,                // Target point must be calculated in target selection
     TARGET_ALL_RAID_AROUND_CASTER      = 56,
     TARGET_SINGLE_FRIEND_2             = 57,
     TARGET_NARROW_FRONTAL_CONE         = 60,
@@ -1268,6 +1269,8 @@ enum Targets
     TARGET_LEFT_FROM_VICTIM            = 67,
     TARGET_RANDOM_NEARBY_LOC           = 72,                // used in teleport onto nearby locations
     TARGET_RANDOM_CIRCUMFERENCE_POINT  = 73,
+    TARGET_RANDOM_POINT_NEAR_TARGET    = 74,                // Target point must be calculated in target selection
+    TARGET_RANDOM_POINT_NEAR_TARGET_2  = 75,                // Target point must be calculated in target selection
     TARGET_DYNAMIC_OBJECT_COORDINATES  = 76,
     TARGET_SINGLE_ENEMY                = 77,
     TARGET_POINT_AT_NORTH              = 78,                // 78-85 possible _COORDINATES at radius with pi/4 step around target in unknown order, N?
@@ -1300,7 +1303,7 @@ enum Targets
     TARGET_105                         = 105,
     TARGET_106                         = 106,
     TARGET_107                         = 107,
-    TARGET_108                         = 108,
+    TARGET_GO_IN_FRONT_OF_CASTER_90    = 108,
     TARGET_109                         = 109,
     TARGET_110                         = 110,
 };
@@ -3038,6 +3041,7 @@ enum AreaLockStatus
     AREA_LOCKSTATUS_ZONE_IN_COMBAT            = 9,
     AREA_LOCKSTATUS_INSTANCE_IS_FULL          = 10,
     AREA_LOCKSTATUS_NOT_ALLOWED               = 11,
+    AREA_LOCKSTATUS_HAS_BIND                  = 12,
 };
 
 #define CONTACT_DISTANCE            0.5f

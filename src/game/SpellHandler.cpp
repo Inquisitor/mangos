@@ -167,6 +167,10 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 
     recvPacket >> targets.ReadForCaster(pUser);
 
+    // some spell cast packet including more data (for projectiles?)
+    if (unk_flags & 0x02)
+        targets.ReadAdditionalData(recvPacket);
+
     targets.Update(pUser);
 
     if (!pItem->IsTargetValidForItemUse(targets.getUnitTarget()))
@@ -397,12 +401,24 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
             mover = plr;
     }
 
+    bool triggered = false;
+    SpellEntry const* triggeredBy = NULL;
+    Aura* triggeredByAura = mover->GetTriggeredByClientAura(spellId);
+    if (triggeredByAura)
+    {
+        triggered = true;
+        triggeredBy = triggeredByAura->GetSpellProto();
+        cast_count = 0;
+    }
+
     if (mover->GetTypeId()==TYPEID_PLAYER)
     {
         // not have spell in spellbook or spell passive and not casted by client
-        if ( (((Player*)mover)->GetUInt16Value(PLAYER_FIELD_BYTES2, 0) == 0 && !((Player*)mover)->HasActiveSpell(spellId) || IsPassiveSpell(spellInfo)) && (spellId != 1843))
+        if ((((Player*)mover)->GetUInt16Value(PLAYER_FIELD_BYTES2, 0) == 0 &&
+            (!((Player*)mover)->HasActiveSpell(spellId) && !triggered)
+            || IsPassiveSpell(spellInfo)) && spellId != 1843)
         {
-            sLog.outError("World: Player %u casts spell %u which he shouldn't have", mover->GetGUIDLow(), spellId);
+            sLog.outError("WorldSession::HandleCastSpellOpcode: %s casts spell %u which he shouldn't have", mover->GetObjectGuid().GetString().c_str(), spellId);
             //cheater? kick? ban?
             recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
             return;
@@ -413,6 +429,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         // not have spell in spellbook or spell passive and not casted by client        // hack for Sota Seaforium disarming
         if ((!((Creature*)mover)->HasSpell(spellId) || IsPassiveSpell(spellInfo)) && spellId != 1843)
         {
+            sLog.outError("WorldSession::HandleCastSpellOpcode: %s try casts spell %u which he shouldn't have", mover->GetObjectGuid().GetString().c_str(), spellId);
             //cheater? kick? ban?
             recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
             return;
@@ -426,22 +443,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
 
     // some spell cast packet including more data (for projectiles?)
     if (unk_flags & 0x02)
-    {
-        uint8 unk1;
-
-        recvPacket >> Unused<float>();                      // unk1, coords?
-        recvPacket >> Unused<float>();                      // unk1, coords?
-        recvPacket >> unk1;                                 // >> 1 or 0
-        if(unk1)
-        {
-            ObjectGuid guid;                                // guid - unused
-            MovementInfo movementInfo;
-
-            recvPacket >> Unused<uint32>();                 // >> MSG_MOVE_STOP
-            recvPacket >> guid.ReadAsPacked();
-            recvPacket >> movementInfo;
-        }
-    }
+        targets.ReadAdditionalData(recvPacket);
 
     // auto-selection buff level base at target level (in spellInfo)
     if (Unit* target = targets.getUnitTarget())
@@ -451,9 +453,9 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
             spellInfo = actualSpellInfo;
     }
 
-    Spell *spell = new Spell(mover, spellInfo, false);
+    Spell *spell = new Spell(mover, spellInfo, triggered, mover->GetObjectGuid(), triggeredBy);
     spell->m_cast_count = cast_count;                       // set count of casts
-    spell->prepare(&targets);
+    spell->prepare(&targets, triggeredByAura);
 }
 
 void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)

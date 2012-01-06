@@ -1358,10 +1358,10 @@ bool DungeonMap::Add(Player *player)
         if (pGroup)
         {
             // solo saves should be reset when entering a group
-            InstanceGroupBind *groupBind = pGroup->GetBoundInstance(this,GetDifficulty());
+            InstanceGroupBind* groupBind = pGroup->GetBoundInstance(this,GetDifficulty());
             if (playerBind)
             {
-                sLog.outError("DungeonMap::Add: %s is being put in instance %d,%d,%d,%d,%d,%d but he is in group (Id: %d) and is bound to instance %d,%d,%d,%d,%d,%d!",
+                DEBUG_LOG("DungeonMap::Add: %s enter to instance %d,%d,%d,%d,%d,%d but he is in group (Id: %d) and has non-permanent bind to instance %d,%d,%d,%d,%d,%d!",
                     player->GetGuidStr().c_str(), GetPersistentState()->GetMapId(), GetPersistentState()->GetInstanceId(),
                     GetPersistanceState()->GetDifficulty(), GetPersistanceState()->GetPlayerCount(), GetPersistanceState()->GetGroupCount(),
                     GetPersistanceState()->CanReset(), pGroup->GetId(),
@@ -1369,14 +1369,14 @@ bool DungeonMap::Add(Player *player)
                     playerBind->state->GetPlayerCount(), playerBind->state->GetGroupCount(), playerBind->state->CanReset());
 
                 if (groupBind)
-                    sLog.outError("DungeonMap::Add: the group (Id: %d) is bound to instance %d,%d,%d,%d,%d,%d",
+                    DEBUG_LOG("DungeonMap::Add: the group (Id: %d) is bound to instance %d,%d,%d,%d,%d,%d.",
                     pGroup->GetId(),
                     groupBind->state->GetMapId(), groupBind->state->GetInstanceId(), groupBind->state->GetDifficulty(),
                     groupBind->state->GetPlayerCount(), groupBind->state->GetGroupCount(), groupBind->state->CanReset());
 
                 // no reason crash if we can fix state
                 player->UnbindInstance(GetId(), GetDifficulty());
-          }
+            }
 
             // bind to the group or keep using the group save
             if (!groupBind)
@@ -1386,7 +1386,7 @@ bool DungeonMap::Add(Player *player)
                 // cannot jump to a different instance without resetting it
                 if (groupBind->state != GetPersistentState())
                 {
-                    sLog.outError("DungeonMap::Add: %s is being put in instance %d,%d,%d but he is in group (Id: %d) which is bound to instance %d,%d,%d!",
+                    DEBUG_LOG("DungeonMap::Add: %s is being put in instance %d,%d,%d but he is in group (Id: %d) which has non-permanent bind to instance %d,%d,%d!",
                         player->GetGuidStr().c_str(), GetPersistentState()->GetMapId(),
                         GetPersistentState()->GetInstanceId(), GetPersistentState()->GetDifficulty(),
                         pGroup->GetId(), groupBind->state->GetMapId(),
@@ -2068,14 +2068,25 @@ void Map::ScriptsProcess()
                     break;
                 }
 
-                Unit * unit = (Unit*)source;
+                Unit* unit = (Unit*)source;
+
+                // Just turn around
+                if ((fabs(step.script->x) < M_NULL_F && fabs(step.script->y) < M_NULL_F && fabs(step.script->z) < M_NULL_F) ||
+                    // Check point-to-point distance, hence revert effect of bounding radius
+                    unit->IsWithinDist3d(step.script->x, step.script->y, step.script->z, 0.01f - unit->GetObjectBoundingRadius()))
+                {
+                    unit->SetFacingTo(step.script->o);
+                    break;
+                }
+
+
                 if (step.script->moveTo.travelTime != 0)
                 {
                     float speed = unit->GetDistance(step.script->x, step.script->y, step.script->z) / ((float)step.script->moveTo.travelTime * 0.001f);
                     unit->MonsterMoveWithSpeed(step.script->x, step.script->y, step.script->z, speed);
                 }
                 else
-                    unit->NearTeleportTo(step.script->x, step.script->y, step.script->z, unit->GetOrientation());
+                    unit->NearTeleportTo(step.script->x, step.script->y, step.script->z, fabs(step.script->o) > M_NULL_F ? step.script->o : unit->GetOrientation());
                 break;
             }
             case SCRIPT_COMMAND_FLAG_SET:
@@ -3662,11 +3673,13 @@ void Map::ForcedUnload()
             case 1:
             {
                 player->GetSession()->KickPlayer();
+                Remove(player, true);
                 break;
             }
             case 2:
             {
                 player->GetSession()->LogoutPlayer(false);
+                Remove(player, true);
                 break;
             }
             default:
@@ -3680,11 +3693,15 @@ void Map::ForcedUnload()
             if (InstanceData* iData = GetInstanceData())
                 iData->Save();
             break;
+        case 1:
+        case 2:
         default:
             break;
     }
 
     UnloadAll(true);
+
+    RemoveAllObjectsInRemoveList();
 
     SetBroken(false);
 }

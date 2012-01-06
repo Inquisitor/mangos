@@ -35,10 +35,8 @@
 * BattleGround Isle of Conquest:
 * TODO:
 *   - Fix Vehicles on Transports; teleporting from ground onto transports; transports disappearing after relog
-*   - Vehicles have some very low range when damaging gates, Ram doesnt even cause dmg
-*   - Seaforium charge causes damage only when the player that put it is within ~30yd at the explode
-*   - Add scripts to bosses
-*   - Implement Siege Engine
+*   - Add scripts to bosses (Crushing Leap, Rage)
+*   - Correct spawn of Siege Engine
 *   - If a base is owned by a team and a vehicle from the base IS being used, it should not disappear if the opposite team caps the base
 *   - Fix buffs from owning quarry / refinery for +15% siege dmg (they are given correctly, just dont work)
 */
@@ -113,12 +111,6 @@ void BattleGroundIC::Reset()
 
     gunshipHorde = NULL;
     gunshipAlliance = NULL;
-
-    //achievements
-    for (uint8 i = 0; i < BG_TEAMS_COUNT; i++)
-    {
-         m_NotDestroyGate[i] = true;
-    }
 }
 
 void BattleGroundIC::SendTransportInit(Player* player)
@@ -418,6 +410,7 @@ void BattleGroundIC::SpawnGates()
     AddObject(BG_IC_GO_T_HORDE_GATE_1, BG_IC_GO_HORDE_GATE_1, BG_IC_GATELOCS[3][0], BG_IC_GATELOCS[3][1], BG_IC_GATELOCS[3][2], BG_IC_GATELOCS[3][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_IMMEDIATELY);
     AddObject(BG_IC_GO_T_HORDE_GATE_2, BG_IC_GO_HORDE_GATE_2, BG_IC_GATELOCS[4][0], BG_IC_GATELOCS[4][1], BG_IC_GATELOCS[4][2], BG_IC_GATELOCS[4][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_IMMEDIATELY);
     AddObject(BG_IC_GO_T_HORDE_GATE_3, BG_IC_GO_HORDE_GATE_3, BG_IC_GATELOCS[5][0], BG_IC_GATELOCS[5][1], BG_IC_GATELOCS[5][2], BG_IC_GATELOCS[5][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_IMMEDIATELY);
+
     AddObject(BG_IC_GO_T_ALLIANCE_WEST, BG_IC_GO_ALLIANCE_PORT, BG_IC_GATELOCS[0][0], BG_IC_GATELOCS[0][1], BG_IC_GATELOCS[0][2], BG_IC_GATELOCS[0][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_IMMEDIATELY);
     AddObject(BG_IC_GO_T_ALLIANCE_EAST, BG_IC_GO_ALLIANCE_PORT, BG_IC_GATELOCS[1][0], BG_IC_GATELOCS[1][1], BG_IC_GATELOCS[1][2], BG_IC_GATELOCS[1][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_IMMEDIATELY);
     AddObject(BG_IC_GO_T_ALLIANCE_FRONT, BG_IC_GO_ALLIANCE_PORT, BG_IC_GATELOCS[2][0], BG_IC_GATELOCS[2][1], BG_IC_GATELOCS[2][2], BG_IC_GATELOCS[2][3], 0.0f, 0.0f, 0.0f, 0.0f, RESPAWN_IMMEDIATELY);
@@ -636,7 +629,6 @@ void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     OpenDoorEvent(IC_EVENT_BOSS_A);
                     aOpen = true;
-                    m_NotDestroyGate[player->GetTeamId()] = false;
                 }
             }
             break;
@@ -658,7 +650,6 @@ void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     OpenDoorEvent(IC_EVENT_BOSS_A);
                     aOpen = true;
-                    m_NotDestroyGate[player->GetTeamId()] = false;
                 }
             }
             break;
@@ -680,7 +671,6 @@ void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     OpenDoorEvent(IC_EVENT_BOSS_A);
                     aOpen = true;
-                    m_NotDestroyGate[player->GetTeamId()] = false;
                 }
             }
             break;
@@ -702,7 +692,6 @@ void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     OpenDoorEvent(IC_EVENT_BOSS_H);
                     hOpen = true;
-                    m_NotDestroyGate[player->GetTeamId()] = false;
                 }
             }
             break;
@@ -724,7 +713,6 @@ void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     OpenDoorEvent(IC_EVENT_BOSS_H);
                     hOpen = true;
-                    m_NotDestroyGate[player->GetTeamId()] = false;
                 }
             }
             break;
@@ -746,7 +734,6 @@ void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     OpenDoorEvent(IC_EVENT_BOSS_H);
                     hOpen = true;
-                    m_NotDestroyGate[player->GetTeamId()] = false;
                 }
             }
             break;
@@ -861,10 +848,10 @@ void BattleGroundIC::HandleBuffs()
                 }
             }
             // parachute handling
-            if (!plr->IsFalling())
+            float height = plr->GetPositionZ();
+            if (height >= 180)
                 continue;
 
-            float height = plr->GetPositionZ();
             if (height < 180 && height > 140 && (!plr->HasAura(SPELL_PARACHUTE)))
                 plr->CastSpell(plr, SPELL_PARACHUTE, true);
         }

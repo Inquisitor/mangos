@@ -83,7 +83,7 @@ enum BG_SA_GraveYardStatus
 enum BG_SA_Timers
 {
     BG_SA_ROUNDLENGTH                   = 600000,
-    BG_SA_BOAT_START                    = 65000,
+    BG_SA_BOAT_START                    = 70000,
     BG_SA_PILLAR_START                  = 90000
 
 };
@@ -103,7 +103,8 @@ enum BG_SA_GoId
     BG_SA_GO_GATES_MAUVE_AMETHYST       = 190723,
     BG_SA_GO_GATES_RED_SUN              = 190726,
     BG_SA_GO_GATES_YELLOW_MOON          = 190727,
-    BG_SA_GO_TITAN_RELIC                = 192829
+    BG_SA_GO_TITAN_RELIC_A              = 194082,   // spawned titan relic when allies attack
+    BG_SA_GO_TITAN_RELIC_H              = 194083
 };
 
 enum BG_SA_GoType
@@ -132,8 +133,8 @@ enum BG_SA_Events
     SA_EVENT_ADD_GO         = 11,       // flagpoles, defender portals
     SA_EVENT_ADD_VECH_E     = 12,       // east base demolishers
     SA_EVENT_ADD_VECH_W     = 13,       // west base demolishers
-    SA_EVENT_OP_DOOR        = 254,
-
+    SA_EVENT_ADD_RELIC      = 14,        // titan relic
+    SA_EVENT_OP_DOOR        = 254
 };
 
 enum BG_SA_Boats
@@ -182,9 +183,6 @@ struct BG_SA_RoundScore
     Team winner;
     uint32 time;
 };
-
-#define BG_SA_EVENT_START_BATTLE_1      23748       // Ally / Horde likely
-#define BG_SA_EVENT_START_BATTLE_2      21702
 
 class BattleGroundSAScore : public BattleGroundScore
 {
@@ -246,7 +244,7 @@ class BattleGroundSA : public BattleGround
         // Send packet to player for destroy boats (client part)
         void SendTransportsRemove(Player * player);
         /* For SendWarningToAll */
-        void SendWarningToAllSA(uint8 gyd, Team team, bool isDoor = false, uint32 door = NULL, bool destroyed = false);
+        void SendWarningToAllSA(uint8 gyd, Team team, bool isDoor = false, int door = NULL, bool destroyed = false);
         /* For vehicle's faction*/
         uint32 GetVehicleFaction(uint8 vehicleType) const { return GetCorrectFactionSA(vehicleType); }
         uint32 GetCorrectFactionSA(uint8 vehicleType) const;

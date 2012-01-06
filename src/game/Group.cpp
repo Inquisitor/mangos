@@ -35,7 +35,7 @@
 #include "LootMgr.h"
 #include "LFGMgr.h"
 
-// Playerbot
+// Playerbot  	
 #include "playerbot/PlayerbotMgr.h"
 
 #define LOOT_ROLL_TIMEOUT  (1*MINUTE*IN_MILLISECONDS)
@@ -369,14 +369,13 @@ uint32 Group::RemoveMember(ObjectGuid guid, uint8 method)
     // Frozen Mod
     BroadcastGroupUpdate();
     // Frozen Mod
-
-    //Playerbot mod - if master leaves group, all bots leave group
+	
+    if (!sWorld.getConfig(CONFIG_BOOL_PLAYERBOT_DISABLE))
     {
         Player* const player = sObjectMgr.GetPlayer(guid);
         if (player && player->GetPlayerbotMgr())
             player->GetPlayerbotMgr()->RemoveAllBotsFromGroup();
     }
-    //END Playerbot mod
 
     // remove member and change leader (if need) only if strong more 2 members _before_ member remove
     if (GetMembersCount() > uint32(isBGGroup() ? 1 : 2))    // in BG group case allow 1 members group
@@ -1135,7 +1134,7 @@ void Group::BroadcastPacket(WorldPacket *packet, bool ignorePlayersInBGRaid, int
     for(GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next())
     {
         Player *pl = itr->getSource();
-        if (!pl || (ignore && pl->GetObjectGuid() == ignore) || (ignorePlayersInBGRaid && pl->GetGroup() != this) )
+        if (!pl || (ignore && pl->GetObjectGuid() == ignore) || (ignorePlayersInBGRaid && pl->GetGroup() != this) || !pl->IsInWorld())
             continue;
 
         if (pl->GetSession() && (group == -1 || itr->getSubGroup() == group))
@@ -1148,7 +1147,7 @@ void Group::BroadcastReadyCheck(WorldPacket *packet)
     for(GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next())
     {
         Player *pl = itr->getSource();
-        if (pl && pl->GetSession())
+        if (pl && pl->GetSession() && pl->IsInWorld())
             if (IsLeader(pl->GetObjectGuid()) || IsAssistant(pl->GetObjectGuid()))
                 pl->GetSession()->SendPacket(packet);
     }

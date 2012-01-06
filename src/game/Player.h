@@ -74,7 +74,7 @@ enum SpellModType
     SPELLMOD_PCT          = 108                             // SPELL_AURA_ADD_PCT_MODIFIER
 };
 
-// 2^n values, Player::m_isunderwater is a bitmask. These are mangos internal values, they are never send to any client
+// 2^n internal values, they are never sent to the client
 enum PlayerUnderwaterState
 {
     UNDERWATER_NONE                     = 0x00,
@@ -820,6 +820,7 @@ enum TeleportToOptions
     TELE_TO_NOT_LEAVE_COMBAT    = 0x04,
     TELE_TO_NOT_UNSUMMON_PET    = 0x08,
     TELE_TO_SPELL               = 0x10,
+    TELE_TO_CHECKED             = 0x1000,
 };
 
 /// Type of environmental damages
@@ -1357,7 +1358,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SendPreparedGossip(WorldObject *pSource);
         void OnGossipSelect(WorldObject *pSource, uint32 gossipListId, uint32 menuId);
 
-        uint32 GetGossipTextId(uint32 menuId);
+        uint32 GetGossipTextId(uint32 menuId, WorldObject* pSource);
         uint32 GetGossipTextId(WorldObject *pSource);
         uint32 GetDefaultGossipMenuForSource(WorldObject *pSource);
 
@@ -1483,10 +1484,10 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         uint32 GetInGameTime() { return m_ingametime; }
 
-        void SetInGameTime( uint32 time ) { m_ingametime = time; }
-
-        void AddTimedQuest( uint32 quest_id ) { m_timedquests.insert(quest_id); }
-        void RemoveTimedQuest( uint32 quest_id ) { m_timedquests.erase(quest_id); }
+        void SetInGameTime(uint32 time) { m_ingametime = time; }
+        void AddTimedQuest(uint32 quest_id) { m_timedquests.insert(quest_id); }
+        void RemoveTimedQuest(uint32 quest_id) { m_timedquests.erase(quest_id); }
+        void MakeTalentGlyphLink(std::ostringstream &out);
 
         void chompAndTrim(std::string& str);
         bool getNextQuestId(const std::string& pString, unsigned int& pStartPos, unsigned int& pId);
@@ -1615,7 +1616,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         bool HasSpell(uint32 spell) const;
         bool HasActiveSpell(uint32 spell) const;            // show in spellbook
-        TrainerSpellState GetTrainerSpellState(TrainerSpell const* trainer_spell) const;
+        TrainerSpellState GetTrainerSpellState(TrainerSpell const* trainer_spell, uint32 reqLevel) const;
         bool IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel = NULL) const;
         bool IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) const;
         bool IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const;
@@ -2282,7 +2283,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         void SetHomebindToLocation(WorldLocation const& loc, uint32 area_id);
         void RelocateToHomebind() { SetLocationMapId(m_homebindMapId); Relocate(m_homebindX, m_homebindY, m_homebindZ); }
-        bool TeleportToHomebind(uint32 options = 0) { return TeleportTo(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, GetOrientation(), options); }
+        bool TeleportToHomebind(uint32 options = TELE_TO_CHECKED) { return TeleportTo(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, GetOrientation(), options); }
 
         Object* GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask);
 
@@ -2356,6 +2357,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         AreaLockStatus GetAreaTriggerLockStatus(AreaTrigger const* at, Difficulty difficulty);
         bool CanEnterToArea(uint32 mapId, Difficulty difficulty) { return GetAreaLockStatus(mapId, difficulty) == AREA_LOCKSTATUS_OK; };
         bool CanUseAreaTrigger(AreaTrigger const* at, Difficulty difficulty) { return GetAreaTriggerLockStatus(at, difficulty) == AREA_LOCKSTATUS_OK; };
+        bool CheckTransferPossibility(uint32 mapId);
+        bool CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq = false);
 
         // LFG
         LFGPlayerState* GetLFGState() { return m_LFGState;};
@@ -2443,6 +2446,10 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SetPlayerbotMgr(PlayerbotMgr* mgr) { assert(!m_playerbotAI && !m_playerbotMgr); m_playerbotMgr=mgr; }
         PlayerbotMgr* GetPlayerbotMgr() { return m_playerbotMgr; }
         void SetBotDeathTimer() { m_deathTimer = 0; }
+        bool IsInDuel(Player const* player) const { return duel && (duel->opponent == player || duel->initiator == player) && duel->startTime != 0; }
+
+        // Return collision height sent to client
+        float GetCollisionHeight(bool mounted);
 
     protected:
 
@@ -2522,7 +2529,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void _SaveSkills();
         void _SaveSpells();
         void _SaveEquipmentSets();
-        void _SaveBGData();
+        void _SaveBGData(bool forceClean = false);
         void _SaveGlyphs();
         void _SaveTalents();
         void _SaveStats();

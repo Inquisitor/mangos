@@ -315,9 +315,8 @@ class BattleGroundIC : public BattleGround
 
         virtual WorldSafeLocsEntry const* GetClosestGraveYard(Player* player);
 
-        void RemovePlayer(Player *plr);
+        void RemovePlayer(Player* plr);
         void HandleAreaTrigger(Player *Source, uint32 Trigger);
-
         bool SetupBattleGround();
         void EndBattleGround(Team winner);
         void EventPlayerClickedOnFlag(Player *Source, GameObject* target_obj);
@@ -337,9 +336,6 @@ class BattleGroundIC : public BattleGround
         // for achievement Resource Glut
         bool hasAllResNodes(int8 team);
 
-         // Achievements
-        bool GetNotDestroyGate(Team team) const { return m_NotDestroyGate[GetTeamIndexByTeamId(team)]; }
-
     private:
         uint32 closeFortressDoorsTimer;
         uint32 m_resource_Timer[BG_IC_MAX_RESOURCE_NODES];
@@ -352,8 +348,6 @@ class BattleGroundIC : public BattleGround
         Transport* gunshipHorde;
         Transport* CreateTransport(uint32 goEntry,uint32 period);
         void SendTransportInit(Player* player);
-
-        bool m_NotDestroyGate[BG_TEAMS_COUNT];
 
         void HandleBuffs();
 

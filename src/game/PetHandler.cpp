@@ -474,6 +474,10 @@ void WorldSession::HandlePetCastSpellOpcode(WorldPacket& recvPacket)
     SpellCastTargets targets;
     recvPacket >> targets.ReadForCaster(pet);
 
+    // some spell cast packet including more data (for projectiles?)
+    if (unk_flags & 0x02)
+        targets.ReadAdditionalData(recvPacket);
+
     SpellEntry const* spellInfo = sSpellStore.LookupEntry(spellid);
     if (!spellInfo)
     {
@@ -484,11 +488,14 @@ void WorldSession::HandlePetCastSpellOpcode(WorldPacket& recvPacket)
     if (pet->GetCharmInfo() && pet->GetCharmInfo()->GetGlobalCooldownMgr().HasGlobalCooldown(spellInfo))
         return;
 
+    bool triggered = bool(pet->GetTriggeredByClientAura(spellid));
+
     // do not cast not learned spells
-    if (!pet->HasSpell(spellid) || IsPassiveSpell(spellInfo))
+    if ((!pet->HasSpell(spellid) && !triggered)
+        || IsPassiveSpell(spellInfo))
         return;
 
-    if (pet->IsNonMeleeSpellCasted(false))
+    if (pet->IsNonMeleeSpellCasted(false) && !triggered)
         pet->InterruptNonMeleeSpells(false);
 
 

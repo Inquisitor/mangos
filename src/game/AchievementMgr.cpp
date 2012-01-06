@@ -1032,21 +1032,14 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
-                        case 873:              // AV, Frostwolf Perfection
-                        case 220:              // AV, Stormpike Perfection
+                        case 220:               // AV, win while your towers and captain are ok, enemy towers destroyed (alliance)
+                        case 873:               // AV, win while your towers and captain are ok, enemy towers destroyed (horde)
                         {
-                            if(!((BattleGroundAV*)bg)->PerfectionAV(GetPlayer()->GetTeam()))
-                                continue;
-                            break;
-                        }
-                        case 3846:                          // IoC, win while controlling each 5 nodes (alliance)
-                        case 4176:                          // IoC, win while controlling each 5 nodes (horde)
-                        {
-                            if (bg->GetTypeID(true) != BATTLEGROUND_IC)
+                            if (bg->GetTypeID(true) != BATTLEGROUND_AV)
                                 continue;
 
                             int8 team = bg->GetTeamIndexByTeamId(GetPlayer()->GetTeam());
-                            if(!((BattleGroundIC*)bg)->hasAllResNodes(team))
+                            if(!((BattleGroundAV*)bg)->hasAllTowers(team))
                                 continue;
                             break;
                         }
@@ -1061,8 +1054,6 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
                             break;
                         }
-                        case 204:
-                            break;
                         default:
                         {
                             // those requirements couldn't be found in the dbc
@@ -1100,6 +1091,17 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                                 continue;
 
                             if (((BattleGroundSA*)bg)->isDemolisherDestroyed[GetPlayer()->GetTeam() == ALLIANCE ? 0 : 1])
+                                continue;
+                            break;
+                        }
+                        case 3846:                          // IoC, win while controlling each 5 nodes (alliance)
+                        case 4176:                          // IoC, win while controlling each 5 nodes (horde)
+                        {
+                            if (bg->GetTypeID(true) != BATTLEGROUND_IC)
+                                continue;
+
+                            int8 team = bg->GetTeamIndexByTeamId(GetPlayer()->GetTeam());
+                            if(!((BattleGroundIC*)bg)->hasAllResNodes(team))
                                 continue;
                             break;
                         }
@@ -1426,26 +1428,6 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
 
                                 break;
                             }
-                        }
-                    case 3854:
-                        if(miscvalue1 == 68502)
-                        {
-                            BattleGround* bg = GetPlayer()->GetBattleGround();
-                            if (!bg)
-                                continue;
-
-                            if(GetPlayer()->GetTeam() == ALLIANCE)
-                                if(GetPlayer()->GetAreaId() != 4752)
-                                    continue;
-
-                            if(GetPlayer()->GetTeam() == HORDE)
-                                if(GetPlayer()->GetAreaId() != 4753)
-                                    continue;
-
-                            if(!((BattleGroundIC*)bg)->GetNotDestroyGate(GetPlayer()->GetTeam()))
-                                continue;
-
-                            break;
                         }
                     case 1502:
                         if(miscvalue1 == 23335)

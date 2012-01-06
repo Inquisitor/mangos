@@ -41,12 +41,6 @@ class MANGOS_DLL_SPEC Transport : public GameObject
         // the very special case of removing Transport from world - as it does not exist on map
         void RemoveFromWorld();
 
-        void BuildStartMovePacket(Map const *targetMap);
-        void BuildStopMovePacket(Map const *targetMap);
-
-        typedef std::set<Unit*> UnitSet;
-        UnitSet const& GetUnitPassengers() const { return _passengers; }
-
         Creature* AddNPCPassenger(uint32 entry, float x, float y, float z, float o, Team team = TEAM_NONE);
         void UpdateCreaturePositions(Creature* npc, Map* map, float second_x, float second_y, float second_z, float second_o, bool teleport = false);
 
@@ -54,11 +48,17 @@ class MANGOS_DLL_SPEC Transport : public GameObject
         bool GetStopped() const { return isStopped; }
         void SetStopped(bool values) { isStopped = values; }
 
-        //void BuildStartMovePacket(Map const *targetMap);
-        //void BuildStopMovePacket(Map const *targetMap);
-
         bool IsTransportMap(uint32 mapid);
         Transport* GetTransportByGOMapId(uint32 mapid);
+
+        void BuildStartMovePacket(Map const *targetMap);
+        void BuildStopMovePacket(Map const *targetMap);
+
+        typedef std::set<Player*> PlayerSet;
+        PlayerSet const& GetPassengers() const { return m_passengers; }
+
+        typedef std::set<Unit*> UnitSet;
+        UnitSet const& GetUnitPassengers() const { return _passengers; }
 
     private:
         struct WayPoint
@@ -86,6 +86,7 @@ class MANGOS_DLL_SPEC Transport : public GameObject
         uint32 m_pathTime;
         uint32 m_timer;
 
+        PlayerSet m_passengers;
         UnitSet _passengers;
         bool isStopped;
 

@@ -355,4 +355,11 @@ bool IsIPAddress(char const* ipaddress);
 uint32 CreatePIDFile(const std::string& filename);
 
 void hexEncodeByteArray(uint8* bytes, uint32 arrayLen, std::string& result);
+
+/* Round float value to "pct" accuracy */
+inline float round_pct(float value)
+{
+    return ((value < 0.0f ? ceil(value * 100.0f - 0.5f) : floor(value * 100.0f + 0.5f))/100.0f);
+}
+
 #endif

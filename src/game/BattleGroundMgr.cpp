@@ -483,10 +483,10 @@ bool BattleGroundQueue::InviteGroupToBG(GroupQueueInfo * ginfo, BattleGround * b
 
             // create remind invite events
             BGQueueInviteEvent* inviteEvent = new BGQueueInviteEvent(plr->GetObjectGuid(), ginfo->IsInvitedToBGInstanceGUID, bgTypeId, ginfo->arenaType, ginfo->RemoveInviteTime);
-            plr->m_Events.AddEvent(inviteEvent, plr->m_Events.CalculateTime(INVITATION_REMIND_TIME));
+            plr->AddEvent(inviteEvent, INVITATION_REMIND_TIME);
             // create automatic remove events
             BGQueueRemoveEvent* removeEvent = new BGQueueRemoveEvent(plr->GetObjectGuid(), ginfo->IsInvitedToBGInstanceGUID, bgTypeId, bgQueueTypeId, ginfo->RemoveInviteTime);
-            plr->m_Events.AddEvent(removeEvent, plr->m_Events.CalculateTime(INVITE_ACCEPT_WAIT_TIME));
+            plr->AddEvent(removeEvent, INVITE_ACCEPT_WAIT_TIME);
 
             WorldPacket data;
 
@@ -1375,7 +1375,7 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket *data, BattleGround *bg)
                 *data << uint32(0x00000002);                // count of next fields
                 *data << uint32(((BattleGroundICScore*)itr->second)->BasesAssaulted);       // bases asssulted
                 *data << uint32(((BattleGroundICScore*)itr->second)->BasesDefended);        // bases defended
-                 break;
+                break;
             case BATTLEGROUND_NA:
             case BATTLEGROUND_BE:
             case BATTLEGROUND_AA:
