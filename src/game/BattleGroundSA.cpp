@@ -669,17 +669,17 @@ void BattleGroundSA::EventPlayerClickedOnFlag(Player *source, GameObject* target
     {
         // east base
         case 0:
-            SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);
-            SpawnEvent(SA_EVENT_ADD_VECH_W, 0, false, 30);
-            SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);
-            SpawnEvent(SA_EVENT_ADD_BOMB_W, (GetDefender() == ALLIANCE) ? BG_SA_GRAVE_STATUS_HORDE_OCCUPIED : BG_SA_GRAVE_STATUS_ALLY_OCCUPIED, true);
-            break;
-        // west base
-        case 1:
             SpawnEvent(SA_EVENT_ADD_VECH_E, 0, true);
             SpawnEvent(SA_EVENT_ADD_VECH_E, 0, false, 30);
             SpawnEvent(SA_EVENT_ADD_VECH_E, 0, true);
             SpawnEvent(SA_EVENT_ADD_BOMB_E, (GetDefender() == ALLIANCE) ? BG_SA_GRAVE_STATUS_HORDE_OCCUPIED : BG_SA_GRAVE_STATUS_ALLY_OCCUPIED, true);
+            break;
+        // west base
+        case 1:
+            SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);
+            SpawnEvent(SA_EVENT_ADD_VECH_W, 0, false, 30);
+            SpawnEvent(SA_EVENT_ADD_VECH_W, 0, true);
+            SpawnEvent(SA_EVENT_ADD_BOMB_W, (GetDefender() == ALLIANCE) ? BG_SA_GRAVE_STATUS_HORDE_OCCUPIED : BG_SA_GRAVE_STATUS_ALLY_OCCUPIED, true);
             break;
         // central base
         case 2:
@@ -983,6 +983,23 @@ WorldSafeLocsEntry const* BattleGroundSA::GetClosestGraveYard(Player* player)
             gyd.push_back(i);
 
     WorldSafeLocsEntry const* good_entry = NULL;
+
+    //first start location gyd
+    if (GetDefender() == HORDE)
+    {
+        if (teamIndex == 0)
+            good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[1]);
+        else
+            good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[0]);
+    }
+    if (GetDefender() == ALLIANCE)
+    {
+        if (teamIndex == 0)
+            good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[0]);
+        else
+            good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[1]);
+    }
+
     // If so, select the closest node to place ghost on
     if (!gyd.empty())
     {
@@ -998,31 +1015,15 @@ WorldSafeLocsEntry const* BattleGroundSA::GetClosestGraveYard(Player* player)
                 continue;
 
             float dist = (entry->x - plr_x)*(entry->x - plr_x)+(entry->y - plr_y)*(entry->y - plr_y);
-            if (mindist > dist)
+            float else_dist = (good_entry->x - plr_x)*(good_entry->x - plr_x)+(good_entry->y - plr_y)*(good_entry->y - plr_y);
+
+            if (else_dist > dist)
             {
                 mindist = dist;
                 good_entry = entry;
             }
         }
         gyd.clear();
-    }
-    // If not, place ghost on starting location
-    if (!good_entry)
-    {
-        if (GetDefender() == HORDE)
-        {
-            if (teamIndex == 0)
-                good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[1]);
-            else
-                good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[0]);
-        }
-        if (GetDefender() == ALLIANCE)
-        {
-            if (teamIndex == 0)
-                good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[0]);
-            else
-                good_entry = sWorldSafeLocsStore.LookupEntry(BG_SA_GraveyardIds[1]);
-        }
     }
     return good_entry;
 }
