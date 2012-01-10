@@ -1,0 +1,1 @@
+UPDATE gameobject set orientation=1.544 where id=195527;
