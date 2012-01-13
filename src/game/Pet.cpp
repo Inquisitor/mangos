@@ -1982,6 +1982,9 @@ void Pet::ToggleAutocast(uint32 spellid, bool apply)
     if (IsPassiveSpell(spellid))
         return;
 
+    if (m_spells.empty())
+        return;
+
     PetSpellMap::iterator itr = m_spells.find(spellid);
 
     if (itr == m_spells.end())
