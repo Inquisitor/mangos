@@ -1062,11 +1062,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     target = this;
                     break;
                 }
+                // Essence of the Blood Queen
                 case 70871:
                 {
-                    // Soul of Blood qween
                     triggered_spell_id = 70872;
-                    basepoints[0] = int32(triggerAmount* damage /100);
+                    target = this;
+                    basepoints[0] = int32((damage * triggerAmount) / 100.0f);
                     if (basepoints[0] < 0)
                         return SPELL_AURA_PROC_FAILED;
                     break;
@@ -3703,6 +3704,13 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
 
                     return SPELL_AURA_PROC_OK;
                 }
+                case 71494:                                 // Vengeful Blast
+                {
+                    // despawn Vengeful Shade after proc
+                    if  (GetTypeId() == TYPEID_UNIT)
+                        ((Creature*)this)->ForcedDespawn(1000);
+                    break;
+                }
                 case 72178:                                 // Blood link Saurfang aura
                 {
                     target = this;
@@ -3715,6 +3723,13 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                     target = pVictim;
                     trigger_spell_id = 51132;
                     basepoints[0] = pVictim->GetMaxHealth() - pVictim->GetHealth();
+                    break;
+                }
+                case 72408:                                 // Rune of Blood (Saurfang)
+                {
+                    // Proc on targets with dummy aura (debuff cast by Saurfang)
+                    if (pVictim && !pVictim->HasAura(72410))
+                        return SPELL_AURA_PROC_FAILED;
                     break;
                 }
             }
