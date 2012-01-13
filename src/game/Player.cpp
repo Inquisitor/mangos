@@ -8473,6 +8473,14 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
             loot = &go->loot;
 
+            Player *recipient = go->GetLootRecipient();
+
+            if (!recipient)
+            {
+                go->SetLootRecipient(this);
+                recipient = this;
+            }
+
             // generate loot only if ready for open and spawned in world
             if (go->getLootState() == GO_READY && go->isSpawned())
             {
@@ -8527,46 +8535,64 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     loot->clear();
                     loot->FillLoot(lootid, LootTemplates_Gameobject, this, false);
                     loot->generateMoneyLoot(go->GetGOInfo()->MinMoneyLoot, go->GetGOInfo()->MaxMoneyLoot);
-                }
-                else if (loot_type == LOOT_FISHING)
-                    go->getFishLoot(loot,this);
-
-                go->SetLootState(GO_ACTIVATED);
-            }
-
-            if ((go->getLootState() == GO_ACTIVATED) && (go->GetGoType() == GAMEOBJECT_TYPE_CHEST))
-            {
-                if (go->GetGOInfo()->chest.groupLootRules == 1 || sWorld.getConfig(CONFIG_BOOL_LOOT_CHESTS_IGNORE_DB))
-                {
-                    if (Group* group = GetGroup())
+                    if (go->GetGoType() == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
                     {
-                        if (group == go->GetGroupLootRecipient())
+                        if (Group* group = go->GetGroupLootRecipient())
                         {
-                            if (group->GetLootMethod() == FREE_FOR_ALL)
-                                permission = ALL_PERMISSION;
-                            else if (group->GetLooterGuid() == GetObjectGuid())
+                            group->UpdateLooterGuid(go, true);
+
+                            switch (group->GetLootMethod())
                             {
-                                if (group->GetLootMethod() == MASTER_LOOT)
+                                case GROUP_LOOT:
+                                    // GroupLoot delete items over threshold (threshold even not implemented), and roll them. Items with quality<threshold, round robin
+                                    group->GroupLoot(go, loot);
+                                    permission = GROUP_PERMISSION;
+                                    break;
+                                case NEED_BEFORE_GREED:
+                                    group->NeedBeforeGreed(go, loot);
+                                    permission = GROUP_PERMISSION;
+                                    break;
+                                case MASTER_LOOT:
+                                    group->MasterLoot(go, loot);
                                     permission = MASTER_PERMISSION;
-                                else
-                                    permission = ALL_PERMISSION;
+
+                                    break;
+                                default:
+                                    break;
                             }
+                        }
+                    }
+                 }
+                 else if (loot_type == LOOT_FISHING)
+                     go->getFishLoot(loot,this);
+
+                 go->SetLootState(GO_ACTIVATED);
+             }
+            if (go->getLootState() == GO_ACTIVATED && go->GetGoType() == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
+            {
+                if (Group* group = go->GetGroupLootRecipient())
+                {
+                    if (group == GetGroup())
+                    {
+                        if (group->GetLootMethod() == FREE_FOR_ALL)
+                            permission = ALL_PERMISSION;
+                        else if (group->GetLooterGuid() == GetObjectGuid())
+                        {
+                            if (group->GetLootMethod() == MASTER_LOOT)
+                                permission = MASTER_PERMISSION;
                             else
-                                permission = GROUP_PERMISSION;
+                                permission = ALL_PERMISSION;
                         }
                         else
-                            permission = NONE_PERMISSION;
+                            permission = GROUP_PERMISSION;
                     }
-               }
-               else
-                   permission = ALL_PERMISSION;
-            }
-            // the player whose group may loot the corpse
-            Player* recipient = go->GetLootRecipient();
-            if (!recipient)
-            {
-                go->SetLootRecipient(this);
-                recipient = this;
+                    else
+                        permission = NONE_PERMISSION;
+                }
+                else if (recipient == this)
+                    permission = ALL_PERMISSION;
+                else
+                    permission = NONE_PERMISSION;
             }
             break;
         }
