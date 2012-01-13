@@ -1756,7 +1756,7 @@ Creature* BattleGround::AddCreature(uint32 entry, uint32 type, uint32 teamval, f
     pCreature->SetSpeedRate(MOVE_RUN,   cinfo->speed_run);
 
     map->Add(pCreature);
-    m_BgCreatures[type] = pCreature->GetGUID();
+    m_BgCreatures[type] = pCreature->GetObjectGuid();
     pCreature->SetPosition(x, y, z, o);
     if (respawntime)
         pCreature->SetRespawnDelay(respawntime);
@@ -1782,7 +1782,7 @@ bool BattleGround::AddSpiritGuide(uint32 type, float x, float y, float z, float 
     }
     pCreature->SetDeathState(DEAD);
 
-    pCreature->SetUInt64Value(UNIT_FIELD_CHANNEL_OBJECT, pCreature->GetGUID());
+    pCreature->SetUInt64Value(UNIT_FIELD_CHANNEL_OBJECT, pCreature->GetObjectGuid());
     // aura
     //TODO: Fix display here
     //pCreature->SetVisibleAura(0, SPELL_SPIRIT_HEAL_CHANNEL);

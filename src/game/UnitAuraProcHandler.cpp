@@ -2110,7 +2110,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 // Glyph of Backstab
                 case 56800:
                 {
-                    if (Aura* aura = target->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_ROGUE, UI64LIT(0x00100000), 0, GetGUID()))
+                    if (Aura* aura = target->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_ROGUE, UI64LIT(0x00100000), 0, GetObjectGuid()))
                     {
                         uint32 countMin = aura->GetAuraMaxDuration();
                         uint32 countMax = GetSpellMaxDuration(aura->GetSpellProto());
