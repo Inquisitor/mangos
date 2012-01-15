@@ -1108,21 +1108,7 @@ void BattleGroundSA::TeleportPlayerToCorrectLoc(Player *plr, bool resetBattle)
     if (!plr)
         return;
 
-    if (resetBattle)
-    {
-        if (!plr->isAlive())
-        {
-            plr->ResurrectPlayer(1.0f);
-            plr->SpawnCorpseBones();
-        }
-
-        plr->RemoveArenaAuras(true);
-        plr->SetHealth(plr->GetMaxHealth());
-        plr->SetPower(POWER_MANA, plr->GetMaxPower(POWER_MANA));
-        plr->CombatStopWithPets(true);
-    }
-
-    if (!shipsStarted)
+    if (resetBattle || !shipsStarted)
     {
         if (!plr->isAlive())
         {
@@ -1154,8 +1140,13 @@ void BattleGroundSA::TeleportPlayerToCorrectLoc(Player *plr, bool resetBattle)
             else
                 plr->TeleportTo(607, 1803.71f, 118.61f, 59.83f, 3.56f, 0); // Pillar Right
         }
-        else
-            plr->TeleportTo(607, 1209.7f, -65.16f, 70.1f, 0.0f, 0);
+        else // If BG starts in 30 sec it teleports directly at the beach
+        {
+            if (urand(0,1))
+                plr->TeleportTo(607, 1597.64f, -106.35f, 8.89f, 4.13f, 0);
+            else
+                plr->TeleportTo(607, 1606.61f, 50.13f, 7.58f, 2.39f, 0);
+        }
     }
     // AddPlayer is called before SetupShips, so this check is needed for the 1st round to prevent console spam
     if (shipsSpawned)
