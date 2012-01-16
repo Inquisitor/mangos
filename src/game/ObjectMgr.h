@@ -1011,11 +1011,6 @@ class ObjectMgr
             return mMapObjectGuids[MAKE_PAIR32(mapid,spawnMode)][cell_id];
         }
 
-        CellObjectGuidsMap const& GetMapObjectGuids(uint16 mapid, uint8 spawnMode)
-        {
-            return mMapObjectGuids[MAKE_PAIR32(mapid,spawnMode)];
-        }
-
         // modifiers for global grid objects state (static DB spawns, global spawn mods from gameevent system)
         // Don't must be used for modify instance specific spawn state modifications
         void AddCreatureToGrid(uint32 guid, CreatureData const* data);

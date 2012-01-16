@@ -2089,6 +2089,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         // Vehicle system
         void EnterVehicle(VehicleKit *vehicle, int8 seatId = -1);
+        void ExitVehicleOnTransport(Transport* trans);                         // temporary hack
         void ExitVehicle();
         void ChangeSeat(int8 seatId, bool next = true);
         VehicleKit* GetVehicle() const { return m_pVehicle; }

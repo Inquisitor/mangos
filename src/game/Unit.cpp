@@ -12475,17 +12475,50 @@ void Unit::EnterVehicle(VehicleKit *vehicle, int8 seatId)
     }
 }
 
+void Unit::ExitVehicleOnTransport(Transport* trans)
+{
+    if(!m_pVehicle)
+         return;
+
+    float trans_x = m_pVehicle->GetBase()->GetTransOffsetX();
+    float trans_y = m_pVehicle->GetBase()->GetTransOffsetY();
+    float trans_z = m_pVehicle->GetBase()->GetTransOffsetZ() + 2.0f;
+
+    m_pVehicle->RemovePassenger(this);
+    m_pVehicle = NULL;
+
+    if (GetTypeId() == TYPEID_PLAYER)
+       ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+
+    float x = GetPositionX() + trans_x;
+    float y = GetPositionY() + trans_y;
+    float z = GetPositionZ() + trans_z;
+    GetClosePoint(x, y, z, 2.0f);
+    trans->EnterThisTransport(this, x, y, z, m_pVehicle->GetBase()->GetOrientation());
+}
+
 void Unit::ExitVehicle()
 {
     if(!m_pVehicle)
         return;
 
-    m_pVehicle->RemovePassenger(this, true);
+    if (Transport* trans = m_pVehicle->GetBase()->GetTransport())
+        ExitVehicleOnTransport(trans);
+    else
+    {
+        m_pVehicle->RemovePassenger(this);
+        m_pVehicle = NULL;
 
-    m_pVehicle = NULL;
+        if (GetTypeId() == TYPEID_PLAYER)
+            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
 
-    if (isAlive() && GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
+        float x = GetPositionX();
+        float y = GetPositionY();
+        float z = GetPositionZ() + 2.0f;
+        GetClosePoint(x, y, z, 2.0f);
+        UpdateAllowedPositionZ(x, y, z);
+        MonsterMoveWithSpeed(x, y, z + 0.5f, 28);
+    }
 }
 
 void Unit::SetPvP( bool state )

@@ -1762,7 +1762,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         {
             GetTransport()->RemovePassenger(this);
             m_movementInfo.SetTransportData(ObjectGuid(), 0.0f, 0.0f, 0.0f, 0.0f, 0, -1);
-//            RepopAtGraveyard();                             // teleport to near graveyard if on transport, looks blizz like :)
+            //RepopAtGraveyard();                             // teleport to near graveyard if on transport, looks blizz like :)
             TeleportToHomebind();                             // teleport to homebind instead of graveyard if on transport, not fully blizzlike, but not may cause teleport cycle.
         }
 

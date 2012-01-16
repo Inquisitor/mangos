@@ -233,7 +233,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         Creature* GetAnyTypeCreature(ObjectGuid guid);      // normal creature or pet or vehicle
         GameObject* GetGameObject(ObjectGuid guid);
         DynamicObject* GetDynamicObject(ObjectGuid guid);
-        Transport* getTransport(ObjectGuid guid);
+        Transport* Map::GetTransport(ObjectGuid guid);
         Corpse* GetCorpse(ObjectGuid guid);                 // !!! find corpse can be not in world
         Unit* GetUnit(ObjectGuid guid);                     // only use if sure that need objects at current map, specially for player case
         WorldObject* GetWorldObject(ObjectGuid guid);       // only use if sure that need objects at current map, specially for player case
@@ -265,8 +265,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, uint32 language, Unit* target, uint32 senderLowGuid = 0);
         void PlayDirectSoundToMap(uint32 soundId, uint32 zoneId = 0);
 
-        // Loading Transport
-        Transport* LoadTransportInMap(uint32 transportEntry, uint32 transportPosition = 0, uint32 transportPeriod = 0, bool IsStoped = false);
         // Attacker per-map storage operations
         void AddAttackerFor(ObjectGuid targetGuid, ObjectGuid attackerGuid);
         void RemoveAttackerFor(ObjectGuid targetGuid, ObjectGuid attackerGuid);
@@ -285,6 +283,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         bool const IsBroken() { return m_broken; };
         void SetBroken( bool _value = true ) { m_broken = _value; };
         void ForcedUnload();
+
+        // Loading Transport
+        Transport* LoadTransportInMap(uint32 transportEntry, uint32 pointId = 0, uint32 period = 0, bool IsStoped = false, float orientation = 1.0f);
+        Transport* GetTransportFromStorage(uint32 entry);
 
     private:
         void LoadMapAndVMap(int gx, int gy);
