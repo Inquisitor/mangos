@@ -1750,6 +1750,11 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                         return SPELL_AURA_PROC_FAILED;
 
                     int32 damagefromticks = leachAura->GetModifier()->m_amount * GetSpellAuraMaxTicks(procSpell);
+                    // Ugly hack, I know, but IDP takes extra 15% damage from Shadowform, so we need to cut it off
+                    if (HasAura(15473))
+                    {
+                        damagefromticks = damagefromticks * 100 / 115;
+                    }
                     basepoints[0] = damagefromticks * triggerAmount / 100;
                     triggered_spell_id = 63675;
                     break;
