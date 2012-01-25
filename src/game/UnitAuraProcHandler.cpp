@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1040,6 +1040,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 case 66808:
                 case 68160:
                     triggered_spell_id = 66809;
+                    break;
+                // Dark Hunger (Lich King)
+                case 69383:
+                    basepoints[0] = 0.5f * damage;
+                    target = this;
+                    triggered_spell_id = 69384;
                     break;
                 // Shiny Shard of the Scale - Equip Effect
                 case 69739:
@@ -2574,12 +2580,21 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                             return SPELL_AURA_PROC_FAILED;
 
                     basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
+
                     target = this;
                     break;
                 }
                 // Sacred Shield (talent rank)
                 case 53601:
                 {
+                    if (procSpell && IsFriendlyTo(pVictim))
+                    {
+                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>() && (pVictim->HasAura(53569, EFFECT_INDEX_0) || pVictim->HasAura(53576, EFFECT_INDEX_0)))
+                            triggered_spell_id = 66922;
+                        else
+                            return SPELL_AURA_PROC_FAILED;
+                    }
+
                     // triggered_spell_id in spell data
                     target = this;
                     break;
@@ -4391,7 +4406,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
         // Enlightenment (trigger only from mana cost spells)
         case 35095:
         {
-            if(!procSpell || procSpell->powerType!=POWER_MANA || procSpell->manaCost==0 && procSpell->ManaCostPercentage==0 && procSpell->manaCostPerlevel==0)
+            if(!procSpell || procSpell->powerType!=POWER_MANA || (procSpell->manaCost==0 && procSpell->ManaCostPercentage==0 && procSpell->manaCostPerlevel==0))
                 return SPELL_AURA_PROC_FAILED;
             break;
         }
@@ -4502,8 +4517,14 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
             // Proc only from trap activation (from periodic proc another aura of this spell)
             // because some spells have both flags (ON_TRAP_ACTIVATION and ON_PERIODIC), but should only proc ON_PERIODIC!!
             if (!(procFlags & PROC_FLAG_ON_TRAP_ACTIVATION) || !procSpell ||
-                !(procSpell->SchoolMask & SPELL_SCHOOL_MASK_FROST) || !roll_chance_i(triggerAmount))
+                !(procSpell->SchoolMask & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_NATURE)) || !roll_chance_i(triggerAmount))
+            {
                 return SPELL_AURA_PROC_FAILED;
+            }
+            // don't proc Explosive Trap on triggering (only on periodic, in other aura proc)
+            else if (procSpell->SpellFamilyFlags.test<CF_HUNTER_FIRE_TRAP_EFFECTS>())
+                return SPELL_AURA_PROC_FAILED;
+
             break;
         }
         // Freezing Fog (Rime triggered)

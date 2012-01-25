@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ class DungeonPersistentState;
 class Spell;
 class Item;
 struct AreaTrigger;
+class WorldPvP;
 
 typedef std::deque<Mail*> PlayerMails;
 
@@ -2201,6 +2202,15 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         bool GetRandomWinner() { return m_IsBGRandomWinner; }
         void SetRandomWinner(bool isWinner);
+
+        /*********************************************************/
+        /***                 WORLD PVP SYSTEM                  ***/
+        /*********************************************************/
+
+        WorldPvP* GetWorldPvP() const;
+        // returns true if the player is in active state for outdoor pvp objective capturing
+        bool IsWorldPvPActive();
+        virtual void HandleObjectiveComplete(Player* /*pPlayer*/) {};
 
         /*********************************************************/
         /***                    REST SYSTEM                    ***/

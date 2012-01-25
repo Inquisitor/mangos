@@ -1,10 +1,11 @@
 -- Strand of the Ancients
 
 -- creature and gameobject initial guid
-SET @CREATURE := 0;
-SET @GAMEOBJECT := 0;
-SELECT MAX(`guid`)+1 FROM `creature` INTO @CREATURE;
-SELECT MAX(`guid`)+1 FROM `gameobject` INTO @GAMEOBJECT;
+SET @CREATURE := 510000;
+SET @GAMEOBJECT := 510000;
+
+DELETE FROM `creature` WHERE `guid` BETWEEN @CREATURE AND @CREATURE+9999;
+DELETE FROM `gameobject` WHERE `guid` BETWEEN @GAMEOBJECT AND @GAMEOBJECT+9999;
 
 DELETE FROM battleground_template WHERE id = 9;
 INSERT INTO battleground_template (id, MinPlayersPerTeam, MaxPlayersPerTeam, AllianceStartLoc, AllianceStartO, HordeStartLoc, HordeStartO) VALUES (9, 5, 15, 1367, 0, 1368, 0);
@@ -48,12 +49,13 @@ UPDATE gameobject_template SET flags = 0 WHERE entry IN (191309, 191310);
 
 -- Vehicles support
 -- Battleground Demolisher
+-- UPDATE creature_template SET npcflag = 1, minlevel = 70, maxlevel = 70, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, vehicle_id = 158, ScriptName = 'npc_sa_demolisher', RegenHealth = 0 WHERE entry = 28781;
 UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, speed_run = 1, spell1 = 52338, spell2 = 60206, resistance2 = 200, resistance3 = 200, resistance4 = 200, resistance5 = 200, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, ScriptName = 'npc_sa_demolisher', RegenHealth = 0 WHERE entry = 28781;
 UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, speed_run = 1, spell1 = 52338, spell2 = 60206, resistance2 = 200, resistance3 = 200, resistance4 = 200, resistance5 = 200, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, RegenHealth = 0, ScriptName = '' WHERE entry = 32796;
 DELETE FROM npc_spellclick_spells WHERE npc_entry IN (28781, 32796);
 INSERT INTO npc_spellclick_spells VALUES
-(28781, 60968, 0, 0, 0, 0),
-(32796, 60968, 0, 0, 0, 0);
+(28781, 60968, 0, 0, 0, 1),
+(32796, 60968, 0, 0, 0, 1);
 -- Demolishers must not heal
 DELETE FROM creature_template_addon WHERE entry IN (28781, 32796);
 INSERT INTO creature_template_addon VALUES

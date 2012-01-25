@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "UpdateMask.h"
-#include "SkillDiscovery.h"
 #include "QuestDef.h"
 #include "GossipDef.h"
 #include "UpdateData.h"
@@ -53,6 +52,8 @@
 #include "BattleGroundAV.h"
 #include "BattleGroundSA.h"
 #include "BattleGroundMgr.h"
+#include "WorldPvP/WorldPvP.h"
+#include "WorldPvP/WorldPvPMgr.h"
 #include "ArenaTeam.h"
 #include "Chat.h"
 #include "Database/DatabaseImpl.h"
@@ -641,6 +642,10 @@ void Player::CleanupsBeforeDelete()
         TradeCancel(false);
         DuelComplete(DUEL_INTERUPTED);
     }
+
+    // notify zone scripts for player logout
+    sWorldPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
+
     Unit::CleanupsBeforeDelete();
 }
 
@@ -3977,7 +3982,14 @@ bool Player::resetTalents(bool no_cost, bool all_specs)
 
         for (int j = 0; j < MAX_TALENT_RANK; ++j)
             if (talentInfo->RankID[j])
+            {
                 removeSpell(talentInfo->RankID[j],!IsPassiveSpell(talentInfo->RankID[j]),false);
+
+                SpellEntry const *spellInfo = sSpellStore.LookupEntry(talentInfo->RankID[j]);
+                for (int k = 0; k < MAX_EFFECT_INDEX; ++k)
+                    if (spellInfo->EffectTriggerSpell[k])
+                        removeSpell(spellInfo->EffectTriggerSpell[k]);
+            }
 
         iter = m_talents[m_activeSpec].begin();
     }
@@ -5637,7 +5649,7 @@ bool Player::UpdateCraftSkill(uint32 spellid)
             SpellEntry const* spellEntry = sSpellStore.LookupEntry(spellid);
             if (spellEntry && spellEntry->Mechanic == MECHANIC_DISCOVERY)
             {
-                if (uint32 discoveredSpell = GetSkillDiscoverySpell(_spell_idx->second->skillId, spellid, this))
+                if (uint32 discoveredSpell = sSpellMgr.GetSkillDiscoverySpell(_spell_idx->second->skillId, spellid, this))
                     learnSpell(discoveredSpell, false);
             }
 
@@ -7137,6 +7149,20 @@ void Player::UpdateArea(uint32 newArea)
     UpdateAreaDependentAuras();
 }
 
+WorldPvP* Player::GetWorldPvP() const
+{
+    return sWorldPvPMgr.GetWorldPvPToZoneId(GetZoneId());
+}
+
+bool Player::IsWorldPvPActive()
+{
+    return CanCaptureTowerPoint() &&
+        (IsPvP() || sWorld.IsPvPRealm()) &&
+        !HasMovementFlag(MOVEFLAG_FLYING) &&
+        !IsTaxiFlying() &&
+        !isGameMaster();
+}
+
 void Player::UpdateZone(uint32 newZone, uint32 newArea)
 {
     AreaTableEntry const* zone = GetAreaEntryByAreaID(newZone);
@@ -7149,7 +7175,12 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
         if (InstanceData* mapInstance = GetInstanceData())
             mapInstance->OnPlayerLeaveZone(this, m_zoneUpdateId);
 
+        // handle world pvp zones
+        sWorldPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
+
         SendInitWorldStates(newZone, newArea);              // only if really enters to new zone, not just area change, works strange...
+
+        sWorldPvPMgr.HandlePlayerEnterZone(this, newZone);
 
         // call this method in order to handle some scripted zones
         if (InstanceData* mapInstance = GetInstanceData())
@@ -8452,7 +8483,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     if (ObjectGuid lootGuid = GetLootGuid())
         m_session->DoLootRelease(lootGuid);
 
-    Loot    *loot = 0;
+    Loot* loot = NULL;
     PermissionTypes permission = ALL_PERMISSION;
 
     DEBUG_LOG("Player::SendLoot");
@@ -8473,8 +8504,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
             loot = &go->loot;
 
-            Player *recipient = go->GetLootRecipient();
-
+            Player* recipient = go->GetLootRecipient();
             if (!recipient)
             {
                 go->SetLootRecipient(this);
@@ -8535,6 +8565,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     loot->clear();
                     loot->FillLoot(lootid, LootTemplates_Gameobject, this, false);
                     loot->generateMoneyLoot(go->GetGOInfo()->MinMoneyLoot, go->GetGOInfo()->MaxMoneyLoot);
+
                     if (go->GetGoType() == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
                     {
                         if (Group* group = go->GetGroupLootRecipient())
@@ -8555,20 +8586,21 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                                 case MASTER_LOOT:
                                     group->MasterLoot(go, loot);
                                     permission = MASTER_PERMISSION;
-
                                     break;
                                 default:
                                     break;
                             }
                         }
                     }
-                 }
-                 else if (loot_type == LOOT_FISHING)
-                     go->getFishLoot(loot,this);
+                }
+                else if (loot_type == LOOT_FISHING)
+                    go->getFishLoot(loot,this);
 
-                 go->SetLootState(GO_ACTIVATED);
-             }
-            if (go->getLootState() == GO_ACTIVATED && go->GetGoType() == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
+                go->SetLootState(GO_ACTIVATED);
+            }
+            if (go->getLootState() == GO_ACTIVATED && 
+            go->GetGoType() == GAMEOBJECT_TYPE_CHEST && 
+            (go->GetGOInfo()->chest.groupLootRules || sWorld.getConfig(CONFIG_BOOL_LOOT_CHESTS_IGNORE_DB)))
             {
                 if (Group* group = go->GetGroupLootRecipient())
                 {
@@ -8851,7 +8883,10 @@ void Player::SendUpdateWorldState(uint32 Field, uint32 Value)
     WorldPacket data(SMSG_UPDATE_WORLD_STATE, 8);
     data << Field;
     data << Value;
-    GetSession()->SendPacket(&data);
+
+    // Tempfix before WorldStateMgr implementing
+    if (IsInWorld())
+        GetSession()->SendPacket(&data);
 }
 
 static WorldStatePair AV_world_states[] =
@@ -9024,6 +9059,50 @@ static WorldStatePair EY_world_states[] =
     { 0x0,   0x0 }
 };
 
+static WorldStatePair SI_world_states[] =                   // Silithus
+{
+    { 2313, 0x0 },                                          // 1 ally silityst gathered
+    { 2314, 0x0 },                                          // 2 horde silityst gathered
+    { 2317, 0x0 }                                           // 3 max silithyst
+};
+
+static WorldStatePair EP_world_states[] =
+{
+    { 0x97a, 0x0 },     // 10 2426
+    { 0x917, 0x0 },     // 11 2327
+    { 0x918, 0x0 },     // 12 2328
+    { 0x97b, 0x32 },     // 13 2427
+    { 0x97c, 0x32 },     // 14 2428
+    { 0x933, 0x1 },     // 15 2355
+    { 0x946, 0x0 },     // 16 2374
+    { 0x947, 0x0 },     // 17 2375
+    { 0x948, 0x0 },     // 18 2376
+    { 0x949, 0x0 },     // 19 2377
+    { 0x94a, 0x0 },     // 20 2378
+    { 0x94b, 0x0 },     // 21 2379
+    { 0x932, 0x0 },     // 22 2354
+    { 0x934, 0x0 },     // 23 2356
+    { 0x935, 0x0 },     // 24 2357
+    { 0x936, 0x0 },     // 25 2358
+    { 0x937, 0x0 },     // 26 2359
+    { 0x938, 0x0 },     // 27 2360
+    { 0x939, 0x1 },     // 28 2361
+    { 0x930, 0x1 },     // 29 2352
+    { 0x93a, 0x0 },     // 30 2362
+    { 0x93b, 0x0 },     // 31 2363
+    { 0x93c, 0x0 },     // 32 2364
+    { 0x93d, 0x0 },     // 33 2365
+    { 0x944, 0x0 },     // 34 2372
+    { 0x945, 0x0 },     // 35 2373
+    { 0x931, 0x1 },     // 36 2353
+    { 0x93e, 0x0 },     // 37 2366
+    { 0x931, 0x1 },     // 38 2367 ??  grey horde not in dbc! send for consistency's sake, and to match field count
+    { 0x940, 0x0 },     // 39 2368
+    { 0x941, 0x0 },     // 7 2369
+    { 0x942, 0x0 },     // 8 2370
+    { 0x943, 0x0 }      // 9 2371
+};
+
 static WorldStatePair HP_world_states[] =                   // Hellfire Peninsula
 {
     { 0x9ba, 0x1 },                                         // 2490 10
@@ -9105,11 +9184,50 @@ static WorldStatePair ZM_world_states[] =                   // Zangarmarsh
     { 0x0,   0x0 }
 };
 
+static WorldStatePair NA_world_states[] =
+{
+    { 2503, 0x0 },  // 10
+    { 2502, 0x0 },  // 11
+    { 2493, 0x0 },  // 12
+    { 2491, 0x0 },  // 13
+
+    { 2495, 0x0 },  // 14
+    { 2494, 0x0 },  // 15
+    { 2497, 0x0 },  // 16
+
+    { 2762, 0x0 },  // 17
+    { 2662, 0x0 },  // 18
+    { 2663, 0x0 },  // 19
+    { 2664, 0x0 },  // 20
+
+    { 2760, 0x0 },  // 21
+    { 2670, 0x0 },  // 22
+    { 2668, 0x0 },  // 23
+    { 2669, 0x0 },  // 24
+
+    { 2761, 0x0 },  // 25
+    { 2667, 0x0 },  // 26
+    { 2665, 0x0 },  // 27
+    { 2666, 0x0 },  // 28
+
+    { 2763, 0x0 },  // 29
+    { 2659, 0x0 },  // 30
+    { 2660, 0x0 },  // 31
+    { 2661, 0x0 },  // 32
+
+    { 2671, 0x0 },  // 33
+    { 2676, 0x0 },  // 34
+    { 2677, 0x0 },  // 35
+    { 2672, 0x0 },  // 36
+    { 2673, 0x0 }  // 37
+};
+
 void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
 {
     // data depends on zoneid/mapid...
     BattleGround* bg = GetBattleGround();
     uint32 mapid = GetMapId();
+    WorldPvP* outdoorBg = sWorldPvPMgr.GetWorldPvPToZoneId(zoneid);
 
     DEBUG_LOG("Sending SMSG_INIT_WORLD_STATES to Map:%u, Zone: %u", mapid, zoneid);
 
@@ -9151,6 +9269,19 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
         case 38:
         case 40:
         case 51:
+            break;
+        case 139:                                           // Eastern plaguelands
+            if (outdoorBg && outdoorBg->GetTypeId() == WORLD_PVP_TYPE_EP)
+                outdoorBg->FillInitialWorldStates(data, count);
+            else
+                FillInitialWorldState(data, count, EP_world_states);
+            break;
+        case 1377:                                          // Silithus
+            if (outdoorBg && outdoorBg->GetTypeId() == WORLD_PVP_TYPE_SI)
+                outdoorBg->FillInitialWorldStates(data, count);
+            else
+                FillInitialWorldState(data, count, SI_world_states);
+            break;
         case 1519:
         case 1537:
         case 2257:
@@ -9180,13 +9311,28 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
                 FillInitialWorldState(data,count, EY_world_states);
             break;
         case 3483:                                          // Hellfire Peninsula
-            FillInitialWorldState(data,count, HP_world_states);
+            if (outdoorBg && outdoorBg->GetTypeId() == WORLD_PVP_TYPE_HP)
+                outdoorBg->FillInitialWorldStates(data,count);
+            else
+                FillInitialWorldState(data,count, HP_world_states);
+            break;
+        case 3518:                                          // Nargrand - Halaa
+            if (outdoorBg && outdoorBg->GetTypeId() == WORLD_PVP_TYPE_NA)
+                outdoorBg->FillInitialWorldStates(data, count);
+            else
+                FillInitialWorldState(data, count, NA_world_states);
             break;
         case 3519:                                          // Terokkar Forest
-            FillInitialWorldState(data,count, TF_world_states);
+            if (outdoorBg && outdoorBg->GetTypeId() == WORLD_PVP_TYPE_TF)
+                outdoorBg->FillInitialWorldStates(data,count);
+            else
+                FillInitialWorldState(data,count, TF_world_states);
             break;
         case 3521:                                          // Zangarmarsh
-            FillInitialWorldState(data,count, ZM_world_states);
+            if (outdoorBg && outdoorBg->GetTypeId() == WORLD_PVP_TYPE_ZM)
+                outdoorBg->FillInitialWorldStates(data,count);
+            else
+                FillInitialWorldState(data,count, ZM_world_states);
             break;
         case 3698:                                          // Nagrand Arena
             if (bg && bg->GetTypeID(true) == BATTLEGROUND_NA)
@@ -23906,6 +24052,11 @@ void Player::ActivateSpec(uint8 specNum)
                 if (talentInfo->RankID[r])
                 {
                     removeSpell(talentInfo->RankID[r],!IsPassiveSpell(talentInfo->RankID[r]),false);
+
+                    SpellEntry const *spellInfo = sSpellStore.LookupEntry(talentInfo->RankID[r]);
+                    for (int k = 0; k < MAX_EFFECT_INDEX; ++k)
+                        if (spellInfo->EffectTriggerSpell[k])
+                            removeSpell(spellInfo->EffectTriggerSpell[k]);
 
                     // if spell is a buff, remove it from group members
                     // TODO: this should affect all players, not only group members?

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -320,13 +320,12 @@ class BattleGroundIC : public BattleGround
         bool SetupBattleGround();
         void EndBattleGround(Team winner);
         void EventPlayerClickedOnFlag(Player *Source, GameObject* target_obj);
-        void UpdateScore(BattleGroundTeamIndex teamIdx, int32 points);
+        void UpdateScore(TeamIndex teamIdx, int32 points);
         void SpawnGates();
 
         /* Scorekeeping */
         void UpdatePlayerScore(Player *Source, uint32 type, uint32 value, bool doAddHonor = true);
 
-        static BattleGroundTeamIndex GetTeamIndexByTeamId(Team team) { return team == ALLIANCE ? BG_TEAM_ALLIANCE : BG_TEAM_HORDE; }
         uint32 GetVehicleFaction(uint8 vehicleType) const { return GetCorrectFactionIC(vehicleType); }
         uint32 GetCorrectFactionIC(uint8 vehicleType) const;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@
 #include "Vehicle.h"
 #include "BattleGround.h"
 #include "InstanceData.h"
+#include "WorldPvP/WorldPvP.h"
 #include "MapPersistentStateMgr.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
@@ -971,6 +972,10 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->AI())
             ((Creature*)this)->AI()->KilledUnit(pVictim);
 
+        // Call World pvp scripts for player kill
+        if (pVictim->GetTypeId() == TYPEID_PLAYER && GetTypeId() == TYPEID_PLAYER)
+            sWorldPvPMgr.HandlePlayerKill((Player*)this, pVictim);
+
         // Call AI OwnerKilledUnit (for any current summoned minipet/guardian/protector)
         PetOwnerKilledUnit(pVictim);
 
@@ -1039,6 +1044,9 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             if (InstanceData* mapInstance = cVictim->GetInstanceData())
                 mapInstance->OnCreatureDeath(cVictim);
 
+            if (m_zoneScript = sWorldPvPMgr.GetZoneScript(GetZoneId()))
+                m_zoneScript->OnCreatureDeath(((Creature*)cVictim));
+
             if (cVictim->IsLinkingEventTrigger())
                 cVictim->GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_DIE, cVictim);
 
@@ -1094,6 +1102,13 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             he->CombatStopWithPets(true);
 
             he->DuelComplete(DUEL_INTERUPTED);
+        }
+
+        // handle player kill in outdoor pvp
+        if (player_tap && this != pVictim)
+        {
+            if (WorldPvP* pWorldBg = player_tap->GetWorldPvP())
+                pWorldBg->HandlePlayerKillInsideArea(player_tap, pVictim);
         }
 
         // battleground things (do this at the end, so the death state flag will be properly set to handle in the bg->handlekill)
@@ -1539,8 +1554,8 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, S
         break;
     }
 
-    // only from players
-    if (GetTypeId() == TYPEID_PLAYER)
+    // only from players and their pets
+    if (GetTypeId() == TYPEID_PLAYER || GetObjectGuid().IsPet())
     {
         damage -= pVictim->GetSpellDamageReduction(damage);
     }
@@ -3464,7 +3479,7 @@ SpellMissInfo Unit::SpellHitResult(Unit *pVictim, SpellEntry const *spell, bool 
             return SPELL_MISS_NONE;
 
         // Check for immune
-        if (pVictim->IsImmunedToDamage(GetSpellSchoolMask(spell)))
+        if (IsSpellCauseDamage(spell) && pVictim->IsImmunedToDamage(GetSpellSchoolMask(spell)))
             return SPELL_MISS_IMMUNE;
     }
     else if (IsPositiveSpell(spell->Id) && IsFriendlyTo(pVictim))
@@ -4506,9 +4521,30 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolderPtr holder)
         // take out same spell
         for (SpellAuraHolderMap::iterator iter = spair.first; iter != spair.second; ++iter)
         {
+            // stack some specific spells
+            bool bIsSpellStackingCustom = false;
+            switch(holder->GetId())
+            {
+                case 70338: // Necrotic Plague (Lich King)
+                case 73785:
+                case 73786:
+                case 73787:
+                case 74074: // Plague Siphon (Lich King)
+                case 72679: // Harvested Soul (Lich King)
+                case 73028:
+                case 74318:
+                case 74319:
+                case 74320:
+                case 74321:
+                case 74322:
+                case 74323:
+                    bIsSpellStackingCustom = true;
+                    break;
+            }
+
             if (iter->second && !iter->second->IsDeleted() &&
-                (iter->second->GetCasterGuid() == holder->GetCasterGuid() ||
-                (iter->second->GetCasterGuid().IsCreatureOrPet() && holder->GetCasterGuid().IsCreatureOrPet())))
+                ((iter->second->GetCasterGuid() == holder->GetCasterGuid() || bIsSpellStackingCustom ||
+                (iter->second->GetCasterGuid().IsCreatureOrPet() && holder->GetCasterGuid().IsCreatureOrPet()))))
             {
                 // Aura can stack on self -> Stack it;
                 if (aurSpellInfo->StackAmount)
@@ -5015,6 +5051,12 @@ void Unit::RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 stackAmount
             }
         }
     }
+    // Necrotic Plague (Lich King)
+    // this hack needs correct implementation
+    else if (spellId == 70338 || spellId == 73785 || spellId == 73786 || spellId == 73787)
+    {
+        RemoveSpellAuraHolder(GetSpellAuraHolder(spellId), AURA_REMOVE_BY_DISPEL);
+    }
 
     RemoveAuraHolderFromStack(spellId, stackAmount, casterGuid, AURA_REMOVE_BY_DISPEL);
 }
@@ -5032,6 +5074,23 @@ void Unit::RemoveAurasDueToSpellBySteal(uint32 spellId, ObjectGuid casterGuid, U
     int32 new_max_dur = max_dur > dur ? dur : max_dur;
     new_holder->SetAuraMaxDuration(new_max_dur);
     new_holder->SetAuraDuration(new_max_dur);
+
+    // some specific events after stealing aura
+    // Lifebloom
+    if (spellProto->SpellFamilyName == SPELLFAMILY_DRUID && spellProto->SpellFamilyFlags.test<CF_DRUID_LIFEBLOOM>())
+    {
+        if (Aura* dotAura = GetAura<SPELL_AURA_DUMMY, SPELLFAMILY_DRUID, CF_DRUID_LIFEBLOOM>(casterGuid))
+        {
+            int32 amount = dotAura->GetModifier()->m_amount;
+            CastCustomSpell(this, 33778, &amount, NULL, NULL, true, NULL, dotAura, casterGuid);
+
+            if (Unit* caster = dotAura->GetCaster())
+            {
+                int32 returnmana = (spellProto->ManaCostPercentage * caster->GetCreateMana() / 100) * dotAura->GetStackAmount() / 2;
+                caster->CastCustomSpell(caster, 64372, &returnmana, NULL, NULL, true, NULL, dotAura, casterGuid);
+            }
+        }
+    }
 
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
@@ -5420,10 +5479,15 @@ void Unit::RemoveAura(Aura* aura, AuraRemoveMode mode)
 
 void Unit::RemoveAllAuras(AuraRemoveMode mode /*= AURA_REMOVE_BY_DEFAULT*/)
 {
-    while (!m_spellAuraHolders.empty())
+    for(SpellAuraHolderMap::iterator iter = m_spellAuraHolders.begin(); iter != m_spellAuraHolders.end();)
     {
-        SpellAuraHolderMap::iterator iter = m_spellAuraHolders.begin();
-        RemoveSpellAuraHolder(iter->second,mode);
+        if (!iter->second->IsDeleted())
+        {
+            RemoveSpellAuraHolder(iter->second,mode);
+            iter = m_spellAuraHolders.begin();
+        }
+        else
+            ++iter;
     }
 }
 
@@ -6535,6 +6599,7 @@ void Unit::AttackedBy(Unit *attacker)
     if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->AI())
     {
         ((Creature*)this)->AI()->AttackedBy(attacker);
+
         if (!isInCombat())
         {
             AddThreat(attacker);
@@ -7894,7 +7959,11 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                         else if (spellProto->Category == 19)
                         {
                             if (pVictim->GetCreatureTypeMask() & CREATURE_TYPEMASK_DEMON_OR_UNDEAD)
-                                return true;
+                            {
+                                // don't override auras that prevent critical strikes taken
+                                if (crit_chance > -100.0f)
+                                    return true;
+                            }
                         }
                         break;
                     case SPELLFAMILY_SHAMAN:
@@ -7903,7 +7972,11 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                         {
                             // Flame Shock
                             if (pVictim->GetAura<SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_SHAMAN, CF_SHAMAN_FLAME_SHOCK>(GetObjectGuid()))
-                                return true;
+                            {
+                                // don't override auras that prevent critical strikes taken
+                                if (crit_chance > -100.0f)
+                                    return true;
+                            }
                         }
                         // Searing Totem
                         else if (spellProto->SpellFamilyFlags.test<CF_SHAMAN_FIRE_TOTEM_ATTACK>())
@@ -8309,9 +8382,17 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo)
 
 bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const
 {
+    if (!spellInfo)
+        return false;
+
     // Saronite Vapors mana gain spell
     if (spellInfo->Id == 63337)
         return false;
+
+    // in case of trigger spells, check not current spell, but triggered (/dev/rsa)
+    if (spellInfo->Effect[index] == SPELL_EFFECT_TRIGGER_SPELL)
+        if (SpellEntry const* triggeredSpellInfo = sSpellStore.LookupEntry(spellInfo->EffectTriggerSpell[index]))
+            return ((Unit*)this)->IsImmuneToSpell(triggeredSpellInfo);
 
     //If m_immuneToEffect type contain this effect type, IMMUNE effect.
     uint32 effect = spellInfo->Effect[index];

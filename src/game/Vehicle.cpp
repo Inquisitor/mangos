@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ VehicleInfo::VehicleInfo(VehicleEntry const* entry) :
 {
 }
 
-VehicleKit::VehicleKit(Unit* base) : m_pBase(base), m_uiNumFreeSeats(0)
+VehicleKit::VehicleKit(Unit* base) : m_uiNumFreeSeats(0), m_pBase(base)
 {
     for (uint32 i = 0; i < MAX_VEHICLE_SEAT; ++i)
     {
@@ -143,8 +143,15 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
     if (seatId < 0) // no specific seat requirement
     {
         for (seat = m_Seats.begin(); seat != m_Seats.end(); ++seat)
+        {
             if (!seat->second.passenger && (seat->second.seatInfo->IsUsable() || (seat->second.seatInfo->m_flags & SEAT_FLAG_UNCONTROLLED)))
                 break;
+
+        // some weird behaviour of some vehicles: Abomination (Putricide), Val'kyrs and Strangulate Vehicle (Lich King)
+            if (GetBase()->GetEntry() == 37672 || GetBase()->GetEntry() == 38285 ||
+                GetBase()->GetEntry() == 36609 || GetBase()->GetEntry() == 36598)
+                break;
+        }
 
         if (seat == m_Seats.end()) // no available seat
             return false;
@@ -212,14 +219,7 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
         passenger->SendMessageToSet(&data, true);
     }
 
-    switch (m_pBase->GetEntry())
-    {
-        case 28817:
-            passenger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-            break;
-    }
-
-    if (seat->second.seatInfo->m_flags & SEAT_FLAG_UNATTACKABLE || seat->second.seatInfo->m_flags & SEAT_FLAG_CAN_CONTROL)
+    if (seat->second.IsProtectPassenger())
     {
         switch (m_pBase->GetEntry())
         {
@@ -230,6 +230,7 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
             case 30234:                                     // Nexus Lord's Hover Disk (Eye of Eternity, Malygos Encounter)
             case 30248:                                     // Scion's of Eternity Hover Disk (Eye of Eternity, Malygos Encounter)
                 break;
+            case 28817:
             default:
                 passenger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                 break;
@@ -293,6 +294,17 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
             ((Creature*)m_pBase)->SetWalk(false);
 
     }
+    else if (seatInfo->m_flags & SEAT_FLAG_FREE_ACTION || seatInfo->m_flags & SEAT_FLAG_CAN_ATTACK)
+    {
+        if (passenger->GetTypeId() == TYPEID_PLAYER)
+        {
+//            m_pBase->addUnitState(UNIT_STAT_CONTROLLED);
+//            m_pBase->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            Player* player = (Player*)passenger;
+            player->SetMover(m_pBase);
+            player->SetClientControl(m_pBase, 1);
+        }
+    }
 
     passenger->SendMonsterMoveTransport(m_pBase, SPLINETYPE_FACINGANGLE, SPLINEFLAG_UNKNOWN5, 0, 0.0f);
 
@@ -330,17 +342,12 @@ void VehicleKit::RemovePassenger(Unit *passenger, bool dismount)
     seat->second.passenger = NULL;
     passenger->clearUnitState(UNIT_STAT_ON_VEHICLE);
 
-    float px, py, pz, po;
-    m_pBase->GetClosePoint(px, py, pz, m_pBase->GetObjectBoundingRadius(), 2.0f, M_PI_F);
-    po = m_pBase->GetOrientation();
-
     passenger->m_movementInfo.ClearTransportData();
     passenger->m_movementInfo.RemoveMovementFlag(MOVEFLAG_ONTRANSPORT);
 
-    if (seat->second.seatInfo->m_flags & SEAT_FLAG_UNATTACKABLE || seat->second.seatInfo->m_flags & SEAT_FLAG_CAN_CONTROL)
-    {
-        passenger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-    }
+    if (seat->second.IsProtectPassenger())
+        if (passenger->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+            passenger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
     if (seat->second.seatInfo->m_flags & SEAT_FLAG_CAN_CONTROL)
     {
@@ -362,13 +369,6 @@ void VehicleKit::RemovePassenger(Unit *passenger, bool dismount)
 
         if(!(((Creature*)m_pBase)->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_KEEP_AI))
             ((Creature*)m_pBase)->AIM_Initialize();
-    }
-
-    switch (m_pBase->GetEntry())
-    {
-        case 28817:
-            passenger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-            break;
     }
 
     if (passenger->GetTypeId() == TYPEID_PLAYER)
@@ -484,7 +484,7 @@ VehicleSeatEntry const* VehicleKit::GetSeatInfo(Unit* passenger)
     for (SeatMap::iterator itr = m_Seats.begin(); itr != m_Seats.end(); ++itr)
     {
         if (Unit *_passenger = itr->second.passenger)
-            if (_passenger = passenger)
+            if (_passenger == passenger)
                 return itr->second.seatInfo;
     }
     return NULL;
@@ -495,7 +495,7 @@ int8 VehicleKit::GetSeatId(Unit* passenger)
     for (SeatMap::iterator itr = m_Seats.begin(); itr != m_Seats.end(); ++itr)
     {
         if (Unit *_passenger = itr->second.passenger)
-            if (_passenger = passenger)
+            if (_passenger == passenger)
                 return itr->first;
     }
     return -1;
@@ -506,12 +506,12 @@ void VehicleKit::Dismount(Unit* passenger, VehicleSeatEntry const* seatInfo)
     if (!passenger)
         return;
 
-    float ox, oy, oz, oo;
+    float ox, oy, oz/*, oo*/; /* oo can be used, but not at the moment*/
 
     Unit* base = m_pBase->GetVehicle() ? m_pBase->GetVehicle()->GetBase() : m_pBase;
 
     base->GetPosition(ox, oy, oz);
-    oo = base->GetOrientation();
+    /*oo = base->GetOrientation();*/
 
     passenger->m_movementInfo = base->m_movementInfo;
 
@@ -590,4 +590,32 @@ bool PassengerEjectEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
             passenger->ExitVehicle();
     }
     return true;
+}
+
+bool VehicleSeat::IsProtectPassenger() const
+{
+    if (seatInfo &&
+        (seatInfo->m_flags & SEAT_FLAG_UNATTACKABLE ||
+        seatInfo->m_flags &  SEAT_FLAG_HIDE_PASSENGER ||
+        seatInfo->m_flags & SEAT_FLAG_CAN_CONTROL) &&
+        !(seatInfo->m_flags &  SEAT_FLAG_FREE_ACTION))
+        return true;
+
+    return false;
+}
+
+Aura* VehicleKit::GetControlAura(Unit* passenger)
+{
+    if (!passenger)
+        return NULL;
+
+    ObjectGuid casterGuid = passenger->GetObjectGuid();
+    Unit::AuraList const& auras = GetBase()->GetAurasByType(SPELL_AURA_CONTROL_VEHICLE);
+
+    for(Unit::AuraList::const_iterator i = auras.begin();i != auras.end(); ++i)
+    {
+        if ((*i) && !(*i)->IsDeleted() && (*i)->GetCasterGuid() == casterGuid)
+            return *i;
+    }
+    return NULL;
 }
