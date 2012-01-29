@@ -12584,7 +12584,10 @@ void Unit::ExitVehicleOnTransport(Transport* trans)
     float y = GetPositionY() + trans_y;
     float z = GetPositionZ() + trans_z;
     GetClosePoint(x, y, z, 2.0f);
-    trans->EnterThisTransport(this, x, y, z, m_pVehicle->GetBase()->GetOrientation());
+    if (trans)
+        trans->EnterThisTransport(this, x, y, z, m_pVehicle->GetBase()->GetOrientation());
+    else
+        sLog.outError("Unit::ExitVehicleOnTransport: %s attemps to exit on transport, but transport not found!", m_pVehicle->GetBase()->GetGuidStr().c_str());
 }
 
 void Unit::ExitVehicle()
