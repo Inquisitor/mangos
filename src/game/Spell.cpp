@@ -1339,14 +1339,6 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
 
     Unit* realCaster = GetAffectiveCaster();
 
-    // Cyclone cast on immune targets -- TODO: check to see why below wont work
-    if (m_spellInfo->Id == 33786 && unit->IsImmunedToDamage(GetSpellSchoolMask(m_spellInfo)))
-    {
-        if (realCaster)
-            realCaster->SendSpellMiss(unit, m_spellInfo->Id, SPELL_MISS_IMMUNE);
-        return;
-    }
-
     // Recheck immune (only for delayed spells)
     if (m_spellInfo->speed && (
         (IsSpellCauseDamage(m_spellInfo) && unit->IsImmunedToDamage(GetSpellSchoolMask(m_spellInfo))) ||
