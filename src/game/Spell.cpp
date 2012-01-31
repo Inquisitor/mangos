@@ -1213,7 +1213,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
     else if (m_damage)
     {
         // Fill base damage struct (unitTarget - is real spell target)
-        SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
+        DamageInfo damageInfo(caster, unitTarget, m_spellInfo);
 
         if (m_spellInfo->speed > 0)
         {
@@ -1292,7 +1292,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
     else if (procAttacker || procVictim)
     {
         // Fill base damage struct (unitTarget - is real spell target)
-        SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
+        DamageInfo damageInfo(caster, unitTarget, m_spellInfo);
         procEx = createProcExtendMask(&damageInfo, missInfo);
         // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
         if (m_canTrigger && missInfo != SPELL_MISS_REFLECT)
@@ -1574,7 +1574,7 @@ void Spell::HandleDelayedSpellLaunch(TargetInfo *target)
     ResetEffectDamageAndHeal(); // healing maybe not needed at this point
 
     // Fill base damage struct (unitTarget - is real spell target)
-    SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
+    DamageInfo damageInfo(caster, unitTarget, m_spellInfo);
 
     // keep damage amount for reflected spells
     if (missInfo == SPELL_MISS_NONE || (missInfo == SPELL_MISS_REFLECT && target->reflectResult == SPELL_MISS_NONE))
