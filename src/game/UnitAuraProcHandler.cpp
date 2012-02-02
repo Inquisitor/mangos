@@ -5166,6 +5166,8 @@ SpellAuraProcResult Unit::HandleRemoveByDamageProc(Unit* pVictim, uint32 damage,
             if (procSpell->AttributesEx & (SPELL_ATTR_EX_NOT_BREAK_STEALTH | SPELL_ATTR_EX_NO_THREAT) ||
                 procSpell->AttributesEx2 & SPELL_ATTR_EX2_UNK28)
             return SPELL_AURA_PROC_FAILED;
+            if (triggeredByAura->GetTarget() != pVictim)
+                return SPELL_AURA_PROC_FAILED;
     }
 
     triggeredByAura->SetInUse(true);
