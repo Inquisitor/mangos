@@ -1289,11 +1289,6 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     if (holy < 0)
                         holy = 0;
                     damage += int32(ap * 0.07f) + int32(holy * 7 / 100);
-
-                    //Glyph of Avenger's Shield
-                    Aura *aur = m_caster->GetAura(54930, EFFECT_INDEX_0);
-                    if(aur)
-                        damage *= 2;
                 }
                 // Hammer of Wrath ($m1+0.15*$SPH+0.15*$AP) - ranged type sdb future fix
                 else if (m_spellInfo->SpellFamilyFlags.test<CF_PALADIN_HAMMER_OF_WRATH>())
