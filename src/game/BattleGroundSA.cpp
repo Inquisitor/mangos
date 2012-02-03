@@ -306,6 +306,7 @@ void BattleGroundSA::Update(uint32 diff)
             SetStatus(STATUS_IN_PROGRESS); // Start round two
             PlaySoundToAll(SOUND_BG_START);
             SendWarningToAll(LANG_BG_SA_HAS_BEGUN);
+            StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_EVENT_START_BATTLE_2);
 
             for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
             {
@@ -361,7 +362,7 @@ void BattleGroundSA::StartingEventCloseDoors()
 
 void BattleGroundSA::StartingEventOpenDoors()
 {
-    // runs just in 1st phase
+    // runs just in 1st round
     SpawnEvent(BG_EVENT_DOOR, 0, false);
     SpawnEvent(SA_EVENT_ADD_NPC, 0, true);
     SpawnEvent(SA_EVENT_ADD_NPC, 0, false, 30);
