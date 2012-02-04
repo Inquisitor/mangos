@@ -122,6 +122,11 @@ namespace MaNGOS
             if(u->GetTypeId()==TYPEID_UNIT && ((Creature*)u)->IsElite())
                 xp_gain *= 2;
 
+            if (pl->getLevel() < sWorld.getConfig(CONFIG_UINT32_STARTER_MAX_LEVEL))
+            {
+                xp_gain *= sWorld.getConfig(CONFIG_FLOAT_RATE_XP_STARTER);
+            }
+
             return (uint32)(xp_gain*sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL));
         }
 

@@ -1428,6 +1428,14 @@ Visibility.AIRelocationNotifyDelay = 1000
 #        XP rates
 #        Default: 1
 #
+#    Rate.XP.Starter
+#        Rate for first levels (defined by Rate.XP.StarterMaxLevel)
+#        Default: 1
+#
+#    Rate.XP.StarterMaxLevel
+#        Rate for first levels (defined by Rate.XP.StarterMaxLevel)
+#        Default: 70
+#
 #    Rate.Rest.InGame
 #    Rate.Rest.Offline.InTavernOrCity
 #    Rate.Rest.Offline.InWilderness
@@ -1570,6 +1578,8 @@ Rate.Drop.Money = 1
 Rate.XP.Kill    = 1
 Rate.XP.Quest   = 1
 Rate.XP.Explore = 1
+Rate.XP.Starter = 1
+Rate.XP.StarterMaxLevel = 70
 Rate.Rest.InGame = 1
 Rate.Rest.Offline.InTavernOrCity = 1
 Rate.Rest.Offline.InWilderness = 1
