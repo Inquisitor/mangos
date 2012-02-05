@@ -7905,17 +7905,19 @@ void Aura::HandleModDamageDone(bool apply, bool Real)
     // with spell->EquippedItemClass and  EquippedItemSubClassMask and EquippedItemInventoryTypeMask
     // ===========================================================================================
 
-    // the general case, without specific requirements
-    if (GetSpellProto()->EquippedItemClass != -1 && target->GetTypeId() == TYPEID_PLAYER)
-        return;
-
     if ((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_NORMAL) != 0)
     {
-        // apply generic physical damage bonuses to weapons, independend from their real damage school
-        // this seems to be the most correct handling here
-        target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
-        target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
-        target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_VALUE, float(m_modifier.m_amount), apply);
+        // apply generic physical damage bonuses including wand case
+        if (GetSpellProto()->EquippedItemClass == -1 || target->GetTypeId() != TYPEID_PLAYER)
+        {
+            target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
+            target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_VALUE, float(m_modifier.m_amount), apply);
+            target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_VALUE, float(m_modifier.m_amount), apply);
+        }
+        else
+        {
+            // done in Player::_ApplyWeaponDependentAuraMods
+        }
 
         if (target->GetTypeId() == TYPEID_PLAYER)
         {
@@ -7991,20 +7993,20 @@ void Aura::HandleModDamagePercentDone(bool apply, bool Real)
     // with spell->EquippedItemClass and  EquippedItemSubClassMask and EquippedItemInventoryTypeMask
     // ===========================================================================================
 
-    // the general case, without specific requirements
-    if (GetSpellProto()->EquippedItemClass != -1 && target->GetTypeId() == TYPEID_PLAYER)
-        return;
-
     if ((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_NORMAL) != 0)
     {
-        // apply generic physical damage bonuses to weapons, independend from their real damage school
-        // this seems to be the most correct handling here
-        target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
-        target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
-        target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, float(m_modifier.m_amount), apply);
-
-        // send info to client
-        // note: physical bonuses are displayed at the weapon damage at the client, independend from their real damage school
+        // apply generic physical damage bonuses including wand case
+        if (GetSpellProto()->EquippedItemClass == -1 || target->GetTypeId() != TYPEID_PLAYER)
+        {
+            target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
+            target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, float(m_modifier.m_amount), apply);
+            target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, float(m_modifier.m_amount), apply);
+        }
+        else
+        {
+            // done in Player::_ApplyWeaponDependentAuraMods
+        }
+        // For show in client
         if (target->GetTypeId() == TYPEID_PLAYER)
             target->ApplyModSignedFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT, m_modifier.m_amount/100.0f, apply);
     }
@@ -8012,6 +8014,15 @@ void Aura::HandleModDamagePercentDone(bool apply, bool Real)
     // Skip non magic case for speedup
     if ((m_modifier.m_miscvalue & SPELL_SCHOOL_MASK_MAGIC) == 0)
         return;
+
+    if (GetSpellProto()->EquippedItemClass != -1 || GetSpellProto()->EquippedItemInventoryTypeMask != 0)
+    {
+        // wand magic case (skip generic to all item spell bonuses)
+        // done in Player::_ApplyWeaponDependentAuraMods
+
+        // Skip item specific requirements for not wand magic damage
+        return;
+    }
 
     // Magic damage percent modifiers implemented in Unit::SpellDamageBonusDone
     // Send info to client

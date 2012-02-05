@@ -7820,17 +7820,6 @@ void Player::_ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType att
                 if (Item* pItem = GetWeaponForAttack(WeaponAttackType(i),true,false))
                     if (!pItem->IsFitToSpellRequirements(aura->GetSpellProto()))
                         HandleStatModifier(UnitMods(UNIT_MOD_DAMAGE_MAINHAND + i), unitModType, float(modifier->m_amount),apply);
-
-            // send info to client
-            uint32 playerField;
-            if (unitModType == TOTAL_VALUE)
-                playerField = aura->IsPositive() ? PLAYER_FIELD_MOD_DAMAGE_DONE_POS : PLAYER_FIELD_MOD_DAMAGE_DONE_NEG;
-            else
-                playerField = PLAYER_FIELD_MOD_DAMAGE_DONE_PCT;
-
-            for (uint8 i = SPELL_SCHOOL_NORMAL; i < MAX_SPELL_SCHOOL; ++i)
-                if (modifier->m_miscvalue & (1 << i))
-                    ApplyModSignedFloatValue(playerField + i, modifier->m_amount/100.0f, apply);
         }
     }
 }
