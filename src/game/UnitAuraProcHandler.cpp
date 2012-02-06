@@ -2567,17 +2567,13 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 // Sacred Shield (buff)
                 case 58597:
                 {
-                    if(!GetSpellAuraHolder(53576))
-                        return SPELL_AURA_PROC_FAILED;
-
-                    triggered_spell_id = 66922;
-                    SpellEntry const* triggeredEntry = sSpellStore.LookupEntry(triggered_spell_id);
-                    if (!triggeredEntry)
-                        return SPELL_AURA_PROC_FAILED;
-
-                    if(pVictim)
-                        if(!pVictim->HasAura(53569, EFFECT_INDEX_0) && !pVictim->HasAura(53576, EFFECT_INDEX_0))
+                    if (procSpell && IsFriendlyTo(pVictim))
+                    {
+                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>() && (pVictim->HasAura(53569, EFFECT_INDEX_0) || pVictim->HasAura(53576, EFFECT_INDEX_0)))
+                            triggered_spell_id = 66922;
+                        else
                             return SPELL_AURA_PROC_FAILED;
+                    }
 
                     basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
 
@@ -2587,13 +2583,9 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 // Sacred Shield (talent rank)
                 case 53601:
                 {
-                    if (procSpell && IsFriendlyTo(pVictim))
-                    {
-                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>() && (pVictim->HasAura(53569, EFFECT_INDEX_0) || pVictim->HasAura(53576, EFFECT_INDEX_0)))
+                    if (procSpell)
+                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>())
                             triggered_spell_id = 66922;
-                        else
-                            return SPELL_AURA_PROC_FAILED;
-                    }
 
                     // triggered_spell_id in spell data
                     target = this;
