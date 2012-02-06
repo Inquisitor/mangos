@@ -8357,24 +8357,32 @@ int32 Unit::SpellBaseHealingBonusTaken(SpellSchoolMask schoolMask)
     return AdvertisedBenefit;
 }
 
-bool Unit::IsImmunedToDamage(SpellSchoolMask shoolMask)
+bool Unit::IsImmunedToDamage(SpellSchoolMask schoolMask) const
 {
-    //If m_immuneToSchool type contain this school type, IMMUNE damage.
-    SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
-    for (SpellImmuneList::const_iterator itr = schoolList.begin(); itr != schoolList.end(); ++itr)
-        if (itr->type & shoolMask)
-            return true;
+    if (IsImmunedToSchool(schoolMask))
+        return true;
 
     //If m_immuneToDamage type contain magic, IMMUNE damage.
     SpellImmuneList const& damageList = m_spellImmune[IMMUNITY_DAMAGE];
     for (SpellImmuneList::const_iterator itr = damageList.begin(); itr != damageList.end(); ++itr)
-        if (itr->type & shoolMask)
+        if (itr->type & schoolMask)
             return true;
 
     return false;
 }
 
-bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo)
+bool Unit::IsImmunedToSchool(SpellSchoolMask schoolMask) const
+{
+    //If m_immuneToSchool type contain this school type, IMMUNE damage.
+    SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
+    for (SpellImmuneList::const_iterator itr = schoolList.begin(); itr != schoolList.end(); ++itr)
+        if (itr->type & schoolMask)
+            return true;
+
+    return false;
+}
+
+bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo) const
 {
     if (!spellInfo)
         return false;
@@ -8386,6 +8394,10 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo)
             effectMask |= (1 << i);
     }
     if (!effectMask)
+        return true;
+
+    if (!(spellInfo->AttributesEx & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY) &&
+        IsImmunedToSchool(GetSpellSchoolMask(spellInfo)))
         return true;
 
     SpellImmuneList const& dispelList = m_spellImmune[IMMUNITY_DISPEL];
@@ -8416,7 +8428,6 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo)
             if ((*iter)->GetModifier()->m_miscvalue & (1 << (mechanic-1)))
                 return true;
         }
-
     }
 
     return false;
@@ -8439,12 +8450,16 @@ bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex i
         if (SpellEntry const* triggeredSpellInfo = sSpellStore.LookupEntry(spellInfo->EffectTriggerSpell[index]))
             return ((Unit*)this)->IsImmuneToSpell(triggeredSpellInfo);
 
-    //If m_immuneToEffect type contain this effect type, IMMUNE effect.
-    uint32 effect = spellInfo->Effect[index];
-    SpellImmuneList const& effectList = m_spellImmune[IMMUNITY_EFFECT];
-    for (SpellImmuneList::const_iterator itr = effectList.begin(); itr != effectList.end(); ++itr)
-        if (itr->type == effect)
-            return true;
+
+    if (!(spellInfo->AttributesEx & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY))
+    {
+        //If m_immuneToEffect type contain this effect type, IMMUNE effect.
+        uint32 effect = spellInfo->Effect[index];
+        SpellImmuneList const& effectList = m_spellImmune[IMMUNITY_EFFECT];
+        for (SpellImmuneList::const_iterator itr = effectList.begin(); itr != effectList.end(); ++itr)
+            if (itr->type == effect)
+                return true;
+    }
 
     if (uint32 mechanic = spellInfo->EffectMechanic[index])
     {
@@ -8481,7 +8496,6 @@ bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex i
                 if ((*iter)->GetModifier()->m_miscvalue & schoolMask)
                     return true;
         }
-
     }
 
     return false;
