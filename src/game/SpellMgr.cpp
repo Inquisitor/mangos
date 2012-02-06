@@ -4625,6 +4625,9 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
             // Slow
             else if (spellproto->Id == 31589)
                 return DIMINISHING_LIMITONLY;
+            // Charge
+            else if (spellproto->Id == 7922)
+                return DIMINISHING_CHARGE;
             break;
         case SPELLFAMILY_ROGUE:
         {
