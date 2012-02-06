@@ -79,7 +79,7 @@ void BattleGroundRV::Update(uint32 diff)
                     {
                         pPillar->SetLootState(GO_READY);
                         pPillar->UseDoorOrButton(RESPAWN_ONE_DAY);
-                        plr->UpdateVisibilityOf(pPillar);
+                        plr->UpdateVisibilityOf(pPillar, plr);
                     }
                 }
                 break; // End on 1 succesful iteration

@@ -1196,14 +1196,14 @@ void BattleGroundSA::SendTransportsRemove(Player * player)
             boat1->BuildOutOfRangeUpdateBlock(&transData);
             boat1->SetRespawnTime(0);
             boat1->Delete();
-            player->UpdateVisibilityOf(boat1);
+            player->UpdateVisibilityOf(boat1, player);
         }
         if (GameObject * boat2 = GetBGObject(BG_SA_BOAT_TWO))
         {
             boat2->BuildOutOfRangeUpdateBlock(&transData);
             boat2->SetRespawnTime(0);
             boat2->Delete();
-            player->UpdateVisibilityOf(boat2);
+            player->UpdateVisibilityOf(boat2, player);
         }
         WorldPacket packet;
         transData.BuildPacket(&packet);
