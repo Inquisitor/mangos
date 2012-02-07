@@ -6299,6 +6299,11 @@ void Spell::EffectEnergisePct(SpellEffectIndex eff_idx)
 
 void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
 {
+    if (!m_caster)
+        return;
+
+    m_caster->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_USE);
+
     if (gameObjTarget)
     {
         switch (gameObjTarget->GetGoType())
