@@ -4080,12 +4080,26 @@ void Unit::SetFacingToObject(WorldObject* pObject)
     SetFacingTo(GetAngle(pObject));
 }
 
-bool Unit::isInAccessablePlaceFor(Creature const* c) const
+bool Unit::isInAccessablePlaceFor(Unit const* unit) const
 {
-    if (IsInWater())
-        return c->CanSwim();
-    else
-        return c->CanWalk() || c->CanFly();
+    if (!unit)
+        return false;
+
+    if (!IsInMap(unit))
+        return false;
+
+    if (!IsWithinDistInMap(unit, GetMap()->GetVisibilityDistance()))
+        return false;
+
+    if (unit->GetObjectGuid().IsAnyTypeCreature())
+    {
+        if (IsInWater())
+            return ((Creature*)unit)->CanSwim();
+        else
+            return ((Creature*)unit)->CanWalk() || ((Creature*)unit)->CanFly();
+    }
+
+    return true;
 }
 
 bool Unit::IsInWater() const
@@ -10008,7 +10022,7 @@ bool Unit::SelectHostileTarget()
             for (AuraList::const_reverse_iterator aura = tauntAuras.rbegin(); aura != tauntAuras.rend(); ++aura)
             {
                 if ((caster = (*aura)->GetCaster()) && caster->IsInMap(this) &&
-                    caster->isTargetableForAttack() && caster->isInAccessablePlaceFor((Creature*)this) &&
+                    caster->isTargetableForAttack() && caster->isInAccessablePlaceFor(this) &&
 //                  (!IsCombatStationary() || CanReachWithMeleeAttack(caster)) &&
                     !IsSecondChoiceTarget(caster, true))
                 {
@@ -10049,7 +10063,7 @@ bool Unit::SelectHostileTarget()
         for (ObjectGuidSet::const_iterator itr = attackers.begin(); itr != attackers.end(); ++itr)
         {
             Unit* attacker = GetMap()->GetUnit(*itr);
-            if (attacker && attacker->IsInMap(this) && attacker->isTargetableForAttack() && attacker->isInAccessablePlaceFor((Creature*)this))
+            if (attacker && attacker->IsInMap(this) && attacker->isTargetableForAttack() && attacker->isInAccessablePlaceFor(this))
                 return false;
         }
     }
