@@ -1116,7 +1116,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
                 if(missInfo == SPELL_MISS_REFLECT)
                 {
                     // Fill base damage struct (unitTarget - is real spell target)
-                    SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, m_spellSchoolMask);
+                    DamageInfo damageInfo(caster, unitTarget, m_spellInfo);
                     caster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, m_attackType);
                     unitTarget->CalculateAbsorbResistBlock(caster, &damageInfo, m_spellInfo);
                     caster->DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb);
