@@ -1308,11 +1308,11 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     damage += count * int32(average * IN_MILLISECONDS) / m_caster->GetAttackTime(BASE_ATTACK);
 
                     //hack for one hand spec
-                    if(m_caster->GetAura(20196, EFFECT_INDEX_0)
+                    if(m_caster->GetAura(20196, EFFECT_INDEX_0))
                         damage *= 0.96;
-                    if(m_caster->GetAura(20197, EFFECT_INDEX_0)
+                    if(m_caster->GetAura(20197, EFFECT_INDEX_0))
                         damage *= 0.93;
-                    if(m_caster->GetAura(20198, EFFECT_INDEX_0)
+                    if(m_caster->GetAura(20198, EFFECT_INDEX_0))
                         damage *= 0.9;
                 }
                 // Shield of Righteousness
