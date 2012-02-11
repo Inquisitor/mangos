@@ -592,8 +592,16 @@ bool Unit::CanReachWithMeleeAttack(Unit* pVictim, float flat_mod /*= 0.0f*/) con
     // The measured values show BASE_MELEE_OFFSET in (1.3224, 1.342)
     float reach = GetFloatValue(UNIT_FIELD_COMBATREACH) + pVictim->GetFloatValue(UNIT_FIELD_COMBATREACH) +
         BASE_MELEERANGE_OFFSET + flat_mod;
+    if (reach < ATTACK_DISTANCE)
+        reach = ATTACK_DISTANCE;
 
-    return IsWithinDistInMap(pVictim, reach < ATTACK_DISTANCE ? ATTACK_DISTANCE : reach);
+    // This check is not related to bounding radius of both units!
+    float dx = GetPositionX() - pVictim->GetPositionX();
+    float dy = GetPositionY() - pVictim->GetPositionY();
+    float dz = GetPositionZ() - pVictim->GetPositionZ();
+
+    return dx*dx + dy*dy + dz*dz < reach*reach;
+
 }
 
 void Unit::RemoveSpellsCausingAura(AuraType auraType)
@@ -7356,6 +7364,13 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
             DoneTotalMod += ((*i)->GetModifier()->m_amount+100.0f)/100.0f;
     }
 
+    AuraList const& mDamageDoneVersusAuraState = GetAurasByType(SPELL_AURA_DAMAGE_DONE_VERSUS_AURA_STATE_PCT);
+    for(AuraList::const_iterator i = mDamageDoneVersusAuraState.begin();i != mDamageDoneVersusAuraState.end(); ++i)
+    {
+        if (pVictim->HasAuraState(AuraState((*i)->GetModifier()->m_miscvalue)))
+            DoneTotalMod *= ((*i)->GetModifier()->m_amount + 100.0f)/100.0f;
+    }
+
     // done scripted mod (take it from owner)
     Unit *owner = GetOwner();
     if (!owner)
@@ -8600,6 +8615,13 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
     Unit *owner = GetOwner();
     if (!owner)
         owner = this;
+
+    AuraList const& mDamageDoneVersusAuraState = GetAurasByType(SPELL_AURA_DAMAGE_DONE_VERSUS_AURA_STATE_PCT);
+    for(AuraList::const_iterator i = mDamageDoneVersusAuraState.begin();i != mDamageDoneVersusAuraState.end(); ++i)
+    {
+        if (pVictim->HasAuraState(AuraState((*i)->GetModifier()->m_miscvalue)))
+            DonePercent *= ((*i)->GetModifier()->m_amount + 100.0f)/100.0f;
+    }
 
     // ..done (class scripts)
     if (spellProto)
@@ -12594,7 +12616,9 @@ void Unit::EnterVehicle(VehicleKit* vehicle, int8 seatId)
 
 void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
 {
-    if (!isAlive() || !vehicleBase ||
+    if (!isAlive() || 
+        !vehicleBase ||
+        !vehicleBase->isAlive() ||
         !vehicleBase->GetVehicleKit() ||
         GetVehicleKit() == vehicleBase->GetVehicleKit())
         return;
@@ -12619,11 +12643,11 @@ void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
         if (Pet *pet = GetPet())
             pet->Unsummon(PET_SAVE_AS_CURRENT,this);
 
-    SpellEntry const* spellInfo;
+    SpellEntry const* spellInfo = NULL;
     int32 bp[MAX_EFFECT_INDEX];
-
     Unit* caster = NULL;
     Unit* target = NULL;
+
     if (GetTypeId() == TYPEID_PLAYER && vehicleBase->GetTypeId() == TYPEID_UNIT)
     {
         SpellClickInfoMapBounds clickPair = sObjectMgr.GetSpellClickInfoMapBounds(vehicleBase->GetEntry());
@@ -12633,12 +12657,11 @@ void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
             {
                 if (itr->second.IsFitToRequirements((Player*)this))
                 {
-                    caster = (itr->second.castFlags & 0x1) ? this : vehicleBase;
-                    target = (itr->second.castFlags & 0x2) ? this : vehicleBase;
 
                     spellInfo = sSpellStore.LookupEntry(itr->second.spellId);
+
                     if (!spellInfo)
-                        return;
+                        continue;
 
                     bool b_controlAura = false;
                     for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -12647,8 +12670,13 @@ void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
                             if (spellInfo->EffectApplyAuraName[i] == SPELL_AURA_CONTROL_VEHICLE)
                                 b_controlAura = true;
                     }
+
                     if (b_controlAura)
+                    {
+                        caster = (itr->second.castFlags & 0x1) ? this : vehicleBase;
+                        target = (itr->second.castFlags & 0x2) ? this : vehicleBase;
                         break;
+                    }
 
                     spellInfo = NULL;
                 }
@@ -12661,6 +12689,13 @@ void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
         caster = this;
         target = vehicleBase;
         spellInfo = sSpellStore.LookupEntry(SPELL_RIDE_VEHICLE_HARDCODED);
+    }
+    else
+    {
+        if (!caster)
+            caster = this;
+        if (!target)
+            target = vehicleBase;
     }
 
     for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -12684,13 +12719,17 @@ void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
 
 void Unit::ExitVehicle()
 {
-    if (!GetVehicle() || !GetVehicle()->GetBase())
+    if (!GetVehicle())
+        return;
+    Unit* vehicleBase = GetVehicle()->GetBase();
+
+    if (!vehicleBase)
         return;
 
-    if (!GetVehicle()->GetBase()->RemoveSpellsCausingAuraByCaster(SPELL_AURA_CONTROL_VEHICLE, GetObjectGuid()))
+    if (!vehicleBase->RemoveSpellsCausingAuraByCaster(SPELL_AURA_CONTROL_VEHICLE, GetObjectGuid()))
     {
         _ExitVehicle();
-        sLog.outDetail("Unit::ExitVehicle: unit %s leave vehicle %s but no control aura!", GetObjectGuid().GetString().c_str(), GetVehicle()->GetBase()->GetObjectGuid().GetString().c_str());
+        sLog.outDetail("Unit::ExitVehicle: unit %s leave vehicle %s but no control aura!", GetObjectGuid().GetString().c_str(), vehicleBase->GetObjectGuid().GetString().c_str());
     }
 
     if (isAlive() && GetTypeId() == TYPEID_PLAYER)
@@ -12699,7 +12738,7 @@ void Unit::ExitVehicle()
 
 void Unit::ChangeSeat(int8 seatId, bool next)
 {
-    if (!m_pVehicle)
+    if (!GetVehicle())
         return;
 
     if (seatId < 0)
@@ -12711,12 +12750,12 @@ void Unit::ChangeSeat(int8 seatId, bool next)
     else if (seatId == m_movementInfo.GetTransportSeat() || !m_pVehicle->HasEmptySeat(seatId))
         return;
 
-    if (m_pVehicle->GetPassenger(seatId) &&
-       (!m_pVehicle->GetPassenger(seatId)->GetObjectGuid().IsVehicle() || !m_pVehicle->GetSeatInfo(m_pVehicle->GetPassenger(seatId))))
+    if (GetVehicle()->GetPassenger(seatId) &&
+       (!GetVehicle()->GetPassenger(seatId)->GetObjectGuid().IsVehicle() || !GetVehicle()->GetSeatInfo(GetVehicle()->GetPassenger(seatId))))
         return;
 
-    m_pVehicle->RemovePassenger(this);
-    m_pVehicle->AddPassenger(this, seatId);
+    GetVehicle()->RemovePassenger(this);
+    GetVehicle()->AddPassenger(this, seatId);
 }
 
 void Unit::_EnterVehicle(VehicleKit* vehicle, int8 seatId)
@@ -12724,9 +12763,9 @@ void Unit::_EnterVehicle(VehicleKit* vehicle, int8 seatId)
     if (!isAlive() || !vehicle || GetVehicleKit() == vehicle)
         return;
 
-    if (m_pVehicle)
+    if (GetVehicle())
     {
-        if (m_pVehicle == vehicle)
+        if (GetVehicle() == vehicle)
         {
             if (seatId >= 0)
                 ChangeSeat(seatId);
@@ -12753,7 +12792,7 @@ void Unit::_EnterVehicle(VehicleKit* vehicle, int8 seatId)
         player->GetSession()->SendPacket(&data);
 
         data.Initialize(SMSG_BREAK_TARGET, 8);
-        data << vehicle->GetBase()->GetPackGUID();
+        data << GetVehicle()->GetBase()->GetPackGUID();
         player->GetSession()->SendPacket(&data);
     }
 
@@ -12774,7 +12813,7 @@ void Unit::ExitVehicleOnTransport(Transport* trans)
     float trans_y = m_pVehicle->GetBase()->GetTransOffsetY();
     float trans_z = m_pVehicle->GetBase()->GetTransOffsetZ() + 2.0f;
 
-    m_pVehicle->RemovePassenger(this);
+    GetVehicle()->RemovePassenger(this);
     m_pVehicle = NULL;
 
     if (GetTypeId() == TYPEID_PLAYER)
@@ -12792,25 +12831,16 @@ void Unit::ExitVehicleOnTransport(Transport* trans)
 
 void Unit::_ExitVehicle()
 {
-    if(!GetVehicle())
+    if (!GetVehicle())
         return;
 
     if (Transport* trans = m_pVehicle->GetBase()->GetTransport())
         ExitVehicleOnTransport(trans);
     else
     {
-        m_pVehicle->RemovePassenger(this);
+        GetVehicle()->RemovePassenger(this, true);
+
         m_pVehicle = NULL;
-
-        if (GetTypeId() == TYPEID_PLAYER)
-            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
-
-        float x = GetPositionX();
-        float y = GetPositionY();
-        float z = GetPositionZ() + 2.0f;
-        GetClosePoint(x, y, z, 2.0f);
-        UpdateAllowedPositionZ(x, y, z);
-        MonsterMoveWithSpeed(x, y, z + 0.5f, 28);
     }
 }
 
