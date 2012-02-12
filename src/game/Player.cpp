@@ -8583,8 +8583,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
                 go->SetLootState(GO_ACTIVATED);
             }
-            if (go->getLootState() == GO_ACTIVATED && 
-            go->GetGoType() == GAMEOBJECT_TYPE_CHEST && 
+            if (go->getLootState() == GO_ACTIVATED &&
+            go->GetGoType() == GAMEOBJECT_TYPE_CHEST &&
             (go->GetGOInfo()->chest.groupLootRules || sWorld.getConfig(CONFIG_BOOL_LOOT_CHESTS_IGNORE_DB)))
             {
                 if (Group* group = go->GetGroupLootRecipient())
@@ -14828,20 +14828,33 @@ void Player::RewardQuest(Quest const *pQuest, uint32 reward, Object* questGiver,
 {
     uint32 quest_id = pQuest->GetQuestId();
 
-    for (int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i )
+    // Destroy quest items
+    uint32 srcItemId = pQuest->GetSrcItemId();
+    uint32 srcItemCount = 0;
+
+    if (srcItemId)
     {
-        if (pQuest->ReqItemId[i])
-            DestroyItemCount(pQuest->ReqItemId[i], pQuest->ReqItemCount[i], true);
+        srcItemCount = pQuest->GetSrcItemCount();
+        if (!srcItemCount)
+            srcItemCount = 1;
+
+        DestroyItemCount(srcItemId, srcItemCount, true, true);
     }
 
-    // Destroy quest item
-    uint32 srcitem = pQuest->GetSrcItemId();
-    if (srcitem > 0)
+    // Destroy requered items
+    for (uint32 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
     {
-        uint32 count = pQuest->GetSrcItemCount();
-        if (count <= 0)
-            count = 1;
-        DestroyItemCount(srcitem, count, true, true);
+        uint32 reqItemId = pQuest->ReqItemId[i];
+        uint32 reqItemCount = pQuest->ReqItemCount[i];
+
+        if (reqItemId)
+        {
+            if (reqItemId == srcItemId)
+                reqItemCount -= srcItemCount;
+
+            if (reqItemCount)
+                DestroyItemCount(reqItemId, reqItemCount, true);
+        }
     }
 
     RemoveTimedQuest(quest_id);
@@ -16462,7 +16475,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
         GetSession()->Expansion() < mapEntry->Expansion())
     {
         sLog.outError("Player::LoadFromDB player %s have invalid coordinates (map: %u X: %f Y: %f Z: %f O: %f). Teleport to default race/class locations.",
-            guid.GetString().c_str(), 
+            guid.GetString().c_str(),
             savedLocation.mapid,
             savedLocation.coord_x,
             savedLocation.coord_y,
@@ -18037,6 +18050,7 @@ InstancePlayerBind* Player::GetBoundInstance(uint32 mapid, Difficulty difficulty
     if(!mapDiff)
         return NULL;
 
+    MAPLOCK_READ(this, MAP_LOCK_TYPE_DEFAULT);
     BoundInstancesMap::iterator itr = m_boundInstances[difficulty].find(mapid);
     if (itr != m_boundInstances[difficulty].end())
         return &itr->second;
@@ -18046,6 +18060,7 @@ InstancePlayerBind* Player::GetBoundInstance(uint32 mapid, Difficulty difficulty
 
 void Player::UnbindInstance(uint32 mapid, Difficulty difficulty, bool unload)
 {
+    MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
     BoundInstancesMap::iterator itr = m_boundInstances[difficulty].find(mapid);
     UnbindInstance(itr, difficulty, unload);
 }
@@ -18066,6 +18081,7 @@ InstancePlayerBind* Player::BindToInstance(DungeonPersistentState *state, bool p
 {
     if (state)
     {
+        MAPLOCK_READ(this, MAP_LOCK_TYPE_DEFAULT);
         InstancePlayerBind& bind = m_boundInstances[state->GetDifficulty()][state->GetMapId()];
         if (bind.state)
         {
@@ -24295,6 +24311,11 @@ void Player::SendDuelCountdown(uint32 counter)
     WorldPacket data(SMSG_DUEL_COUNTDOWN, 4);
     data << uint32(counter);                                // seconds
     GetSession()->SendPacket(&data);
+}
+
+bool Player::IsImmuneToSpell(SpellEntry const* spellInfo) const
+{
+    return Unit::IsImmuneToSpell(spellInfo);
 }
 
 bool Player::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const
