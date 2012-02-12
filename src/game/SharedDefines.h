@@ -508,7 +508,6 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 
 #define MAX_TALENT_SPEC_COUNT   2
 #define MAX_GLYPH_SLOT_INDEX    6
-#define MIN_DUALSPEC_LEVEL      40
 
 enum SheathTypes
 {

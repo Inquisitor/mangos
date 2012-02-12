@@ -116,8 +116,6 @@ struct ScriptInfo
 {
     uint32 id;
     uint32 delay;
-    uint32 reqtype;
-    uint32 reqvalue;
     uint32 command;
 
     union
