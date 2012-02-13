@@ -8601,7 +8601,14 @@ uint32 Unit::MeleeDamageBonusDone(Unit *pVictim, uint32 pdamage,WeaponAttackType
                 ((holder->GetSpellProto()->EquippedItemClass == -1) ||                     // general, weapon independent
                 (pWeapon && pWeapon->IsFitToSpellRequirements(holder->GetSpellProto()))))  // OR used weapon fits aura requirements
             {
-                DonePercent *= (aura->GetModifier()->m_amount+100.0f) / 100.0f;
+                //hack Hammer of the Righteous
+                if(spellProto->Id == 53595)
+                    if((aura->GetId() == 70758) || (aura->GetId() == 67186) || (aura->GetId() == 60149))
+                        DonePercent *= (aura->GetModifier()->m_amount+100.0f) / 100.0f;
+                    else
+                        DonePercent = DonePercent;
+                else
+                    DonePercent *= (aura->GetModifier()->m_amount+100.0f) / 100.0f;
             }
         }
 
