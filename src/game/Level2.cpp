@@ -5541,10 +5541,17 @@ bool ChatHandler::HandleMmapPathCommand(char* args)
 
     // this entry visible only to GM's with "gm on"
     static const uint32 WAYPOINT_NPC_ENTRY = 1;
+    // This is an entry of spell that each waypoint will cast on next waypoint so they will look like they are connected
+    static const uint32 BEAM_SPELL_ENTRY = 35371;
     Creature* wp = NULL;
+    Creature* wp_prev = NULL;
     for (uint32 i = 0; i < pointPath.size(); ++i)
     {
+        wp_prev = wp;
         wp = player->SummonCreature(WAYPOINT_NPC_ENTRY, pointPath[i].x, pointPath[i].y, pointPath[i].z, 0, TEMPSUMMON_TIMED_DESPAWN, 9000);
+        // Connect waypoints visually
+        if (wp && wp_prev)
+            wp_prev->CastSpell(wp, BEAM_SPELL_ENTRY, true);
         // TODO: make creature not sink/fall
     }
 
