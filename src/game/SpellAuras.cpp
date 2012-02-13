@@ -8730,7 +8730,7 @@ void Aura::PeriodicTick()
             if (!pCaster)
                 return;
 
-            if (!pCaster->IsInWorld() || !pCaster->isAlive())
+            if (!pCaster->IsInWorld())
                 return;
 
             if (spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
