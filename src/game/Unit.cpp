@@ -9022,7 +9022,10 @@ void Unit::Mount(uint32 mount, uint32 spellId, uint32 vehicleId, uint32 creature
                     ((Player*)this)->UnsummonPetTemporaryIfAny();
                 }
                 else
-                    pet->ApplyModeFlags(PET_MODE_DISABLE_ACTIONS,true);
+                {
+                    pet->GetCharmInfo()->SetState(CHARM_STATE_ACTION,ACTIONS_DISABLE);
+                    pet->SendCharmState();
+                }
             }
             else if (Pet* minipet = GetMiniPet())
             {
@@ -9077,7 +9080,10 @@ void Unit::Unmount(bool from_aura)
         ((Player*)this)->GetSession()->SendPacket(&data);
 
         if (Pet* pet = GetPet())
-            pet->ApplyModeFlags(PET_MODE_DISABLE_ACTIONS,false);
+        {
+            pet->GetCharmInfo()->SetState(CHARM_STATE_ACTION,ACTIONS_ENABLE);
+            pet->SendCharmState();
+        }
         else
             ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
     }
@@ -10919,11 +10925,15 @@ CharmInfo* Unit::InitCharmInfo(Unit *charm)
 }
 
 CharmInfo::CharmInfo(Unit* unit)
-: m_unit(unit), m_CommandState(COMMAND_FOLLOW), m_reactState(REACT_PASSIVE), m_petnumber(0)
+: m_unit(unit), m_State(0), m_petnumber(0)
 {
     for(int i = 0; i < CREATURE_MAX_SPELLS; ++i)
         m_charmspells[i].SetActionAndType(0,ACT_DISABLED);
     m_petnumber = 0;
+
+    SetState(CHARM_STATE_REACT,REACT_PASSIVE);
+    SetState(CHARM_STATE_COMMAND,COMMAND_FOLLOW);
+    SetState(CHARM_STATE_ACTION,ACTIONS_ENABLE);
 }
 
 void CharmInfo::InitPetActionBar()
@@ -10939,6 +10949,21 @@ void CharmInfo::InitPetActionBar()
     // last 3 SpellOrActions are reactions
     for(uint32 i = 0; i < ACTION_BAR_INDEX_END - ACTION_BAR_INDEX_PET_SPELL_END; ++i)
         SetActionBar(ACTION_BAR_INDEX_PET_SPELL_END + i,COMMAND_ATTACK - i,ACT_REACTION);
+}
+
+void CharmInfo::SetState(CharmStateType type, uint8 value)
+{
+    SetState((GetState() & ~(uint32(0x00FF) << (type * 8))) | (uint32(value) << (type * 8)));
+}
+
+uint8 CharmInfo::GetState(CharmStateType type)
+{
+    return uint8((GetState() & (uint32(0x00FF) << (type * 8))) >> (type * 8));
+}
+
+bool CharmInfo::HasState(CharmStateType type, uint8 value)
+{
+    return (GetState(type) == value);
 }
 
 void CharmInfo::InitEmptyActionBar()
@@ -11165,7 +11190,8 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                     StopMoving();
                     GetMotionMaster()->Clear(false);
                     GetMotionMaster()->MoveIdle();
-                    GetCharmInfo()->SetCommandState( COMMAND_STAY );
+                    GetCharmInfo()->SetState(CHARM_STATE_COMMAND,COMMAND_STAY);
+                    SendCharmState();
                     break;
                 }
                 case COMMAND_FOLLOW:                        //spellid=1792  //FOLLOW
@@ -11178,7 +11204,8 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
 
                     AttackStop();
                     GetMotionMaster()->MoveFollow(owner,PET_FOLLOW_DIST,((Pet*)this)->GetPetFollowAngle());
-                    GetCharmInfo()->SetCommandState( COMMAND_FOLLOW );
+                    GetCharmInfo()->SetState(CHARM_STATE_COMMAND,COMMAND_FOLLOW);
+                    SendCharmState();
                     break;
                 }
                 case COMMAND_ATTACK:                        //spellid=1792  //ATTACK
@@ -11265,7 +11292,8 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                 case REACT_PASSIVE:                         //passive
                 case REACT_DEFENSIVE:                       //recovery
                 case REACT_AGGRESSIVE:                      //activete
-                    GetCharmInfo()->SetReactState( ReactStates(spellid) );
+                    GetCharmInfo()->SetState(CHARM_STATE_REACT,ReactStates(spellid));
+                    SendCharmState();
                     break;
             }
             break;
@@ -11289,6 +11317,7 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
         }
         default:
             sLog.outError("WORLD: unknown PET flag Action %i and spellid %i.", uint32(flag), spellid);
+            break;
     }
 
 }
@@ -11799,6 +11828,27 @@ void Unit::SendPetAIReaction()
     data << GetObjectGuid();
     data << uint32(AI_REACTION_HOSTILE);
     ((Player*)owner)->GetSession()->SendPacket(&data);
+}
+
+void Unit::SendCharmState()
+{
+    CharmInfo* charmInfo = GetCharmInfo();
+
+    if (!charmInfo)
+    {
+        sLog.outError("Unit::SendCharmState unit (%s) is seems charmed-like but doesn't have a charminfo!", GetObjectGuid().GetString().c_str());
+        return;
+    }
+
+    Unit* owner = GetOwner();
+    if(!owner || owner->GetTypeId() != TYPEID_PLAYER)
+        return;
+
+    WorldPacket data(SMSG_PET_MODE, 12);
+    data << GetObjectGuid();
+    data << uint32(charmInfo->GetState());
+    ((Player*)owner)->GetSession()->SendPacket(&data);
+
 }
 
 ///----------End of Pet responses methods----------
