@@ -12471,7 +12471,12 @@ void Unit::RemoveAurasAtMechanicImmunity(uint32 mechMask, uint32 exceptSpellId, 
 
                         Aura* aura = iter->second->GetAuraByEffectIndex(SpellEffectIndex(i));
                         if (aura && !aura->IsDeleted())
-                            aurasToRemove.insert(aura);
+                        {
+                            if (!aura->IsLastAuraOnHolder())
+                                aurasToRemove.insert(aura);
+                            else
+                                spellsToRemove.insert(iter->second->GetId());
+                        }
                     }
                 }
 
