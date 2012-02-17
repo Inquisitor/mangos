@@ -3806,8 +3806,8 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         if(CharmInfo *charmInfo = eye->InitCharmInfo(target))
                         {
                             charmInfo->InitPossessCreateSpells();
-                            charmInfo->SetReactState(REACT_PASSIVE);
-                            charmInfo->SetCommandState(COMMAND_STAY);
+                            charmInfo->SetState(CHARM_STATE_REACT, REACT_PASSIVE);
+                            charmInfo->SetState(CHARM_STATE_COMMAND, COMMAND_STAY);
                         }
 
                         caster->PossessSpellInitialize();
