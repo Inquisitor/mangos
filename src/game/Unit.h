@@ -1032,6 +1032,14 @@ class GlobalCooldownMgr                                     // Shared by Player 
         GlobalCooldownList m_GlobalCooldowns;
 };
 
+enum CharmStateType
+{
+    CHARM_STATE_REACT    = 0,
+    CHARM_STATE_COMMAND  = 1,
+    CHARM_STATE_ACTIVITY = 2,
+    CHARM_STATE_ACTION   = 3,
+};
+
 enum ActiveStates
 {
     ACT_PASSIVE  = 0x01,                                    // 0x01 - passive
@@ -1057,6 +1065,12 @@ enum CommandStates
     COMMAND_FOLLOW  = 1,
     COMMAND_ATTACK  = 2,
     COMMAND_ABANDON = 3
+};
+
+enum ActionStates
+{
+    ACTIONS_ENABLE  = 0x00,
+    ACTIONS_DISABLE = 0x08
 };
 
 #define UNIT_ACTION_BUTTON_ACTION(X) (uint32(X) & 0x00FFFFFF)
@@ -1107,26 +1121,29 @@ enum ActionBarIndex
 
 #define MAX_UNIT_ACTION_BAR_INDEX (ACTION_BAR_INDEX_END-ACTION_BAR_INDEX_START)
 
-struct CharmInfo
+struct MANGOS_DLL_SPEC CharmInfo
 {
     public:
         explicit CharmInfo(Unit* unit);
         uint32 GetPetNumber() const { return m_petnumber; }
         void SetPetNumber(uint32 petnumber, bool statwindow);
 
-        void SetCommandState(CommandStates st) { m_CommandState = st; }
-        CommandStates GetCommandState() { return m_CommandState; }
-        bool HasCommandState(CommandStates state) { return (m_CommandState == state); }
-        void SetReactState(ReactStates st) { m_reactState = st; }
-        ReactStates GetReactState() { return m_reactState; }
-        bool HasReactState(ReactStates state) { return (m_reactState == state); }
+        bool HasCommandState(CommandStates state) { return HasState(CHARM_STATE_COMMAND,state); }
+        bool HasReactState(ReactStates state) { return HasState(CHARM_STATE_REACT,state); }
+        void SetReactState(ReactStates state) { SetState(CHARM_STATE_REACT,state); }
+
+        uint32 GetState() const { return m_State; };
+        void   SetState(uint32 state) { m_State = state; };
+
+        uint8  GetState(CharmStateType type);
+        bool   HasState(CharmStateType type, uint8 value);
+        void   SetState(CharmStateType type, uint8 value);
 
         void InitPossessCreateSpells();
         void InitVehicleCreateSpells(uint8 seatId = 0);
         void InitCharmCreateSpells();
         void InitPetActionBar();
         void InitEmptyActionBar();
-
                                                             //return true if successful
         bool AddSpellToActionBar(uint32 spellid, ActiveStates newstate = ACT_DECIDE);
         bool RemoveSpellFromActionBar(uint32 spell_id);
@@ -1150,8 +1167,7 @@ struct CharmInfo
         Unit* m_unit;
         UnitActionBarEntry PetActionBar[MAX_UNIT_ACTION_BAR_INDEX];
         CharmSpellEntry m_charmspells[CREATURE_MAX_SPELLS];
-        CommandStates   m_CommandState;
-        ReactStates     m_reactState;
+        uint32          m_State;                // 1st byte - ReactState, 2nd byte - CommandStates, 3d byte - unknown (Activity state), 4d byte - Action state
         uint32          m_petnumber;
         GlobalCooldownMgr m_GlobalCooldownMgr;
 };
@@ -1629,6 +1645,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         CharmInfo* GetCharmInfo() { return m_charmInfo; }
         CharmInfo* InitCharmInfo(Unit* charm);
 
+        void SendCharmState();
+
         ObjectGuid const& GetTotemGuid(TotemSlot slot) const { return m_TotemSlot[slot]; }
         Totem* GetTotem(TotemSlot slot) const;
         bool IsAllTotemSlotsUsed() const;
@@ -2099,14 +2117,6 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         inline bool IsSpoofSamePlayerFaction(void)    { return m_spoofSamePlayerFaction; }
         // Frozen Mod
 
-        void SetThreatRedirectionTarget(ObjectGuid guid, uint32 pct)
-        {
-            m_misdirectionTargetGUID = guid;
-            m_ThreatRedirectionPercent = pct;
-        }
-        uint32 GetThreatRedirectionPercent() { return m_ThreatRedirectionPercent; }
-        Unit* GetMisdirectionTarget() { return m_misdirectionTargetGUID.IsEmpty() ?  NULL : GetMap()->GetUnit(m_misdirectionTargetGUID); }
-
         // Movement info
         MovementInfo m_movementInfo;
         Movement::MoveSpline * movespline;
@@ -2246,8 +2256,6 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         EventProcessor m_Events;
 
         GuardianPetList m_guardianPets;
-        uint32 m_ThreatRedirectionPercent;
-        ObjectGuid m_misdirectionTargetGUID;
 
         ObjectGuid m_TotemSlot[MAX_TOTEM_SLOT];
 
