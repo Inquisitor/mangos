@@ -53,7 +53,6 @@
 #include "Util.h"
 #include "TemporarySummon.h"
 #include "ScriptMgr.h"
-#include "PossessedSummon.h"
 #include "Formulas.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -10751,6 +10750,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     return;
                 }
                 case 70360:                                 // Eat Ooze (Putricide)
+                case 72527:                                 // Eat Ooze (Putricide) (Heroic)
                 {
                     if (!unitTarget)
                         return;

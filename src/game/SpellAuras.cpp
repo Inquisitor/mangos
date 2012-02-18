@@ -46,7 +46,6 @@
 #include "GridNotifiersImpl.h"
 #include "Vehicle.h"
 #include "CellImpl.h"
-#include "PossessedSummon.h"
 #include "InstanceData.h"
 
 #define NULL_AURA_SLOT 0xFF
