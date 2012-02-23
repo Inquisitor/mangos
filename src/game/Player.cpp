@@ -7195,7 +7195,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
             break;
         case AREATEAM_NONE:
             // overwrite for battlegrounds, maybe batter some zone flags but current known not 100% fit to this
-            pvpInfo.inHostileArea = sWorld.IsPvPRealm() || InBattleGround() || zone->flags & AREA_FLAG_OUTDOOR_PVP;
+            pvpInfo.inHostileArea = sWorld.IsPvPRealm() || InBattleGround() || zone->flags & AREA_FLAG_OUTDOOR_PVP || zone->flags & AREA_FLAG_PVP;
             break;
         default:                                            // 6 in fact
             pvpInfo.inHostileArea = false;
