@@ -10225,6 +10225,11 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(m_caster, 62239, true);
                     return;
                 }
+                case 61263:                                 //Intravenous Healing Potion
+                {
+                    m_caster->CastSpell(unitTarget, 61828, true);
+                    break;
+                }
                 case 62536:                                 // Frog Kiss (quest Blade fit for a champion)
                 {
                     if (!unitTarget)
