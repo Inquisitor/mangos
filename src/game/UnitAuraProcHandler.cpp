@@ -2576,14 +2576,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 // Sacred Shield (buff)
                 case 58597:
                 {
-                    if (procSpell && IsFriendlyTo(pVictim))
-                    {
-                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>() && (pVictim->HasAura(53569, EFFECT_INDEX_0) || pVictim->HasAura(53576, EFFECT_INDEX_0)))
-                            triggered_spell_id = 66922;
-                        else
-                            return SPELL_AURA_PROC_FAILED;
-                    }
-
                     basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
 
                     target = this;
@@ -2592,9 +2584,26 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 // Sacred Shield (talent rank)
                 case 53601:
                 {
-                    if (procSpell)
+                    if (procSpell && IsFriendlyTo(pVictim))
+                    {
                         if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>())
-                            triggered_spell_id = 66922;
+                        {
+                            // Infusion of Light Rank 1 talent
+                            if (pVictim->HasAura(53569, EFFECT_INDEX_0))
+                            {
+                                basepoints[0] = int32(damage / 12 / 2); // 50%
+                                triggered_spell_id = 66922;
+                            }
+                            // Infusion of Light Rank 2 talent
+                            else if (pVictim->HasAura(53576, EFFECT_INDEX_0)) // 100%
+                            {
+                                basepoints[0] = int32(damage / 12);
+                                triggered_spell_id = 66922;
+                            }
+                        }
+                        else
+                            return SPELL_AURA_PROC_FAILED;
+                    }
 
                     // triggered_spell_id in spell data
                     target = this;
