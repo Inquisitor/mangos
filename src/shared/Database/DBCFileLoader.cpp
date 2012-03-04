@@ -105,7 +105,7 @@ bool DBCFileLoader::Load(const char *filename, const char *fmt)
             uint32 entry = fields[0].GetUInt32();
             std::string patch_data = fields[1].GetString();
 
-            Tokens tokens = StrSplit(patch_data, " ");
+            Tokens tokens(patch_data, ' ');
             int32 m_valuesCount=tokens.size();
             if(m_valuesCount & 1)
                 continue; // error when odd values count
@@ -126,9 +126,9 @@ bool DBCFileLoader::Load(const char *filename, const char *fmt)
             int index;
             for (iter = tokens.begin(), index = 0; index < m_valuesCount; ++iter, index+=2)
             {
-                uint32 addr = atol((*iter).c_str());
+                uint32 addr = atol(*iter);
                 ++iter;
-                uint32 val = atol((*iter).c_str());
+                uint32 val = atol(*iter);
                 *(patched_record+addr)=val;
             }
         }
