@@ -42,9 +42,7 @@
 #include "BattleGroundMgr.h"
 #include "WorldPvP/WorldPvPMgr.h"
 #include "Spell.h"
-#include "Transports.h"
 #include "Util.h"
-#include "Unit.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
@@ -182,9 +180,6 @@ m_creatureInfo(NULL)
 Creature::~Creature()
 {
     CleanupsBeforeDelete();
-
-    if (GetTransport())
-        GetTransport()->RemovePassenger(this);
 
     m_vendorItemCounts.clear();
 
@@ -1089,8 +1084,6 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
     CreatureData& data = sObjectMgr.NewOrExistCreatureData(GetGUIDLow());
 
     uint32 displayId = GetNativeDisplayId();
-    uint32 transportMap = 0;
-    bool IsTransport = false;
 
     // check if it's a custom model and if not, use 0 for displayId
     CreatureInfo const *cinfo = GetCreatureInfo();
@@ -1109,14 +1102,6 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
             displayId = 0;
     }
 
-    if (GetTransport())
-    {
-        IsTransport = true;
-        uint32 MapId = GetTransport()->GetGOInfo()->moTransport.mapID;
-        if (MapId)
-            transportMap = MapId;
-    }
-
     // data->guid = guid don't must be update at save
     data.id = GetEntry();
     data.mapid = mapid;
@@ -1124,11 +1109,10 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
     data.phaseMask = phaseMask;
     data.modelid_override = displayId;
     data.equipmentId = GetEquipmentId();
-    data.posX = IsTransport ? GetTransOffsetX() : GetPositionX();
-    data.posY = IsTransport ? GetTransOffsetY() : GetPositionY();
-    data.posZ = IsTransport ? GetTransOffsetZ() : GetPositionZ();
-    data.orientation = IsTransport ? GetTransOffsetO() : GetOrientation();
-    data.transMap = transportMap;
+    data.posX = GetPositionX();
+    data.posY = GetPositionY();
+    data.posZ = GetPositionZ();
+    data.orientation = GetOrientation();
     data.spawntimesecs = m_respawnDelay;
     // prevent add data integrity problems
     data.spawndist = GetDefaultMovementType()==IDLE_MOTION_TYPE ? 0 : m_respawnradius;
@@ -1158,7 +1142,6 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
         << data.posY << ","
         << data.posZ << ","
         << data.orientation << ","
-        << data.transMap << ","
         << data.spawntimesecs << ","                        //respawn time
         << (float) data.spawndist << ","                    //spawn distance (float)
         << data.currentwaypoint << ","                      //currentwaypoint

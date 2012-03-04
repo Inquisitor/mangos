@@ -12858,38 +12858,6 @@ void Unit::_EnterVehicle(VehicleKit* vehicle, int8 seatId)
         data << GetVehicle()->GetBase()->GetPackGUID();
         player->GetSession()->SendPacket(&data);
     }
-
-    if (Transport* pTransport = GetTransport())
-    {
-        pTransport->RemovePassenger(this);
-        SetTransport(NULL);
-        // m_movementInfo.ClearTransportData();
-    }
-}
-
-void Unit::ExitVehicleOnTransport(Transport* trans)
-{
-    if(!m_pVehicle)
-         return;
-
-    float trans_x = m_pVehicle->GetBase()->GetTransOffsetX();
-    float trans_y = m_pVehicle->GetBase()->GetTransOffsetY();
-    float trans_z = m_pVehicle->GetBase()->GetTransOffsetZ() + 2.0f;
-
-    GetVehicle()->RemovePassenger(this);
-    m_pVehicle = NULL;
-
-    if (GetTypeId() == TYPEID_PLAYER)
-       ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
-
-    float x = GetPositionX() + trans_x;
-    float y = GetPositionY() + trans_y;
-    float z = GetPositionZ() + trans_z;
-    GetClosePoint(x, y, z, 2.0f);
-    if (trans)
-        trans->EnterThisTransport(this, x, y, z, m_pVehicle->GetBase()->GetOrientation());
-    else
-        sLog.outError("Unit::ExitVehicleOnTransport: %s attemps to exit on transport, but transport not found!", m_pVehicle->GetBase()->GetGuidStr().c_str());
 }
 
 void Unit::_ExitVehicle()
@@ -12897,14 +12865,11 @@ void Unit::_ExitVehicle()
     if (!GetVehicle())
         return;
 
-    if (Transport* trans = m_pVehicle->GetBase()->GetTransport())
-        ExitVehicleOnTransport(trans);
-    else
-    {
-        GetVehicle()->RemovePassenger(this, true);
+    m_pVehicle->RemovePassenger(this, true);
+    m_pVehicle = NULL;
 
-        m_pVehicle = NULL;
-    }
+    if (isAlive() && GetTypeId() == TYPEID_PLAYER)
+        ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
 }
 
 void Unit::SetPvP( bool state )

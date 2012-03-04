@@ -2135,7 +2135,6 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         // Vehicle system (over-aura operation)
         void EnterVehicle(Unit* base, int8 seatId = -1);
         void EnterVehicle(VehicleKit* vehicle, int8 seatId = -1);
-        void ExitVehicleOnTransport(Transport* trans);                         // temporary hack
         void ExitVehicle();
         // Vehicle system (direct operation)
         void _EnterVehicle(VehicleKit *vehicle, int8 seatId = -1);
