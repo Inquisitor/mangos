@@ -171,6 +171,12 @@ bool GlobalCooldownMgr::HasGlobalCooldown(SpellEntry const* spellInfo) const
     return itr != m_GlobalCooldowns.end() && itr->second.duration && WorldTimer::getMSTimeDiff(itr->second.cast_time, WorldTimer::getMSTime()) < itr->second.duration;
 }
 
+uint32 GlobalCooldownMgr::GetGlobalCooldown(SpellEntry const* spellInfo) const
+{
+    GlobalCooldownList::const_iterator itr = m_GlobalCooldowns.find(spellInfo->StartRecoveryCategory);
+    return itr != m_GlobalCooldowns.end() ? itr->second.duration - WorldTimer::getMSTimeDiff(itr->second.cast_time, WorldTimer::getMSTime()) : 0;
+}
+
 void GlobalCooldownMgr::AddGlobalCooldown(SpellEntry const* spellInfo, uint32 gcd)
 {
     m_GlobalCooldowns[spellInfo->StartRecoveryCategory] = GlobalCooldown(gcd, WorldTimer::getMSTime());
@@ -581,16 +587,22 @@ void Unit::resetAttackTimer(WeaponAttackType type)
     m_attackTimer[type] = uint32(GetAttackTime(type) * m_modAttackSpeedPct[type]);
 }
 
+float Unit::GetMeleeAttackDistance(Unit* pVictim /* NULL */) const
+{
+    // The measured values show BASE_MELEE_OFFSET in (1.3224, 1.342)
+    float dist = GetFloatValue(UNIT_FIELD_COMBATREACH) + 
+        (pVictim ? pVictim->GetFloatValue(UNIT_FIELD_COMBATREACH) : 0.0f) +
+        BASE_MELEERANGE_OFFSET;
+
+    return (dist < ATTACK_DISTANCE) ? ATTACK_DISTANCE : dist;
+}
+
 bool Unit::CanReachWithMeleeAttack(Unit* pVictim, float flat_mod /*= 0.0f*/) const
 {
     if (!pVictim || !pVictim->IsInWorld())
         return false;
 
-    // The measured values show BASE_MELEE_OFFSET in (1.3224, 1.342)
-    float reach = GetFloatValue(UNIT_FIELD_COMBATREACH) + pVictim->GetFloatValue(UNIT_FIELD_COMBATREACH) +
-        BASE_MELEERANGE_OFFSET + flat_mod;
-    if (reach < ATTACK_DISTANCE)
-        reach = ATTACK_DISTANCE;
+    float reach = GetMeleeAttackDistance(pVictim) + flat_mod;
 
     // This check is not related to bounding radius of both units!
     float dx = GetPositionX() - pVictim->GetPositionX();
@@ -8376,10 +8388,12 @@ bool Unit::IsImmunedToDamage(SpellSchoolMask schoolMask) const
         return true;
 
     //If m_immuneToDamage type contain magic, IMMUNE damage.
+    MAPLOCK_READ(const_cast<Unit*>(this), MAP_LOCK_TYPE_AURAS);
     SpellImmuneList const& damageList = m_spellImmune[IMMUNITY_DAMAGE];
-    for (SpellImmuneList::const_iterator itr = damageList.begin(); itr != damageList.end(); ++itr)
-        if (itr->type & schoolMask)
-            return true;
+    if (!damageList.empty())
+        for (SpellImmuneList::const_iterator itr = damageList.begin(); itr != damageList.end(); ++itr)
+            if (itr->type & schoolMask)
+                return true;
 
     return false;
 }
@@ -8387,10 +8401,12 @@ bool Unit::IsImmunedToDamage(SpellSchoolMask schoolMask) const
 bool Unit::IsImmunedToSchool(SpellSchoolMask schoolMask) const
 {
     //If m_immuneToSchool type contain this school type, IMMUNE damage.
+    MAPLOCK_READ(const_cast<Unit*>(this), MAP_LOCK_TYPE_AURAS);
     SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
-    for (SpellImmuneList::const_iterator itr = schoolList.begin(); itr != schoolList.end(); ++itr)
-        if (itr->type & schoolMask)
-            return true;
+    if (!schoolList.empty())
+        for (SpellImmuneList::const_iterator itr = schoolList.begin(); itr != schoolList.end(); ++itr)
+            if (itr->type & schoolMask)
+                return true;
 
     return false;
 }
@@ -8409,6 +8425,7 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo) const
     if (!effectMask)
         return true;
 
+    MAPLOCK_READ(const_cast<Unit*>(this), MAP_LOCK_TYPE_AURAS);
     SpellImmuneList const& dispelList = m_spellImmune[IMMUNITY_DISPEL];
     for(SpellImmuneList::const_iterator itr = dispelList.begin(); itr != dispelList.end(); ++itr)
         if (itr->type == spellInfo->Dispel)
@@ -8455,6 +8472,7 @@ bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex i
     if (spellInfo->Effect[index] == SPELL_EFFECT_NONE)
         return true;
 
+    MAPLOCK_READ(const_cast<Unit*>(this), MAP_LOCK_TYPE_AURAS);
     if (!(spellInfo->Attributes & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY))
     {
         //If m_immuneToEffect type contain this effect type, IMMUNE effect.
@@ -8927,6 +8945,7 @@ void Unit::ApplySpellImmune(uint32 spellId, uint32 op, uint32 type, bool apply)
 {
     if (apply)
     {
+        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_AURAS);
         for (SpellImmuneList::iterator itr = m_spellImmune[op].begin(), next; itr != m_spellImmune[op].end(); itr = next)
         {
             next = itr; ++next;
@@ -8943,6 +8962,7 @@ void Unit::ApplySpellImmune(uint32 spellId, uint32 op, uint32 type, bool apply)
     }
     else
     {
+        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_AURAS);
         for (SpellImmuneList::iterator itr = m_spellImmune[op].begin(); itr != m_spellImmune[op].end(); ++itr)
         {
             if (itr->spellId == spellId)
@@ -11150,7 +11170,7 @@ void CharmInfo::LoadPetActionBar(const std::string& data )
 {
     InitPetActionBar();
 
-    Tokens tokens = StrSplit(data, " ");
+    Tokens tokens(data, ' ');
 
     if (tokens.size() != (ACTION_BAR_INDEX_END-ACTION_BAR_INDEX_START)*2)
         return;                                             // non critical, will reset to default
@@ -11160,9 +11180,9 @@ void CharmInfo::LoadPetActionBar(const std::string& data )
     for(iter = tokens.begin(), index = ACTION_BAR_INDEX_START; index < ACTION_BAR_INDEX_END; ++iter, ++index )
     {
         // use unsigned cast to avoid sign negative format use at long-> ActiveStates (int) conversion
-        uint8 type  = (uint8)atol((*iter).c_str());
+        uint8 type  = (uint8)atol(*iter);
         ++iter;
-        uint32 action = atol((*iter).c_str());
+        uint32 action = atol(*iter);
 
         PetActionBar[index].SetActionAndType(action,ActiveStates(type));
 
@@ -11180,7 +11200,6 @@ void CharmInfo::BuildActionBar( WorldPacket* data )
 
 void CharmInfo::SetSpellAutocast( uint32 spell_id, bool state )
 {
-
     for(int i = 0; i < MAX_UNIT_ACTION_BAR_INDEX; ++i)
     {
         if (spell_id == PetActionBar[i].GetAction() && PetActionBar[i].IsActionBarForSpell())
@@ -11340,7 +11359,6 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
             sLog.outError("WORLD: unknown PET flag Action %i and spellid %i.", uint32(flag), spellid);
             break;
     }
-
 }
 
 void Unit::DoPetCastSpell(Unit* target, uint32 spellId)
@@ -11381,7 +11399,6 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
     if (GetCharmInfo() && GetCharmInfo()->GetGlobalCooldownMgr().HasGlobalCooldown(spellInfo))
         return;
 
-
     bool triggered = false;
     SpellEntry const* triggeredBy = NULL;
 
@@ -11420,7 +11437,6 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
         DEBUG_LOG("Unit::DoPetCastSpell: %s tryed to cast spell %u with setted dest. location without target. Set unitTarget to caster.",GetObjectGuid().GetString().c_str(), spellInfo->Id);
 //        targets->setUnitTarget((Unit*)pet);
     }
-
 
     Spell *spell = new Spell(this, spellInfo, triggered, GetObjectGuid(), triggeredBy);
     spell->m_cast_count = cast_count;                       // probably pending spell cast
@@ -12635,7 +12651,7 @@ void Unit::MonsterMoveWithSpeed(float x, float y, float z, float speed, bool gen
     init.Launch();
 }
 
-void Unit::MonsterMoveJump(float x, float y, float z, float o, float speed, float height, bool isKnockBack, Unit* target)
+void Unit::MonsterMoveToDestination(float x, float y, float z, float o, float speed, float height, bool isKnockBack, Unit* target)
 {
     MaNGOS::NormalizeMapCoord(x);
     MaNGOS::NormalizeMapCoord(y);
@@ -12646,7 +12662,7 @@ void Unit::MonsterMoveJump(float x, float y, float z, float o, float speed, floa
         InterruptNonMeleeSpells(false);
     }
 
-    GetMotionMaster()->MoveJumpTo(x, y, z, o, target, speed, height, 0);
+    GetMotionMaster()->MoveToDestination(x, y, z, o, target, speed, height, 0);
 }
 
 struct SetPvPHelper
@@ -12921,7 +12937,7 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
         float fy = oy + dis * vsin;
         float fz = oz;
 
-        MonsterMoveJump(fx,fy,fz,GetOrientation(),horizontalSpeed,max_height, true);
+        MonsterMoveToDestination(fx,fy,fz,GetOrientation(),horizontalSpeed,max_height, true);
     }
 }
 
@@ -13646,4 +13662,30 @@ void DamageInfo::Reset(uint32 _damage)
 SpellSchoolMask DamageInfo::SchoolMask()
 {
     return m_spellInfo ? GetSpellSchoolMask(m_spellInfo) : SPELL_SCHOOL_MASK_NORMAL;
+}
+
+void Unit::SetLastManaUse()
+{
+    if (GetTypeId() == TYPEID_PLAYER &&
+        !IsUnderLastManaUseEffect() &&
+        HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_REGENERATE_POWER))
+        RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_REGENERATE_POWER);
+
+    uint32 lastRegenInterval = IsUnderLastManaUseEffect() ? REGEN_TIME_PRECISE : REGEN_TIME_FULL;
+
+    m_lastManaUseTimer = 5000;
+
+    // Do first interrupted powers regen (not only PRECIZE interval), also set player mana regenerate interval to PRECIZE
+    if (GetTypeId() == TYPEID_PLAYER)
+    {
+        int32 diff = lastRegenInterval - ((Player*)this)->GetRegenTimer();
+        if (diff > 0)
+            ((Player*)this)->RegenerateAll(diff);
+    }
+}
+
+bool ManaUseEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
+{
+    m_caster.SetLastManaUse();
+    return true;
 }

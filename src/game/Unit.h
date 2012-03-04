@@ -459,6 +459,8 @@ enum UnitMoveType
 
 extern float baseMoveSpeed[MAX_MOVE_TYPE];
 
+#define BASE_CHARGE_SPEED 27.0f
+
 enum CombatRating
 {
     CR_WEAPON_SKILL             = 0,
@@ -1028,6 +1030,8 @@ class GlobalCooldownMgr                                     // Shared by Player 
         void AddGlobalCooldown(SpellEntry const* spellInfo, uint32 gcd);
         void CancelGlobalCooldown(SpellEntry const* spellInfo);
 
+        uint32 GetGlobalCooldown(SpellEntry const* spellInfo) const;
+
     private:
         GlobalCooldownList m_GlobalCooldowns;
 };
@@ -1273,6 +1277,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
                     return !HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_DISARM_RANGED);
             }
         }
+
+        float GetMeleeAttackDistance(Unit* pVictim = NULL) const;
         bool CanReachWithMeleeAttack(Unit* pVictim, float flat_mod = 0.0f) const;
         uint32 m_extraAttacks;
 
@@ -1547,7 +1553,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void SendSpellDamageImmune(Unit* target, uint32 spellId);
 
         void NearTeleportTo(float x, float y, float z, float orientation, bool casting = false);
-        void MonsterMoveJump(float x, float y, float z, float o, float speed, float height, bool isKnockBack = false, Unit* target = NULL);
+        void MonsterMoveToDestination(float x, float y, float z, float o, float speed, float height, bool isKnockBack = false, Unit* target = NULL);
         // recommend use MonsterMove/MonsterMoveWithSpeed for most case that correctly work with movegens
         // if used additional args in ... part then floats must explicitly casted to double
         void SendMonsterMoveTransport(WorldObject *transport, SplineType type, SplineFlags flags, uint32 moveTime, ...);
@@ -2013,14 +2019,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         SpellAuraProcResult HandleDamageShieldAuraProc(Unit *pVictim, DamageInfo* damageInfo, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
         SpellAuraProcResult HandleDropChargeByDamageProc(Unit *pVictim, DamageInfo* damageInfo, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
         SpellAuraProcResult HandleIgnoreUnitStateAuraProc(Unit *pVictim, DamageInfo* damageInfo, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
-        void SetLastManaUse()
-        {
-            if (GetTypeId() == TYPEID_PLAYER && !IsUnderLastManaUseEffect())
-                RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_REGENERATE_POWER);
 
-            m_lastManaUseTimer = 5000;
-        }
-        bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer; }
+        void SetLastManaUse();
+        bool IsUnderLastManaUseEffect() const { return bool(m_lastManaUseTimer > 0); }
 
         uint32 GetRegenTimer() const { return m_regenTimer; }
 
@@ -2353,5 +2354,15 @@ bool Unit::CheckAllControlledUnits(Func const& func, uint32 controlledMask) cons
 
     return false;
 }
+
+class ManaUseEvent : public BasicEvent
+{
+    public:
+        ManaUseEvent(Unit& caster) : BasicEvent(), m_caster(caster) {}
+        bool Execute(uint64 e_time, uint32 p_time);
+
+    private:
+        Unit& m_caster;
+};
 
 #endif

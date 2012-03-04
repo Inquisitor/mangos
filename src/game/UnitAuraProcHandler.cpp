@@ -2586,20 +2586,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 {
                     if (procSpell && IsFriendlyTo(pVictim))
                     {
-                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>())
+                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>() && (pVictim->HasAura(53569, EFFECT_INDEX_0) || pVictim->HasAura(53576, EFFECT_INDEX_0)))
                         {
-                            // Infusion of Light Rank 1 talent
+                            triggered_spell_id = 66922;
+                            basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
                             if (pVictim->HasAura(53569, EFFECT_INDEX_0))
-                            {
-                                basepoints[0] = int32(damage / 12 / 2); // 50%
-                                triggered_spell_id = 66922;
-                            }
-                            // Infusion of Light Rank 2 talent
-                            else if (pVictim->HasAura(53576, EFFECT_INDEX_0)) // 100%
-                            {
-                                basepoints[0] = int32(damage / 12);
-                                triggered_spell_id = 66922;
-                            }
+                                basepoints[0] = basepoints[0] >> 1;
                         }
                         else
                             return SPELL_AURA_PROC_FAILED;
@@ -3818,29 +3810,41 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
             // Deep Wounds (replace triggered spells to directly apply DoT), dot spell have familyflags
             if (!auraSpellInfo->SpellFamilyFlags.Flags && auraSpellInfo->SpellIconID == 243)
             {
-                float weaponDamage;
-                // DW should benefit of attack power, damage percent mods etc.
-                // TODO: check if using offhand damage is correct and if it should be divided by 2
-                if (haveOffhandWeapon() && getAttackTimer(BASE_ATTACK) > getAttackTimer(OFF_ATTACK))
-                    weaponDamage = (GetFloatValue(UNIT_FIELD_MINOFFHANDDAMAGE) + GetFloatValue(UNIT_FIELD_MAXOFFHANDDAMAGE))/2;
-                else
-                    weaponDamage = (GetFloatValue(UNIT_FIELD_MINDAMAGE) + GetFloatValue(UNIT_FIELD_MAXDAMAGE))/2;
+                bool bOffHand = procFlags & PROC_FLAG_SUCCESSFUL_OFFHAND_HIT;
+                if (bOffHand && !haveOffhandWeapon())
+                {
+                    sLog.outError("Unit::HandleProcTriggerSpellAuraProc: offhand %u proc without offhand weapon!",auraSpellInfo->Id);
+                    return SPELL_AURA_PROC_FAILED;
+                }
+
+                float weaponSpeed = GetAttackTime(bOffHand ? OFF_ATTACK : BASE_ATTACK)/1000.0f;
+                float weaponDPS   = ((GetFloatValue(bOffHand ? UNIT_FIELD_MINOFFHANDDAMAGE : UNIT_FIELD_MINDAMAGE) +
+                                    GetFloatValue(bOffHand ? UNIT_FIELD_MAXOFFHANDDAMAGE : UNIT_FIELD_MAXDAMAGE))/2.0f) / weaponSpeed;
+                float attackPower = GetTotalAttackPowerValue(bOffHand ? OFF_ATTACK : BASE_ATTACK);
+                float f_damage    = 0.0f;
 
                 switch (auraSpellInfo->Id)
                 {
-                    case 12834: basepoints[0] = int32(weaponDamage * 16 / 100); break;
-                    case 12849: basepoints[0] = int32(weaponDamage * 32 / 100); break;
-                    case 12867: basepoints[0] = int32(weaponDamage * 48 / 100); break;
+                    case 12834: f_damage = ((weaponDPS + attackPower / 14.0f) * weaponSpeed)* 0.16f; break;
+                    case 12849: f_damage = ((weaponDPS + attackPower / 14.0f) * weaponSpeed)* 0.32f; break;
+                    case 12867: f_damage = ((weaponDPS + attackPower / 14.0f) * weaponSpeed)* 0.48f; break;
                     // Impossible case
                     default:
                         sLog.outError("Unit::HandleProcTriggerSpellAuraProc: DW unknown spell rank %u",auraSpellInfo->Id);
                         return SPELL_AURA_PROC_FAILED;
                 }
 
-                // 1 tick/sec * 6 sec = 6 ticks
-                basepoints[0] /= 6;
-
                 trigger_spell_id = 12721;
+
+                SpellEntry const* triggerspellInfo = sSpellStore.LookupEntry(trigger_spell_id);
+
+                if (!triggerspellInfo || f_damage < M_NULL_F)
+                    return SPELL_AURA_PROC_FAILED;
+
+                uint32 tickcount = GetSpellDuration(triggerspellInfo) / triggerspellInfo->EffectAmplitude[EFFECT_INDEX_0];
+
+                basepoints[0] = floor( f_damage / tickcount);
+
                 break;
             }
             else if (auraSpellInfo->SpellIconID == 2961)    // Taste for Blood
@@ -4716,8 +4720,8 @@ SpellAuraProcResult Unit::HandleOverrideClassScriptAuraProc(Unit *pVictim, Damag
             triggered_spell_id = 28750;                     // Blessing of the Claw
             break;
         case 5497:                                          // Improved Mana Gems (Serpent-Coil Braid)
-            triggered_spell_id = 37445;                     // Mana Surge
-            break;
+            CastSpell(pVictim, 37445, true);                // Mana Surge (direct because triggeredByAura has no duration)
+            return SPELL_AURA_PROC_OK;
         case 6953:                                          // Warbringer
             RemoveAurasAtMechanicImmunity(IMMUNE_TO_ROOT_AND_SNARE_MASK,0,true);
             return SPELL_AURA_PROC_OK;
