@@ -9494,7 +9494,25 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                 for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
                 {
                     if ((*iter)->getPowerType() == POWER_MANA && (*iter)->GetCharmerOrOwnerPlayerOrPlayerItself())
+                    {
+                        // Prot and Retri paladins should avoid Unchained Magic
+                        if ((*iter)->GetTypeId() == TYPEID_PLAYER)
+                        {
+                            // So, if player is Paladin...
+                            Player * plr = (Player*)(*iter);
+                            if (plr->getClass() == CLASS_PALADIN)
+                            {
+                                // Let's count his talents
+                                uint8 spentPointsRetr = plr->GetTalentsCount(1);
+                                uint8 spentPointsProt = plr->GetTalentsCount(2);
+                                // Skip paladin if he's Protection or Retribution specced
+                                if (spentPointsProt > 40 || spentPointsRetr > 40)
+                                    continue;
+                            }
+
+                        }
                         targetUnitMap.push_back(*iter);
+                    }
                 }
             }
             break;
