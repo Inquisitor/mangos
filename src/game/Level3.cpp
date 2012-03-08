@@ -6524,6 +6524,27 @@ bool ChatHandler::HandleCastSelfCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleInstanceGetDataCommand(char * args)
+{
+    Player* pl = m_session->GetPlayer();
+
+    Map* map = pl->GetMap();
+
+    InstanceData* iData = map->GetInstanceData();
+    if (!iData)
+    {
+        PSendSysMessage("Map has no instance data.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    int32 field = atoi (args);
+
+    int32 val = iData->GetData(field);
+    PSendSysMessage("Instance data for field %i is %i.", field, val);
+    return true;
+}
+
 bool ChatHandler::HandleInstanceListBindsCommand(char* /*args*/)
 {
     Player* player = getSelectedPlayer();
@@ -6628,6 +6649,34 @@ bool ChatHandler::HandleInstanceUnbindCommand(char* args)
         }
     }
     PSendSysMessage("instances unbound: %d", counter);
+    return true;
+}
+
+bool ChatHandler::HandleInstanceSetDataCommand(char * args)
+{
+    Player* pl = m_session->GetPlayer();
+
+    Map* map = pl->GetMap();
+
+    InstanceData* iData = map->GetInstanceData();
+    if (!iData)
+    {
+        PSendSysMessage("Map has no instance data.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    char* field_str = strtok ((char*) args, " ");
+    char* value_str = strtok (NULL, "");
+
+    if (!field_str || !value_str)
+        return false;
+
+    int32 field = atoi (field_str);
+    int32 value = atoi (value_str);
+
+    iData->SetData(field, value);
+    PSendSysMessage("Instance data field %i is now set to %i.", field, value);
     return true;
 }
 
