@@ -1134,6 +1134,69 @@ bool ChatHandler::HandleGameObjectAddCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleGameObjectStateCommand(char* args)
+{
+    // number or [name] Shift-click form |color|Hgameobject:go_id|h[name]|h|r
+    char* cId = ExtractKeyFromLink(&args,"Hgameobject");
+    if (!cId)
+        return false;
+
+    uint32 lowguid = atoi(cId);
+    if (!lowguid)
+        return false;
+
+    GameObject* obj = NULL;
+
+    // by DB guid
+    if (GameObjectData const* go_data = sObjectMgr.GetGOData(lowguid))
+        obj = GetGameObjectWithGuid(lowguid,go_data->id);
+
+    if (!obj)
+    {
+        PSendSysMessage(LANG_COMMAND_OBJNOTFOUND, lowguid);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    uint32 state;
+    if (!ExtractUInt32(&args, state) || state > 2)
+    {
+        SendSysMessage(LANG_BAD_VALUE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    uint32 time_to_restore;
+    if (!ExtractUInt32(&args, time_to_restore))
+        time_to_restore = 0;
+
+    switch(state)
+    {
+        case 0:
+        {
+            obj->ResetDoorOrButton();
+            break;
+        }
+        case 1:
+        {
+            obj->UseDoorOrButton(time_to_restore);
+            break;
+        }
+        case 2:
+        {
+            obj->UseDoorOrButton(time_to_restore, true);
+            break;
+        }
+        default:
+        {
+            SendSysMessage(LANG_BAD_VALUE);
+            SetSentErrorMessage(true);
+            return false;
+        }
+    }
+    return true;
+}
+
 //set pahsemask for selected object
 bool ChatHandler::HandleGameObjectPhaseCommand(char* args)
 {
