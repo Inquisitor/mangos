@@ -1426,6 +1426,155 @@ bool ChatHandler::HandleCharacterAchievementsCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleCharacterStatsCommand(char* args)
+{
+    Player* target;
+    ObjectGuid target_guid;
+    std::string target_name;
+    if (!ExtractPlayerTarget(&args, &target, &target_guid, &target_name))
+        return false;
+
+    std::ostringstream msg;
+    msg << target->GetGuidStr()         << " stats:";
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffffff00HP: " << target->GetMaxHealth() << "|r "
+        << "|cff0000ffMP: " << target->GetMaxPower(POWER_MANA)<<"|r "
+        << "|cffff0000Rage: " << target->GetMaxPower(POWER_RAGE)<<"|r "
+        << "|cffffff00Energy: " << target->GetMaxPower(POWER_ENERGY)<<"|r "
+        << "|cff8888ffRP: " << target->GetMaxPower(POWER_RUNIC_POWER)<<"|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cff00ff00Agility: " << target->GetStat(STAT_AGILITY) << "|r "
+        << "|cffff0000Strength: " << target->GetStat(STAT_STRENGTH) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cff0000ffIntellect: " << target->GetStat(STAT_INTELLECT) << "|r "
+        << "|cff00ffffSpirit: " << target->GetStat(STAT_SPIRIT) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffffff00Stamina: " << target->GetStat(STAT_STAMINA) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff8888Armor: " << target->GetArmor() << "|r "
+        << "|cffff4444Block: " << target->GetFloatValue(PLAYER_BLOCK_PERCENTAGE) << "%|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cff999999Dodge: " << target->GetFloatValue(PLAYER_DODGE_PERCENTAGE) << "%|r "
+        << "|cff9999ffParry: " << target->GetFloatValue(PLAYER_PARRY_PERCENTAGE) << "%|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "Crit (|cffff0000Melee|r/|cff8888ffSpell|r/|cffffff00Spell proc|r/|cffff8800Ranged|r): |cffff0000"
+        << target->GetFloatValue(PLAYER_CRIT_PERCENTAGE) << "%|r / |cff8888ff"
+        << target->GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1) << "%|r / |cffffff00"
+        << target->GetFloatValue(MANGOSR2_SPELL_CRITPROC) << "%|r / |cffff8800"
+        << target->GetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE) << "%|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    /*    msg << "|cffff0000Attack power: " << target->GetUInt32Value(UNIT_FIELD_ATTACK_POWER)<< "|r  "
+        << "|cffffff00Spell power bonus: " << target->GetBaseSpellPowerBonus()<< "|r "
+        << "|cffff8800Ranged attack power: " << target->GetUInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER)<< "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+    */
+
+    msg << "|cffaaaaffSpell Bonus Damage: " << target->GetUInt32Value(MANGOSR2_SPELL_BONUSDMG) << "|r "
+        << "|cff00ff00Spell Bonus Heal: " << target->GetUInt32Value(MANGOSR2_SPELL_BONUSHEAL) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0000Melee Attack Power: " << (target->GetUInt32Value(MANGOSR2_AP_MELEE_1)+target->GetUInt32Value(MANGOSR2_AP_MELEE_2))<< "|r "
+        << "|cffff8800Ranged Attack Power: " << (target->GetUInt32Value(MANGOSR2_AP_RANGED_1)+target->GetUInt32Value(MANGOSR2_AP_RANGED_2)) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff4444Block Rating: " << target->GetUInt32Value(MANGOSR2_BLOCKRATING) << "|r "
+        << "|cffff8888Defense Rating: " << target->GetUInt32Value(MANGOSR2_DEFRATING) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cff999999Dodge Rating: " << target->GetUInt32Value(MANGOSR2_DODGERATING) << "|r "
+        << "|cff9999ffParry Rating: " << target->GetUInt32Value(MANGOSR2_PARRYRATING) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff00ffResilience: " << target->GetUInt32Value(MANGOSR2_RESILIENCE) << "|r "
+        << "|cff00ffffManaregen: " << target->GetFloatValue(MANGOSR2_MANAREGEN) << " mp/s|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "Hit rating (|cffff0000Melee|r/|cffffff00Spell|r/|cffff8800Ranged|r): |cffff0000"
+        << target->GetUInt32Value(MANGOSR2_MELEE_HITRATING) << "|r / |cffffff00"
+        << target->GetUInt32Value(MANGOSR2_SPELL_HITRATING) << "|r / |cffff8800"
+        << target->GetUInt32Value(MANGOSR2_RANGED_HITRATING) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+
+    msg << "Crit rating (|cffff0000Melee|r/|cffffff00Spell|r/|cffff8800Ranged|r): |cffff0000"
+        << target->GetUInt32Value(MANGOSR2_MELEE_CRITRATING) << "|r / |cffffff00"
+        << target->GetUInt32Value(MANGOSR2_SPELL_CRITRATING)  << "|r / |cffff8800"
+        << target->GetUInt32Value(MANGOSR2_RANGED_CRITRATING) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+
+    msg << "Haste rating (|cffff0000Melee|r/|cffffff00Spell|r/|cffff8800Ranged|r): |cffff0000"
+        << target->GetUInt32Value(MANGOSR2_MELEE_HASTERATING) << "|r / |cffffff00"
+        << target->GetUInt32Value(MANGOSR2_SPELL_HASTERATING) << "|r / |cffff8800"
+        << target->GetUInt32Value(MANGOSR2_RANGED_HASTERATING) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffffffffHolyRes: " << target->GetResistance(SPELL_SCHOOL_HOLY) << "|r  "
+        << "|cffffff00FireRes: " << target->GetResistance(SPELL_SCHOOL_FIRE) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cff00ff00NatureRes: " << target->GetResistance(SPELL_SCHOOL_NATURE) << "|r  "
+        << "|cff8888ffFrostRes: " << target->GetResistance(SPELL_SCHOOL_FROST) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+ 
+    msg << "|cff000088ShadowRes: " << target->GetResistance(SPELL_SCHOOL_SHADOW) << "|r  "
+        << "|cff8800ffArcaneRes: " << target->GetResistance(SPELL_SCHOOL_ARCANE) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0000Melee Damage:|r |cffff3333"
+        << target->GetFloatValue(UNIT_FIELD_MINDAMAGE) << "|r - |cffff6666"
+        << target->GetFloatValue(UNIT_FIELD_MAXDAMAGE) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0088Offhand Damage:|r |cffff3388"
+        << target->GetFloatValue(UNIT_FIELD_MINOFFHANDDAMAGE) << "|r - |cffff6688"
+        << target->GetFloatValue(UNIT_FIELD_MAXOFFHANDDAMAGE) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff8800Ranged Damage:|r |cffff8833"
+        << target->GetFloatValue(UNIT_FIELD_MINRANGEDDAMAGE) << "|r - |cffff8866"
+        << target->GetFloatValue(UNIT_FIELD_MAXRANGEDDAMAGE) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0000Melee Base Attack Time: " << target->GetAttackTime(BASE_ATTACK) << "|r  "
+        << "|cffff8800Ranged Base Attack Time: " << target->GetAttackTime(RANGED_ATTACK) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0000Melee Attack Time: " << target->GetFloatValue(MANGOSR2_MELLE_MAINTIME) << "|r  "
+        << "|cffff0088Melee Offhand Attack Time: " << target->GetFloatValue(MANGOSR2_MELLE_OFFTIME) << "|r  "
+        << "|cffff8800Ranged Attack Time: " << target->GetFloatValue(MANGOSR2_RANGED_ATTACKTIME) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    /*
+    msg << "MangosR2 stats: " << std::ends; SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0000Melee Damage:|r |cffff3333"
+        << target->GetFloatValue(MANGOSR2_MELEE_MAINMINDMG) << "|r - |cffff6666"
+        << target->GetFloatValue(MANGOSR2_MELEE_MAINMAXDMG) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff0088Offhand Damage:|r |cffff3388"
+        << target->GetFloatValue(MANGOSR2_MELEE_OFFMINDMG) << "|r - |cffff6688"
+        << target->GetFloatValue(MANGOSR2_MELEE_OFFMAXDMG) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+
+    msg << "|cffff8800Ranged Damage:|r |cffff8833"
+        << target->GetFloatValue(MANGOSR2_RANGED_MINDMG) << "|r - |cffff8866"
+        << target->GetFloatValue(MANGOSR2_RANGED_MAXDMG) << "|r " << std::ends;
+    SendSysMessage(msg.str().c_str());  msg.str("");
+    */
+
+    return true;
+}
+
 void ChatHandler::ShowFactionListHelper( FactionEntry const * factionEntry, LocaleConstant loc, FactionState const* repState /*= NULL*/, Player * target /*= NULL */ )
 {
     std::string name = factionEntry->name[loc];

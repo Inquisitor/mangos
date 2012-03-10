@@ -202,6 +202,7 @@ class MANGOS_DLL_SPEC ChatHandler
         bool HandleCharacterRenameCommand(char* args);
         bool HandleCharacterReputationCommand(char* args);
         bool HandleCharacterTitlesCommand(char* args);
+        bool HandleCharacterStatsCommand(char* args);
 
         bool HandleDebugAnimCommand(char* args);
         bool HandleDebugArenaCommand(char* args);
