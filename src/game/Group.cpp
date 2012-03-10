@@ -327,6 +327,9 @@ bool Group::AddMember(ObjectGuid guid, const char* name)
 
     SendUpdate();
 
+    if (isLFDGroup())
+        sLFGMgr.AddMemberToLFDGroup(guid);
+
     if (Player* player = sObjectMgr.GetPlayer(guid))
     {
         if (!IsLeader(player->GetObjectGuid()) && !isBGGroup())
@@ -1219,7 +1222,8 @@ bool Group::_addMember(ObjectGuid guid, const char* name, uint8 group, GroupFlag
     member.guid      = guid;
     member.name      = name;
     member.group     = group;
-    member.assistant = isAssistant;
+    member.flags     = flags;
+    member.roles     = roles;
     member.lastMap   = lastMap;
     m_memberSlots.push_back(member);
 
@@ -1687,7 +1691,7 @@ GroupJoinBattlegroundResult Group::CanJoinBattleGroundQueue(BattleGround const* 
         if(member->InBattleGroundQueueForBattleGroundQueueType(bgQueueTypeIdRandom))
             return ERR_IN_RANDOM_BG;
         // don't let join to bg queue random if someone from the group is already in bg queue
-        if(bgOrTemplate->GetTypeID() == BATTLEGROUND_RB && member->InBattleGroundQueue())
+        if(bgOrTemplate->GetTypeID() == BATTLEGROUND_RB && member->InNonArenaQueue())
             return ERR_IN_NON_RANDOM_BG;
         // check for deserter debuff in case not arena queue
         if(bgOrTemplate->GetTypeID() != BATTLEGROUND_AA && !member->CanJoinToBattleground())
@@ -1753,7 +1757,7 @@ bool Group::InCombatToInstance(uint32 instanceId)
     return false;
 }
 
-bool Group::SetPlayerMap(const ObjectGuid guid, uint32 mapid)
+bool Group::SetPlayerMap(ObjectGuid guid, uint32 mapid)
 {
     member_witerator slot = _getMemberWSlot(guid);
     if (slot != m_memberSlots.end())

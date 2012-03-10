@@ -2114,6 +2114,15 @@ class MANGOS_DLL_SPEC Player : public Unit
             return false;
         }
 
+        bool InNonArenaQueue() const
+        {
+            for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; ++i)
+                if (m_bgBattleGroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_NONE)
+                    if (m_bgBattleGroundQueueID[i].bgQueueTypeId < BATTLEGROUND_QUEUE_2v2)
+                        return true;
+            return false;
+        }
+
         BattleGroundQueueTypeId GetBattleGroundQueueTypeId(uint32 index) const { return m_bgBattleGroundQueueID[index].bgQueueTypeId; }
         uint32 GetBattleGroundQueueIndex(BattleGroundQueueTypeId bgQueueTypeId) const
         {

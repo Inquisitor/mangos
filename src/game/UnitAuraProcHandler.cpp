@@ -3029,6 +3029,9 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
             // Improved Water Shield
             if (dummySpell->SpellIconID == 2287)
             {
+                if (!procSpell)
+                    return SPELL_AURA_PROC_FAILED;
+
                 // Lesser Healing Wave need aditional 60% roll
                 if (procSpell->SpellFamilyFlags.test<CF_SHAMAN_LESSER_HEALING_WAVE>() && !roll_chance_i(60))
                     return SPELL_AURA_PROC_FAILED;
@@ -5058,7 +5061,7 @@ SpellAuraProcResult Unit::HandleModDamagePercentDoneAuraProc(Unit* /*pVictim*/, 
     return SPELL_AURA_PROC_OK;
 }
 
-SpellAuraProcResult Unit::HandlePeriodicDummyAuraProc(Unit* /*pVictim*/, DamageInfo* damageInfo, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
+SpellAuraProcResult Unit::HandlePeriodicDummyAuraProc(Unit* pVictim, DamageInfo* damageInfo, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
 {
     if (!triggeredByAura)
         return SPELL_AURA_PROC_FAILED;
@@ -5083,7 +5086,7 @@ SpellAuraProcResult Unit::HandlePeriodicDummyAuraProc(Unit* /*pVictim*/, DamageI
                 }
                 case 63018:                                 // Searing Light (XT-002)
                 case 65121:                                 // Searing Light (h) (XT-002)
-                    pVictim->DealDamage(pVictim, damage, NULL, DOT, SPELL_SCHOOL_MASK_ARCANE, spellProto, true);
+                    pVictim->DealDamage(pVictim, damageInfo->damage, NULL, DOT, SPELL_SCHOOL_MASK_ARCANE, spellProto, true);
                     break;
             }
             break;
@@ -5212,7 +5215,7 @@ SpellAuraProcResult Unit::HandleSpellMagnetAuraProc(Unit *pVictim, DamageInfo* d
             return SPELL_AURA_PROC_CANT_TRIGGER;
     }
 
-    if (pVictim && damage)
+    if (pVictim && damageInfo->damage)
     {
         // Damage is dealt after proc system - lets ignore auras which wasn't updated yet
         // to make spell not remove its own aura
@@ -5220,10 +5223,10 @@ SpellAuraProcResult Unit::HandleSpellMagnetAuraProc(Unit *pVictim, DamageInfo* d
             return SPELL_AURA_PROC_FAILED;
         int32 damageLeft = triggeredByAura->GetModifier()->m_amount;
         // No damage left
-        if (damageLeft < damage )
-            return HandleRemoveByDamageProc(pVictim, damage, triggeredByAura, procSpell, procFlag, procEx, cooldown);
+        if (damageLeft < damageInfo->damage )
+            return HandleRemoveByDamageProc(pVictim, damageInfo, triggeredByAura, procSpell, procFlag, procEx, cooldown);
         else
-            triggeredByAura->GetModifier()->m_amount = (damageLeft-damage);
+            triggeredByAura->GetModifier()->m_amount = (damageLeft-damageInfo->damage);
     }
 
     if (triggeredByAura->GetId() == 8178)                   // Grounding Totem Effect

@@ -3506,7 +3506,6 @@ SpellMissInfo Unit::SpellHitResult(Unit *pVictim, SpellEntry const *spell, bool 
         // Check for immune
         if (IsSpellCauseDamage(spell) && pVictim->IsImmunedToDamage(GetSpellSchoolMask(spell)))
             return SPELL_MISS_IMMUNE;
-        }
 
         if (pVictim->IsImmuneToSpell(spell))
             return SPELL_MISS_IMMUNE;
@@ -10051,7 +10050,7 @@ bool Unit::SelectHostileTarget()
 
     MANGOS_ASSERT(GetTypeId() == TYPEID_UNIT);
 
-    if (!this->isAlive())
+    if (!GetMap() ||!isAlive())
         return false;
 
     //This function only useful once AI has been initialized
