@@ -50,7 +50,6 @@
 #include "Weather.h"
 #include "BattleGround.h"
 #include "BattleGroundAV.h"
-#include "BattleGroundSA.h"
 #include "BattleGroundMgr.h"
 #include "WorldPvP/WorldPvP.h"
 #include "WorldPvP/WorldPvPMgr.h"
@@ -409,7 +408,7 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m
     m_usedTalentCount = 0;
     m_questRewardTalentCount = 0;
 
-    m_regenTimer = 0;
+    m_regenTimer = REGEN_TIME_FULL;
     m_weaponChangeTimer = 0;
 
     m_zoneUpdateId = 0;
@@ -1359,7 +1358,7 @@ void Player::Update( uint32 update_diff, uint32 p_time )
             SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_REGENERATE_POWER);
 
         if (!m_regenTimer)
-            RegenerateAll();
+            RegenerateAll(IsUnderLastManaUseEffect() ? REGEN_TIME_PRECISE : REGEN_TIME_FULL);
     }
 
     if (!isAlive() && !HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST) && getDeathState() != GHOULED )
@@ -1522,8 +1521,6 @@ void Player::SetDeathState(DeathState s)
         if (getClass()== CLASS_WARRIOR)
             CastSpell(this,SPELL_ID_PASSIVE_BATTLE_STANCE,true);
     }
-    if(s != JUST_DIED)
-        this->RemoveAurasDueToSpell(46619);
 }
 
 bool Player::BuildEnumData( QueryResult * result, WorldPacket * p_data )
@@ -1765,21 +1762,6 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         return false;
 
     // client without expansion support
-    if (GetSession()->Expansion() < mEntry->Expansion())
-    {
-        DEBUG_LOG("Player %s using client without required expansion tried teleport to non accessible map %u", GetName(), mapid);
-
-        if (GetTransport())
-            RepopAtGraveyard();                             // teleport to near graveyard if on transport, looks blizz like :)
-
-        SendTransferAborted(mapid, TRANSFER_ABORT_INSUF_EXPAN_LVL, mEntry->Expansion());
-
-        return false;                                       // normal client can't teleport to this map...
-    }
-    else
-    {
-        DEBUG_LOG("Player %s is being teleported to map %u", GetName(), mapid);
-    }
 
     if (Group* grp = GetGroup())
         grp->SetPlayerMap(GetObjectGuid(), mapid);
@@ -2111,9 +2093,6 @@ void Player::RewardRage( uint32 damage, uint32 weaponSpeedHitFactor, bool attack
 
 void Player::RegenerateAll(uint32 diff)
 {
-    if (!isAlive())
-        return;
-
     // Not in combat or they have regeneration
     if (!isInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT) ||
         HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT) || IsPolymorphed() || m_baseHealthRegen )
@@ -2134,7 +2113,7 @@ void Player::RegenerateAll(uint32 diff)
     if (getClass() == CLASS_DEATH_KNIGHT)
         Regenerate(POWER_RUNE, diff);
 
-    m_regenTimer = REGEN_TIME_FULL;
+    m_regenTimer = IsUnderLastManaUseEffect() ? REGEN_TIME_PRECISE : REGEN_TIME_FULL;
 }
 
 // diff contains the time in milliseconds since last regen.
@@ -2151,33 +2130,35 @@ void Player::Regenerate(Powers power, uint32 diff)
         {
             if (HasAuraType(SPELL_AURA_STOP_NATURAL_MANA_REGEN))
                 break;
-            bool recentCast = IsUnderLastManaUseEffect();
+
             float ManaIncreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_MANA);
-            if (recentCast)
+            if (IsUnderLastManaUseEffect())
             {
                 // Mangos Updates Mana in intervals of 2s, which is correct
-                addvalue = GetFloatValue(UNIT_FIELD_POWER_REGEN_INTERRUPTED_FLAT_MODIFIER) *  ManaIncreaseRate * 2.00f;
+                addvalue += GetFloatValue(UNIT_FIELD_POWER_REGEN_INTERRUPTED_FLAT_MODIFIER) *  ManaIncreaseRate * (float)REGEN_TIME_FULL/IN_MILLISECONDS;
             }
             else
             {
-                addvalue = GetFloatValue(UNIT_FIELD_POWER_REGEN_FLAT_MODIFIER) * ManaIncreaseRate * 2.00f;
+                addvalue += GetFloatValue(UNIT_FIELD_POWER_REGEN_FLAT_MODIFIER) * ManaIncreaseRate * (float)REGEN_TIME_FULL/IN_MILLISECONDS;
             }
-        }   break;
+            break;
+        }
         case POWER_RAGE:                                    // Regenerate rage
         {
             float RageDecreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_RAGE_LOSS);
-            addvalue = 20 * RageDecreaseRate;               // 2 rage by tick (= 2 seconds => 1 rage/sec)
-        }   break;
+            addvalue += 20 * RageDecreaseRate;               // 2 rage by tick (= 2 seconds => 1 rage/sec)
+            break;
+        }
         case POWER_ENERGY:                                  // Regenerate energy (rogue)
         {
             float EnergyRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_ENERGY);
-            addvalue = 20 * EnergyRate;
+            addvalue += 20 * EnergyRate;
             break;
         }
         case POWER_RUNIC_POWER:
         {
             float RunicPowerDecreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_RUNICPOWER_LOSS);
-            addvalue = 30 * RunicPowerDecreaseRate;         // 3 RunicPower by tick
+            addvalue += 30 * RunicPowerDecreaseRate;         // 3 RunicPower by tick
             break;
         }
         case POWER_RUNE:
@@ -2214,7 +2195,8 @@ void Player::Regenerate(Powers power, uint32 diff)
                     SetNeedConvertRune(rune, false);
                 }
             }
-        }   break;
+            break;
+        }
         case POWER_FOCUS:
         case POWER_HAPPINESS:
         case POWER_HEALTH:
@@ -2233,20 +2215,20 @@ void Player::Regenerate(Powers power, uint32 diff)
     }
 
     // addvalue computed on a 2sec basis. => update to diff time
-    addvalue *= float(diff) / REGEN_TIME_FULL;
+    uint32 _addvalue = ceil(fabs(addvalue * float(diff) / (float)REGEN_TIME_FULL));
 
     if (power != POWER_RAGE && power != POWER_RUNIC_POWER)
     {
-        curValue += uint32(addvalue);
+        curValue += _addvalue;
         if (curValue > maxValue)
             curValue = maxValue;
     }
     else
     {
-        if (curValue <= uint32(addvalue))
+        if (curValue <= _addvalue)
             curValue = 0;
         else
-            curValue -= uint32(addvalue);
+            curValue -= _addvalue;
     }
     SetPower(power, curValue);
 }
@@ -2327,9 +2309,8 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
         return NULL;
 
     // not allow interaction under control, but allow with own pets
-    if (!unit->GetCharmerGuid().IsEmpty())
-        if(!unit->GetVehicleKit())
-            return NULL;
+    if (unit->GetCharmerGuid())
+        return NULL;
 
     // not enemy
     if (unit->IsHostileTo(this))
@@ -6776,7 +6757,6 @@ void Player::UpdateHonorFields()
 
     m_lastHonorUpdateTime = now;
 
-    /*
     // START custom PvP Honor Kills Title System
     if (sWorld.getConfig(CONFIG_BOOL_ALLOW_HONOR_KILLS_TITLES))
     {
@@ -6842,7 +6822,6 @@ void Player::UpdateHonorFields()
         }
     }
     // END custom PvP Honor Kills Title System
-    */
 }
 
 ///Calculate the amount of honor gained based on the victim
@@ -7201,7 +7180,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
             break;
         case AREATEAM_NONE:
             // overwrite for battlegrounds, maybe batter some zone flags but current known not 100% fit to this
-            pvpInfo.inHostileArea = sWorld.IsPvPRealm() || InBattleGround() || zone->flags & AREA_FLAG_OUTDOOR_PVP;
+            pvpInfo.inHostileArea = sWorld.IsPvPRealm() || InBattleGround();
             break;
         default:                                            // 6 in fact
             pvpInfo.inHostileArea = false;
@@ -7766,14 +7745,14 @@ void Player::_ApplyWeaponDependentAuraCritMod(Item *item, WeaponAttackType attac
 
 void Player::_ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType attackType, Aura* aura, bool apply)
 {
+    // ignore spell mods for not wands
+    Modifier const* modifier = aura->GetModifier();
+    if((modifier->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL)==0 && (getClassMask() & CLASSMASK_WAND_USERS)==0)
+        return;
+
     // generic not weapon specific case processes in aura code
     if (aura->GetSpellProto()->EquippedItemClass == -1)
         return;
-
-    if (item->IsBroken())
-        return;
-
-    Modifier const* modifier = aura->GetModifier();
 
     UnitMods unitMod = UNIT_MOD_END;
     switch(attackType)
@@ -7792,24 +7771,9 @@ void Player::_ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType att
         default: return;
     }
 
-    // no school check of item dmg school here
-    if (item->IsFitToSpellRequirements(aura->GetSpellProto()))
+    if (!item->IsBroken()&&item->IsFitToSpellRequirements(aura->GetSpellProto()))
     {
         HandleStatModifier(unitMod, unitModType, float(modifier->m_amount),apply);
-
-        // aura affects all damage
-        if (aura->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE)
-        {
-            // workaround to prevent double applying:
-            if (attackType != BASE_ATTACK)
-                return;
-
-            // apply bonus to weapons, that don't fit requirements themselves
-            for (uint8 i = OFF_ATTACK; i < MAX_ATTACK; i++)
-                if (Item* pItem = GetWeaponForAttack(WeaponAttackType(i),true,false))
-                    if (!pItem->IsFitToSpellRequirements(aura->GetSpellProto()))
-                        HandleStatModifier(UnitMods(UNIT_MOD_DAMAGE_MAINHAND + i), unitModType, float(modifier->m_amount),apply);
-        }
     }
 }
 
@@ -7982,10 +7946,6 @@ void Player::ApplyItemOnStoreSpell(Item *item, bool apply)
 void Player::DestroyItemWithOnStoreSpell(Item* item, uint32 spellId)
 {
     if (!item)
-        return;
-
-    // hack for seaforium bombs
-    if(item->GetEntry() == 39213)
         return;
 
     ItemPrototype const *proto = item->GetProto();
@@ -9627,7 +9587,7 @@ uint8 Player::FindEquipSlot( ItemPrototype const* proto, uint32 slot, bool swap 
             break;
         case INVTYPE_2HWEAPON:
             slots[0] = EQUIPMENT_SLOT_MAINHAND;
-            if (CanDualWield() && CanTitanGrip() && proto && proto->SubClass != ITEM_SUBCLASS_WEAPON_POLEARM && proto->SubClass != ITEM_SUBCLASS_WEAPON_STAFF)
+            if (CanDualWield() && CanTitanGrip())
                 slots[1] = EQUIPMENT_SLOT_OFFHAND;
             break;
         case INVTYPE_TABARD:
@@ -9919,9 +9879,6 @@ Item* Player::GetItemByLimitedCategory(uint32 limitedCategory) const
 
 Item* Player::GetItemByGuid(ObjectGuid guid) const
 {
-    if (guid.IsEmpty())
-        return NULL;
-
     for(int i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END; ++i)
         if (Item *pItem = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (pItem->GetObjectGuid() == guid)
@@ -10033,16 +9990,6 @@ uint32 Player::GetAttackBySlot( uint8 slot )
         case EQUIPMENT_SLOT_RANGED:   return RANGED_ATTACK;
         default:                      return MAX_ATTACK;
     }
-}
-
-SpellSchoolMask Player::GetMeleeDamageSchoolMask(WeaponAttackType type) const
-{
-    // Weapons can have different spell schools,
-    // in fact only wands have non-physical schools (at least damage[0]...)
-    if(Item* pItem = GetWeaponForAttack(type))
-        return SpellSchoolMask(1 << pItem->GetProto()->Damage[0].DamageType);
-
-    return SPELL_SCHOOL_MASK_NONE;
 }
 
 bool Player::IsInventoryPos( uint8 bag, uint8 slot )
@@ -11845,10 +11792,8 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
 
             // save data
             std::ostringstream ss;
-            ss << "REPLACE INTO `item_soulbound_trade_data` (`itemGuid`, `item_template`, `allowedPlayers`) VALUES (";
+            ss << "REPLACE INTO `item_soulbound_trade_data` VALUES (";
             ss << pItem->GetGUIDLow();
-            ss << ", ";
-            ss << pItem->GetEntry();
             ss << ", '";
             for (AllowedLooterSet::iterator itr = allowedLooters->begin(); itr != allowedLooters->end(); ++itr)
                 ss << *itr << " ";
@@ -13324,7 +13269,7 @@ void Player::RemoveEnchantmentDurations(Item *item)
     }
 }
 
-void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool isArenaRemove)
+void Player::RemoveAllEnchantments(EnchantmentSlot slot)
 {
     // remove enchantments from equipped items first to clean up the m_enchantDuration list
     for(EnchantDurationList::iterator itr = m_enchantDuration.begin(), next; itr != m_enchantDuration.end(); itr = next)
@@ -13332,20 +13277,6 @@ void Player::RemoveAllEnchantments(EnchantmentSlot slot, bool isArenaRemove)
         next = itr;
         if (itr->slot == slot)
         {
-            if(isArenaRemove && itr->item) // Do not remove poisons at arenas
-            {
-                uint32 enchant_id = itr->item->GetEnchantmentId(slot);
-                if(enchant_id)
-                {
-                    SpellItemEnchantmentEntry const *pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
-                    if(pEnchant && pEnchant->aura_id == 26) // 26 is poison
-                    {
-                        ++next;
-                        continue;
-                    }
-                }
-            }
-
             if (itr->item && itr->item->GetEnchantmentId(slot))
             {
                 // remove from stats
@@ -16521,12 +16452,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
-
             // remove outdated DB data in DB
-            _SaveBGData();
-
-            if(!isAlive() && IsInWorld())      // resurrect on exit
-                ResurrectPlayer(1.0f);
+            _SaveBGData(true);
         }
     }
     else
@@ -16552,9 +16479,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
             // remove outdated DB data in DB
-            _SaveBGData();
-            if(!isAlive() && IsInWorld())      // resurrect on exit
-                ResurrectPlayer(1.0f);
+            _SaveBGData(true);
         }
         // Cleanup LFG BG data, if char not in dungeon.
         else if (!mapEntry->IsDungeon())
@@ -25195,34 +25120,6 @@ uint32 Player::GetModelForForm(SpellShapeshiftFormEntry const* ssEntry) const
     if (!modelid)
         modelid = ssEntry->modelID_A;
     return modelid;
-}
-
-bool Player::HasOrphan()
-{
-    if (GetMiniPet())
-    {
-        // We have a summon, is it an orphan?
-        bool hasOrphan = false;
-
-        switch (GetMiniPet()->GetEntry())
-        {
-            case 33532: //wolvar
-            case 14444: //orc
-            case 33533: //oracle
-            case 14305: //human
-            case 22818: //draenei
-            case 22817: //bloodelf
-            {
-                hasOrphan = true;
-                break;
-            }
-
-        }
-
-        if (hasOrphan)
-            return true;
-    }
-    return false;
 }
 
 float Player::GetCollisionHeight(bool mounted)
