@@ -1642,6 +1642,7 @@ struct DoSpellBonuses
 void SpellMgr::LoadSpellBonuses()
 {
     mSpellBonusMap.clear();                             // need for reload case
+
     // load DBC data EffectCoeffs[] fields
     // NOTE : only direct_damage/dot_damage data, there's no ap_bonus
     for(uint32 entry = 1; entry < sSpellStore.GetNumRows(); ++entry)
@@ -1675,8 +1676,8 @@ void SpellMgr::LoadSpellBonuses()
                             break;
                         default:
                             break;
-
                     }
+
                     // both spells that should take 100% bonus and melee spells have EffectCoeffs set to 100%
                     // we don't want to load the later
                     // sometimes indexes with no effect set to 100% too
@@ -1685,6 +1686,7 @@ void SpellMgr::LoadSpellBonuses()
                         // is it the proper check?
                         if((spell->SchoolMask & SPELL_SCHOOL_MASK_MAGIC) == 0)
                             continue;
+
                         if(spell->Effect[i] != SPELL_EFFECT_SCHOOL_DAMAGE &&
                             spell->Effect[i] != SPELL_EFFECT_HEALTH_LEECH &&
                             (spell->Effect[i] != SPELL_EFFECT_APPLY_AURA || !isDotEffect) &&
@@ -1692,6 +1694,7 @@ void SpellMgr::LoadSpellBonuses()
                             spell->Effect[i] != SPELL_EFFECT_HEAL)
                             continue;
                     }
+
                     if(!isDotEffect)
                         sbe.direct_damage = spell->EffectCoeffs[i];
                     else
@@ -1707,7 +1710,9 @@ void SpellMgr::LoadSpellBonuses()
             // DO not add to other ranks! data vary per rank on some spells
         }
     }
+
     // Load data from database
+
     uint32 count = 0;
     //                                                0      1             2          3
     QueryResult *result = WorldDatabase.Query("SELECT entry, direct_bonus, dot_bonus, ap_bonus, ap_dot_bonus FROM spell_bonus_data");
