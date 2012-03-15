@@ -1650,7 +1650,7 @@ void SpellMgr::LoadSpellBonuses()
         SpellEntry const* spell = sSpellStore.LookupEntry(entry);
         if (spell)
         {
-             // skip NPC spells?
+            // skip NPC spells?
             if(spell->SpellFamilyName == SPELLFAMILY_GENERIC)
                 continue;
 
@@ -1699,6 +1699,10 @@ void SpellMgr::LoadSpellBonuses()
                         sbe.direct_damage = spell->EffectCoeffs[i];
                     else
                         sbe.dot_damage = spell->EffectCoeffs[i];
+
+                    // Disable ap_bonus/ap_dot_bonus by default
+                    sbe.ap_bonus = 0.0f;
+                    sbe.ap_dot_bonus = 0.0f;
 
                     dataAdded = true;
                 }
@@ -1753,7 +1757,7 @@ void SpellMgr::LoadSpellBonuses()
         sbe.direct_damage = fields[1].GetFloat();
         sbe.dot_damage    = fields[2].GetFloat();
         sbe.ap_bonus      = fields[3].GetFloat();
-        sbe.ap_dot_bonus   = fields[4].GetFloat();
+        sbe.ap_dot_bonus  = fields[4].GetFloat();
 
         bool need_dot = false;
         bool need_direct = false;
