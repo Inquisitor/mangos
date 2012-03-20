@@ -74,7 +74,7 @@ bool ChatHandler::HandleMuteCommand(char* args)
     if (!ExtractUInt32(&args, notspeaktime))
         return false;
 
-    uint32 account_id = target ? target->GetSession()->GetAccountId() : sObjectMgr.GetPlayerAccountIdByGUID(target_guid);
+    uint32 account_id = target ? target->GetSession()->GetAccountId() : sAccountMgr.GetPlayerAccountIdByGUID(target_guid);
 
     // find only player from same account if any
     if (!target)
@@ -123,7 +123,7 @@ bool ChatHandler::HandleUnmuteCommand(char* args)
     if (!ExtractPlayerTarget(&args, &target, &target_guid, &target_name))
         return false;
 
-    uint32 account_id = target ? target->GetSession()->GetAccountId() : sObjectMgr.GetPlayerAccountIdByGUID(target_guid);
+    uint32 account_id = target ? target->GetSession()->GetAccountId() : sAccountMgr.GetPlayerAccountIdByGUID(target_guid);
 
     // find only player from same account if any
     if (!target)
@@ -2436,7 +2436,7 @@ bool ChatHandler::HandleNpcFollowCommand(char* /*args*/)
     PSendSysMessage(LANG_CREATURE_FOLLOW_YOU_NOW, creature->GetName());
     return true;
 }
-//npc unfollow handling
+
 bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
 {
     Player *player = m_session->GetPlayer();
@@ -2449,8 +2449,7 @@ bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
         return false;
     }
 
-    if (creature->GetMotionMaster()->empty() ||
-        creature->GetMotionMaster()->GetCurrentMovementGeneratorType ()!=FOLLOW_MOTION_TYPE)
+    if (creature->GetMotionMaster()->GetCurrentMovementGeneratorType () != FOLLOW_MOTION_TYPE)
     {
         PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU);
         SetSentErrorMessage(true);
@@ -2461,18 +2460,16 @@ bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
         = static_cast<FollowMovementGenerator<Creature> const*>((creature->GetMotionMaster()->top()));
 
     if (mgen->GetTarget() != player)
-    {
         PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU);
-        SetSentErrorMessage(true);
-        return false;
-    }
+        // Need remove chase action even if chase not for your.
 
-    // reset movement
-    creature->GetMotionMaster()->MovementExpired(true);
+    // remove UNIT_ACTION_CHASE
+    creature->GetUnitStateMgr().DropAction(UNIT_ACTION_CHASE);
 
-    PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU_NOW, creature->GetName());
+    PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU_NOW, creature->GetObjectGuid().GetString().c_str());
     return true;
 }
+
 //npc tame handling
 bool ChatHandler::HandleNpcTameCommand(char* /*args*/)
 {
@@ -2909,7 +2906,7 @@ void ChatHandler::ShowTicket(GMTicket const* ticket)
     std::string lastupdated = TimeToTimestampStr(ticket->GetLastUpdate());
 
     std::string name;
-    if (!sObjectMgr.GetPlayerNameByGUID(ticket->GetPlayerGuid(), name))
+    if (!sAccountMgr.GetPlayerNameByGUID(ticket->GetPlayerGuid(), name))
         name = GetMangosString(LANG_UNKNOWN);
 
     std::string nameLink = playerLink(name);
