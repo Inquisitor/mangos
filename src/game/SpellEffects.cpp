@@ -12241,6 +12241,14 @@ void Spell::EffectQuestComplete(SpellEffectIndex eff_idx)
         //case 72155:                                         // Harvest Blight Specimen
         //case 72162:                                         // Harvest Blight Specimen
             //break;
+        // Frost Infusion Quest Credit
+        case 72289:
+        {
+            // Remove Frost-Imbued Blade and Frost Infusion debuffs
+            unitTarget->RemoveAura(72290, EFFECT_INDEX_0);
+            unitTarget->RemoveAura(72292, EFFECT_INDEX_0);
+            break;
+        }
         default:
             break;
     }
