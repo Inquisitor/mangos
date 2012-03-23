@@ -5954,6 +5954,19 @@ void Aura::HandleAuraModDecreaseSpeed(bool apply, bool Real)
             if (GetStackAmount() >= 5 && !target->HasAura(33652))
                 target->CastSpell(target, 33652, true);
         }
+        // Q: Frost Infusion (Frost Breath triggers Frost Infusion spell)
+        if (GetId() == 71056 || GetId() == 71058)
+        {
+            if (target && target->GetTypeId() == TYPEID_PLAYER)
+            {
+                // Only of target has Shadow's Edge equipped
+                Item* shadowsEdge = ((Player*)target)->GetItemByEntry(49888);
+                if (shadowsEdge && shadowsEdge->IsEquipped())
+                {
+                    target->CastSpell(target, 72292, true);
+                }
+            }
+        }
     }
 
     target->UpdateSpeed(MOVE_RUN, true);
@@ -6935,6 +6948,15 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
                 target->CastSpell(target, 70953, true); // Plague Sickness
             }
 
+            break;
+        }
+        // 4 stacks of Frost Infusion cause Frost-Imbued Blade buff
+        case 72292:
+        {
+            if (GetStackAmount() == 4)
+            {
+                target->CastSpell(target, 72290, true);
+            }
             break;
         }
     }
