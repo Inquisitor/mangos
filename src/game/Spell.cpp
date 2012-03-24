@@ -9504,6 +9504,17 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         case 69762: // Unchained Magic (Sindragosa)
         {
             UnitList tempTargetUnitMap;
+            uint8 healers_affected = 0;
+            uint8 max_healers_affected = 1;
+            Difficulty difficulty = REGULAR_DIFFICULTY;
+            Map* map = m_caster->GetMap();
+            if (map)
+            {
+                if (map->IsRaid())
+                    difficulty = map->GetDifficulty();
+                if (difficulty == RAID_DIFFICULTY_25MAN_NORMAL|| difficulty == RAID_DIFFICULTY_25MAN_HEROIC)
+                    max_healers_affected = 2;
+            }
             FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             if (!tempTargetUnitMap.empty())
             {
@@ -9511,23 +9522,53 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                 {
                     if ((*iter)->getPowerType() == POWER_MANA && (*iter)->GetCharmerOrOwnerPlayerOrPlayerItself())
                     {
-                        // Prot and Retri paladins should avoid Unchained Magic
                         if ((*iter)->GetTypeId() == TYPEID_PLAYER)
                         {
-                            // So, if player is Paladin...
                             Player * plr = (Player*)(*iter);
-                            if (plr->getClass() == CLASS_PALADIN)
+                            bool is_healer = false;
+                            switch (plr->getClass())
                             {
-                                // Let's count his talents
-                                uint8 spentPointsRetr = plr->GetTalentsCount(1);
-                                uint8 spentPointsProt = plr->GetTalentsCount(2);
-                                // Skip paladin if he's Protection or Retribution specced
-                                if (spentPointsProt > 40 || spentPointsRetr > 40)
-                                    continue;
+                                case CLASS_PALADIN:
+                                {
+                                    // Prot and Retri paladins should avoid Unchained Magic
+                                    if (plr->GetTalentsCount(1) > 40 || plr->GetTalentsCount(2) > 40)
+                                        continue;
+                                    else
+                                        is_healer = true;
+                                    break;
+                                }
+                                case CLASS_PRIEST:
+                                {
+                                    if (plr->GetTalentsCount(1) > 40 || plr->GetTalentsCount(2) > 40)
+                                        is_healer = true;
+                                    break;
+                                }
+                                case CLASS_SHAMAN:
+                                {
+                                    if (plr->GetTalentsCount(3) > 40)
+                                        is_healer = true;
+                                    break;
+                                }
+                                case CLASS_DRUID:
+                                {
+                                    if (plr->GetTalentsCount(3) > 40)
+                                        is_healer = true;
+                                    break;
+                                }
+                                default: break;
                             }
-
+                            if (!urand(0, 2))
+                            {
+                                if (is_healer)
+                                {
+                                    if (healers_affected < max_healers_affected)
+                                        ++healers_affected;
+                                    else
+                                        continue;
+                                }
+                                targetUnitMap.push_back(*iter);
+                            }
                         }
-                        targetUnitMap.push_back(*iter);
                     }
                 }
             }
