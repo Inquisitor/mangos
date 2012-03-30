@@ -5963,7 +5963,9 @@ void Aura::HandleAuraModDecreaseSpeed(bool apply, bool Real)
                 Item* shadowsEdge = ((Player*)target)->GetItemByEntry(49888);
                 if (shadowsEdge && shadowsEdge->IsEquipped())
                 {
-                    target->CastSpell(target, 72292, true);
+                    QuestStatus status = ((Player*)target)->GetQuestStatus(24757);
+                    if (status == QUEST_STATUS_INCOMPLETE)
+                        target->CastSpell(target, 72292, true);
                 }
             }
         }
