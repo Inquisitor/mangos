@@ -37,8 +37,9 @@ static const class staticActionInfo
         actionInfo[UNIT_ACTION_CONTROLLED](UNIT_ACTION_PRIORITY_CONTROLLED);
         actionInfo[UNIT_ACTION_CONFUSED](UNIT_ACTION_PRIORITY_CONFUSED);
         actionInfo[UNIT_ACTION_FEARED]( UNIT_ACTION_PRIORITY_FEARED);
-        actionInfo[UNIT_ACTION_STUN](UNIT_ACTION_PRIORITY_STUN);
         actionInfo[UNIT_ACTION_ROOT](UNIT_ACTION_PRIORITY_ROOT);
+        actionInfo[UNIT_ACTION_STUN](UNIT_ACTION_PRIORITY_STUN);
+        actionInfo[UNIT_ACTION_FEIGNDEATH](UNIT_ACTION_PRIORITY_FEIGNDEATH);
         actionInfo[UNIT_ACTION_ONVEHICLE](UNIT_ACTION_PRIORITY_ONVEHICLE);
         actionInfo[UNIT_ACTION_TAXI](UNIT_ACTION_PRIORITY_TAXI,ACTION_TYPE_NONRESTOREABLE);
         actionInfo[UNIT_ACTION_EFFECT](UNIT_ACTION_PRIORITY_EFFECT,ACTION_TYPE_NONRESTOREABLE);
@@ -80,6 +81,8 @@ public:
             target->SetStandState(UNIT_STAND_STATE_STAND);// in 1.5 client
         }
 
+        target->SendMeleeAttackStop(NULL);
+
         WorldPacket data(SMSG_FORCE_MOVE_ROOT, target->GetPackGUID().size() + 4);
         data << target->GetPackGUID();
         data << uint32(0);
@@ -102,6 +105,7 @@ public:
         data << uint32(0);
         target->SendMessageToSet(&data, true);
         target->m_movementInfo.RemoveMovementFlag(MOVEFLAG_ROOT);
+        target->AddEvent(new AttackResumeEvent(*target), ATTACK_DISPLAY_DELAY);
     }
 
 };
@@ -127,6 +131,8 @@ public:
         //Clear unit movement flags
         target->m_movementInfo.RemoveMovementFlag(movementFlagsMask);
         target->m_movementInfo.AddMovementFlag(MOVEFLAG_ROOT);
+
+        target->SendMeleeAttackStop(NULL);
 
         if(target->GetTypeId() == TYPEID_PLAYER)
         {
@@ -168,6 +174,49 @@ public:
 
         if(target->getVictim())
             target->SetTargetGuid(target->getVictim()->GetObjectGuid());
+        target->AddEvent(new AttackResumeEvent(*target), ATTACK_DISPLAY_DELAY);
+    }
+};
+
+class FeignDeathState : public IdleMovementGenerator
+{
+public:
+
+    const char* Name() const { return "<FeignDeath>"; }
+    void Interrupt(Unit &u) {Finalize(u);}
+    void Reset(Unit &u) {Initialize(u);}
+    void Initialize(Unit &u)
+    {
+        Unit* const target = &u;
+        if (!target)
+            return;
+
+        if (target->GetTypeId() != TYPEID_PLAYER)
+            target->StopMoving();
+
+        target->m_movementInfo.RemoveMovementFlag(movementFlagsMask);
+        target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
+        target->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
+        target->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+
+        target->InterruptNonMeleeSpells(true);
+        target->CombatStop();
+        target->getHostileRefManager().deleteReferences();
+        target->addUnitState(UNIT_STAT_DIED);
+        target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
+
+    }
+
+    void Finalize(Unit &u)
+    {
+        Unit* const target = &u;
+        if (!target)
+            return;
+
+        target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
+        target->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
+        target->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+        target->clearUnitState(UNIT_STAT_DIED);
     }
 };
 
@@ -238,6 +287,9 @@ UnitActionPtr UnitStateMgr::CreateStandartState(UnitActionId stateId, int32 para
         case UNIT_ACTION_STUN:
             state = UnitActionPtr(new StunnedState());
             break;
+        case UNIT_ACTION_FEIGNDEATH:
+            state = UnitActionPtr(new FeignDeathState());
+            break;
         case UNIT_ACTION_ROOT:
             state = UnitActionPtr(new RootState());
             break;
@@ -291,7 +343,10 @@ void UnitStateMgr::Update(uint32 diff)
     }
 
     if (!state->Update(this, diff))
+    {
+        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "UnitStateMgr: %s finished action %s", GetOwnerStr().c_str(), state->TypeName());
         DropAction(state->priority);
+    }
 }
 
 void UnitStateMgr::DropAction(UnitActionId actionId)
@@ -321,9 +376,12 @@ void UnitStateMgr::DropAction(UnitActionPriority priority)
     if (priority < UNIT_ACTION_PRIORITY_IDLE)
         return;
 
-    MAPLOCK_WRITE(GetOwner(), MAP_LOCK_TYPE_MOVEMENT);
     ActionInfo* oldInfo = CurrentState();
-    UnitActionStorage::iterator itr = m_actions.find(priority);
+    UnitActionStorage::iterator itr;
+    {
+        MAPLOCK_READ(GetOwner(), MAP_LOCK_TYPE_MOVEMENT);
+        itr = m_actions.find(priority);
+    }
     if (itr != m_actions.end())
     {
         bool bActiveActionChanged = false;
@@ -334,9 +392,10 @@ void UnitStateMgr::DropAction(UnitActionPriority priority)
 
         if (&itr->second == m_oldAction)
             m_oldAction = NULL;
-
-        m_actions.erase(itr);
-
+        {
+            MAPLOCK_WRITE(GetOwner(), MAP_LOCK_TYPE_MOVEMENT);
+            m_actions.erase(itr);
+        }
         // Finalized not ActionInfo, but real action (saved before), due to ActionInfo wrapper already deleted.
         if (bActiveActionChanged && oldAction)
         {
@@ -413,7 +472,13 @@ ActionInfo* UnitStateMgr::CurrentState()
 void UnitStateMgr::DropAllStates()
 {
     for (int32 i = UNIT_ACTION_PRIORITY_IDLE; i != UNIT_ACTION_PRIORITY_END; ++i)
-        DropAction(UnitActionPriority(i));
+    {
+        if (ActionInfo* state = GetAction(UnitActionPriority(i)))
+        {
+            DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "UnitStateMgr:DropAllStates %s drop action %s", GetOwnerStr().c_str(), state->TypeName());
+            DropAction(UnitActionPriority(i));
+        }
+    }
 }
 
 std::string const UnitStateMgr::GetOwnerStr() 
