@@ -719,6 +719,8 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 39289:                                         // Kargath's Executioner
         case 39290:                                         // Kargath's Executioner
         case 72290:                                         // Frost-Imbued Blade
+        case 66550:                                         // Teleport(BattlegroundIC)
+        case 66551:                                         // Teleport(BattlegroundIC)
             return false;
         case 552:                                           // Abolish Disease
         case 12042:                                         // Arcane Power
