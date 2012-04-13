@@ -8384,7 +8384,7 @@ void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
         Creature* pHay = NULL;
 
         // search for a reef cow nearby
-        MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*pGameObj, 30096, true, 10.0f);
+        MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*pGameObj, 30096, true, false, 10.0f);
         MaNGOS::CreatureLastSearcher<MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(pHay, u_check);
 
         Cell::VisitAllObjects(pGameObj, searcher, 10.0f);
