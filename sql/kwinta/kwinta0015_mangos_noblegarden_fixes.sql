@@ -3,7 +3,8 @@ INSERT INTO `spell_patch`(`entry`,`dbc`,`data`,`comment`) VALUES
     ( '61719','Spell.dbc','31 0 32 0 33 0','Easter Lay Noblegarden Egg Aura - remove inrerruptions')
 ;
 
-DELETE FROM `achievement_criteria_requirement` WHERE `criteria_id` IN (9118);
+DELETE FROM `achievement_criteria_requirement` WHERE `criteria_id` IN (9118,9199);
 INSERT INTO `achievement_criteria_requirement` (`criteria_id`, `type`, `value1`, `value2`) VALUES
-    ('9118', '6', '543', '0')
+      ('9118', '6', '543', '0') -- Hard Boiled - Golakka Hot Springs zone requirement
+    , ('9199', '6', '186', '0') -- Spring Fling - Dolanaar requirement
 ;
