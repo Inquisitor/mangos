@@ -225,10 +225,8 @@ void BattleGroundSA::Update(uint32 diff)
                 RoundScores[0].time = BG_SA_ROUNDLENGTH;
 
                 for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-                {
                     if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 52459);
-                }
+                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_END_OF_ROUND);
 
                 ResetBattle(0, defender);
             }
@@ -238,10 +236,8 @@ void BattleGroundSA::Update(uint32 diff)
                 RoundScores[1].winner = GetDefender();
 
                 for (BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-                {
                     if (Player *plr = sObjectMgr.GetPlayer(itr->first))
-                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 52459);
-                }
+                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_END_OF_ROUND);
 
                 if (RoundScores[0].winner == GetDefender())
                     EndBattleGround(GetDefender());
@@ -719,7 +715,7 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
 
     // Seaforium Charge Explosion
     if (doneBy == 52408)
-        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_PLANT_SEAFORIUM_CHARGE);
 
     BG_SA_GoType type = BG_SA_GO_GATES_T_NONE;
     switch (target_obj->GetEntry())
@@ -910,7 +906,7 @@ void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj,
                 {
                     if (Player *plr = sObjectMgr.GetPlayer(itr->first))
                         if (plr->GetTeam() != defender)
-                            plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 65246);
+                            plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, BG_SA_STORM_THE_BEACH);
                 }
 
                 if (Phase == SA_ROUND_ONE) // Victory at first round
