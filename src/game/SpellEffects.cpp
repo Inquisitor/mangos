@@ -8312,6 +8312,17 @@ void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
     else
         gameobject_id = m_spellInfo->EffectMiscValue[eff_idx];
 
+    if(m_spellInfo->Id == 61718) // Lay Noblegarden Egg
+    {
+        if (m_caster->GetTypeId() == TYPEID_PLAYER)
+        {
+            if (((Player*)m_caster)->isMovingOrTurning())
+                return;
+        }
+        else
+            return;
+    }
+
     GameObject* pGameObj = new GameObject;
 
     WorldObject* target = focusObject;

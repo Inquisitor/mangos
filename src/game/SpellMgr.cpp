@@ -727,6 +727,8 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 24732:                                         // Bat Costume
         case 59286:                                         // Opening
         case 43730:                                         // Electrified
+        case 61716:                                         // Rabbit Costume
+        case 61734:                                         // Noblegarden Bunny
         case 47540:                                         // Penance start dummy aura - Rank 1
         case 53005:                                         // Penance start dummy aura - Rank 2
         case 53006:                                         // Penance start dummy aura - Rank 3

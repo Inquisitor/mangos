@@ -4751,6 +4751,13 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             // Dragonmaw Illusion (set mount model also)
             if (GetId()==42016 && target->GetMountID() && !target->GetAurasByType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED).empty())
                 target->SetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID,16314);
+            
+            // Rabbit costume - trigger Easter Lay Noblegarden Egg Aura
+            if (GetId() == 61734 || GetId() == 61716)
+            {
+                // Trigger Easter Lay Noblegarden Egg Aura 
+                target->CastSpell(target, 61719, true);
+            }
         }
 
         } while (0);
@@ -4822,6 +4829,11 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
                     target->SetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID, display_id);
                 }
             }
+        }
+        // Noblegarden Bunny - remove Easter Lay Noblegarden Egg Aura
+        if (GetId() == 61734 || GetId() == 61716)
+        {
+            target->RemoveAurasDueToSpell(61719);
         }
     }
 }
