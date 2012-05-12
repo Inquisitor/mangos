@@ -1416,7 +1416,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         float MeleeMissChanceCalc(const Unit *pVictim, WeaponAttackType attType) const;
 
-        void CalculateMeleeDamage(Unit *pVictim, uint32 damage, DamageInfo *damageInfo, WeaponAttackType attackType = BASE_ATTACK);
+        void CalculateMeleeDamage(DamageInfo *damageInfo);
         void DealMeleeDamage(DamageInfo *damageInfo, bool durabilityLoss);
 
         bool IsAllowedDamageInArea(Unit * pVictim) const;
@@ -2038,7 +2038,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
                                                             // redefined in Creature
 
         uint32 CalcArmorReducedDamage(Unit* pVictim, const uint32 damage);
-        void CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolMask, DamageEffectType damagetype, const uint32 damage, uint32 *absorb, uint32 *resist, bool canReflect = false);
+        void CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo, bool canReflect = false);
         void CalculateAbsorbResistBlock(Unit *pCaster, DamageInfo *damageInfo, SpellEntry const* spellProto, WeaponAttackType attType = BASE_ATTACK);
         void CalculateHealAbsorb(uint32 heal, uint32 *absorb);
 
@@ -2057,8 +2057,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         int32 CalculateSpellDamage(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* basePoints = NULL);
 
-        uint32 CalcNotIgnoreAbsorbDamage( uint32 damage, SpellSchoolMask damageSchoolMask, SpellEntry const* spellInfo = NULL);
-        uint32 CalcNotIgnoreDamageReduction(uint32 damage, SpellSchoolMask damageSchoolMask);
+        uint32 CalcNotIgnoreAbsorbDamage(DamageInfo* damageInfo);
+        uint32 CalcNotIgnoreDamageReduction(DamageInfo* damageInfo);
         int32 CalculateAuraDuration(SpellEntry const* spellProto, uint32 effectMask, int32 duration, Unit const* caster);
         uint32 CalculateAuraPeriodicTimeWithHaste(SpellEntry const* spellProto, uint32 periodicTime);
         uint32 CalculateSpellDurationWithHaste(SpellEntry const* spellProto, uint32 duration);

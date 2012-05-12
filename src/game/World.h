@@ -398,6 +398,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_PLAYERBOT_SELL_TRASH,
     CONFIG_BOOL_MMAP_ENABLED,
     CONFIG_BOOL_RESET_DUEL_AREA_ENABLED,
+    CONFIG_BOOL_PET_ADVANCED_AI,
     CONFIG_BOOL_VALUE_COUNT
 };
 
@@ -557,6 +558,8 @@ class World
         time_t const& GetGameTime() const { return m_gameTime; }
         /// Uptime (in secs)
         uint32 GetUptime() const { return uint32(m_gameTime - m_startTime); }
+        /// Update time
+        uint32 GetUpdateTime() const { return m_updateTime; }
         /// Next daily quests reset time
         time_t GetNextDailyQuestsResetTime() const { return m_NextDailyQuestReset; }
         time_t GetNextWeeklyQuestsResetTime() const { return m_NextWeeklyQuestReset; }
@@ -695,6 +698,7 @@ class World
         IntervalTimer m_timers[WUPDATE_COUNT];
         uint32 mail_timer;
         uint32 mail_timer_expires;
+        uint32 m_updateTime;
 
         typedef UNORDERED_MAP<uint32, Weather*> WeatherMap;
         WeatherMap m_weathers;
@@ -702,7 +706,6 @@ class World
         SessionMap m_sessions;
         uint32 m_maxActiveSessionCount;
         uint32 m_maxQueuedSessionCount;
-
 
         uint32 m_configUint32Values[CONFIG_UINT32_VALUE_COUNT];
         int32 m_configInt32Values[CONFIG_INT32_VALUE_COUNT];

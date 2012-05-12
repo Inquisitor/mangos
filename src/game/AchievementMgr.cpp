@@ -1309,6 +1309,27 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 progressType = PROGRESS_HIGHEST;
                 break;
             }
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DAILY_QUEST:
+            {
+                // skip at login
+                if(!miscvalue1)
+                    continue;
+
+                // Daily Chores (Children's Week event)
+                if (achievementCriteria->referredAchievement == 1789)
+                {
+                    // those requirements couldn't be found in the dbc
+                    AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
+                    if(!data)
+                        continue;
+                    if(!data->Meets(GetPlayer(),unit))
+                        continue;
+                }
+
+                change = 1;
+                progressType = PROGRESS_ACCUMULATE;
+                break;
+            }
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_BATTLEGROUND:
                 // AchievementMgr::UpdateAchievementCriteria might also be called on login - skip in this case
                 if(!miscvalue1)
@@ -1828,19 +1849,10 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     continue;
                 // possible additional requirements
                 AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                if (data && !data->Meets(GetPlayer(), unit, miscvalue1))
+                if (!data)
                     continue;
-
-                // Children's Week achievements have extra requirements
-                if (achievement->categoryId == CATEGORY_CHILDRENS_WEEK)
-                {
-                    if(!GetPlayer()->HasOrphan())
-                        continue;
-
-                    AchievementCriteriaRequirementSet const* data = sAchievementMgr.GetCriteriaRequirementSet(achievementCriteria);
-                    if (!data || !data->Meets(GetPlayer(), NULL))
-                        continue;
-                }
+                if (!data->Meets(GetPlayer(), unit, miscvalue1))
+                    continue;
 
                 change = 1;
                 progressType = PROGRESS_ACCUMULATE;
@@ -3309,6 +3321,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
         return;
     }
 
+    uint32 count = 0;
     BarGoLink bar(sAchievementCriteriaStore.GetNumRows());
     for (uint32 entryId = 0; entryId < sAchievementCriteriaStore.GetNumRows(); ++entryId)
     {
@@ -3331,10 +3344,11 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
 
         m_AchievementCriteriasByType[criteria->requiredType].push_back(criteria);
         m_AchievementCriteriaListByAchievement[criteria->referredAchievement].push_back(criteria);
+        ++count;
     }
 
     sLog.outString();
-    sLog.outString(">> Loaded %lu achievement criteria.",(unsigned long)m_AchievementCriteriasByType->size());
+    sLog.outString(">> Loaded %u achievement criteria.", count);
 }
 
 void AchievementGlobalMgr::LoadAchievementReferenceList()

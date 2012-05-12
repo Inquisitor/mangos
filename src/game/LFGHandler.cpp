@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011-2012 /dev/rsa for MangosR2 <http://github.com/MangosR2>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -962,7 +963,7 @@ void WorldSession::SendLfgQueueStatus(LFGDungeonEntry const* dungeon, LFGQueueSt
         return;
 
     WorldPacket data(SMSG_LFG_QUEUE_STATUS, 4 + 4 + 4 + 4 + 4 +4 + 1 + 1 + 1 + 4);
-    data << uint32(dungeon->Entry());                              // Dungeon
+    data << uint32(dungeon->ID);                                   // Dungeon
     data << int32(status->avgWaitTime);                            // Average Wait time
     data << int32(status->waitTime);                               // Wait Time
     data << int32(status->waitTimeTanks);                          // Wait Tanks

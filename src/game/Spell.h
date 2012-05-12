@@ -80,6 +80,7 @@ enum SpellNotifyPushType
     PUSH_IN_BACK,
     PUSH_SELF_CENTER,
     PUSH_DEST_CENTER,
+    PUSH_INHERITED_CENTER,
     PUSH_TARGET_CENTER
 };
 
@@ -358,7 +359,7 @@ class Spell
         void EffectQuestStart(SpellEffectIndex eff_idx);
         void EffectActivateRune(SpellEffectIndex eff_idx);
         void EffectSuspendGravity(SpellEffectIndex eff_idx);
-
+        void EffectUntrainTalents(SpellEffectIndex eff_idx);
         void EffectTeachTaxiNode(SpellEffectIndex eff_idx);
         void EffectWMODamage(SpellEffectIndex eff_idx);
         void EffectWMORepair(SpellEffectIndex eff_idx);
@@ -439,19 +440,25 @@ class Spell
         template<typename T> WorldObject* FindCorpseUsing();
 
         bool CheckTarget( Unit* target, SpellEffectIndex eff );
-        bool CanAutoCast(Unit* target);
+        bool CheckTargetBeforeLimitation(Unit* target);
+        SpellCastResult CanAutoCast(Unit* target);
 
         static void MANGOS_DLL_SPEC SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result);
         void SendCastResult(SpellCastResult result);
         void SendSpellStart();
         void SendSpellGo();
         void SendSpellCooldown();
+
         void SendLogExecute();
+        void SendEffectLogExecute(SpellEffectIndex eff, ObjectGuid targetGuid, uint32 data1 = 0, uint32 data2 = 0, float data3 = 0.0f);
+        ByteBuffer m_effectExecuteData[MAX_EFFECT_INDEX];
+
         void SendInterrupted(uint8 result);
         void SendChannelUpdate(uint32 time);
         void SendChannelStart(uint32 duration);
         void SendResurrectRequest(Player* target);
         void SendPlaySpellVisual(uint32 SpellID);
+
 
         void HandleEffects(Unit *pUnitTarget, Item *pItemTarget, GameObject *pGOTarget, SpellEffectIndex i);
         void HandleThreatSpells();
@@ -472,11 +479,11 @@ class Spell
         void ReSetTimer() { m_timer = m_casttime > 0 ? m_casttime : 0; }
         bool IsNextMeleeSwingSpell() const
         {
-            return m_spellInfo->Attributes & (SPELL_ATTR_ON_NEXT_SWING_1|SPELL_ATTR_ON_NEXT_SWING_2);
+            return m_spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_1) || m_spellInfo->HasAttribute(SPELL_ATTR_ON_NEXT_SWING_2);
         }
         bool IsRangedSpell() const
         {
-            return  m_spellInfo->Attributes & SPELL_ATTR_RANGED;
+            return  m_spellInfo->HasAttribute(SPELL_ATTR_RANGED);
         }
         bool IsChannelActive() const { return m_caster->GetUInt32Value(UNIT_CHANNEL_SPELL) != 0; }
         bool IsMeleeAttackResetSpell() const { return !m_IsTriggeredSpell && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_AUTOATTACK);  }
@@ -521,6 +528,7 @@ class Spell
         void ClearCastItem();
 
         static void SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpell, uint32 spellId75, uint32 spellId150, uint32 spellId225, uint32 spellId300, uint32 spellIdSpecial);
+
     protected:
         bool HasGlobalCooldown();
         void TriggerGlobalCooldown();
@@ -567,7 +575,6 @@ class Spell
         // These vars are used in both delayed spell system and modified immediate spell system
         bool m_referencedFromCurrentSpell;                  // mark as references to prevent deleted and access by dead pointers
         bool m_executedCurrently;                           // mark as executed to prevent deleted and access by dead pointers
-        bool m_needSpellLog;                                // need to send spell log?
         uint8 m_applyMultiplierMask;                        // by effect: damage multiplier needed?
         float m_damageMultipliers[MAX_EFFECT_INDEX];        // by effect: damage multiplier
 
@@ -685,7 +692,7 @@ enum ReplenishType
 
 namespace MaNGOS
 {
-    struct MANGOS_DLL_DECL SpellNotifierPlayer
+    struct MANGOS_DLL_DECL SpellNotifierPlayer              // Currently unused. When put to use this one requires handling for source-location (smilar to below)
     {
         Spell::UnitList &i_data;
         Spell &i_spell;
@@ -732,6 +739,7 @@ namespace MaNGOS
         bool i_playerControlled;
         float i_centerX;
         float i_centerY;
+        float i_centerZ;
 
         float GetCenterX() const { return i_centerX; }
         float GetCenterY() const { return i_centerY; }
@@ -760,9 +768,33 @@ namespace MaNGOS
                     }
                     break;
                 case PUSH_DEST_CENTER:
-                    i_centerX = i_spell.m_targets.m_destX;
-                    i_centerY = i_spell.m_targets.m_destY;
+                    if (i_spell.m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
+                    {
+                        i_centerX = i_spell.m_targets.m_destX;
+                        i_centerY = i_spell.m_targets.m_destY;
+                        i_centerZ = i_spell.m_targets.m_destZ;
+                    }
+                    else
+                    {
+                        i_centerX = i_spell.m_targets.m_srcX;
+                        i_centerY = i_spell.m_targets.m_srcY;
+                        i_centerZ = i_spell.m_targets.m_srcZ;
+                    }
                     break;
+                case PUSH_INHERITED_CENTER:
+                {
+                    if (i_spell.m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION || i_spell.m_targets.m_targetMask & TARGET_FLAG_UNIT)
+                    {
+                        i_centerX = i_spell.m_targets.m_destX;
+                        i_centerY = i_spell.m_targets.m_destY;
+                    }
+                    else if (i_spell.m_targets.m_targetMask & TARGET_FLAG_SOURCE_LOCATION)
+                    {
+                        i_centerX = i_spell.m_targets.m_srcX;
+                        i_centerY = i_spell.m_targets.m_srcY;
+                    }
+                    break;
+                }
                 case PUSH_TARGET_CENTER:
                     if (Unit* target = i_spell.m_targets.getUnitTarget())
                     {
@@ -786,7 +818,7 @@ namespace MaNGOS
             {
                 // there are still more spells which can be casted on dead, but
                 // they are no AOE and don't have such a nice SPELL_ATTR flag
-                if ( (i_TargetType != SPELL_TARGETS_ALL && !itr->getSource()->isTargetableForAttack(i_spell.m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_CAST_ON_DEAD))
+                if ((i_TargetType != SPELL_TARGETS_ALL && !itr->getSource()->isTargetableForAttack(i_spell.m_spellInfo->HasAttribute(SPELL_ATTR_EX3_CAST_ON_DEAD)))
                     // mostly phase check
                     || !itr->getSource()->IsInMap(i_originalCaster))
                     continue;
@@ -862,9 +894,23 @@ namespace MaNGOS
                             i_data->push_back(itr->getSource());
                         break;
                     case PUSH_DEST_CENTER:
-                        if (itr->getSource()->IsWithinDist3d(i_spell.m_targets.m_destX, i_spell.m_targets.m_destY, i_spell.m_targets.m_destZ,i_radius))
+                        if (itr->getSource()->IsWithinDist3d(i_centerX, i_centerY, i_centerZ, i_radius))
                             i_data->push_back(itr->getSource());
                         break;
+                    case PUSH_INHERITED_CENTER:
+                    {
+                        if (i_spell.m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION || i_spell.m_targets.m_targetMask & TARGET_FLAG_UNIT)
+                        {
+                            if (itr->getSource()->IsWithinDist3d(i_spell.m_targets.m_destX, i_spell.m_targets.m_destY, i_spell.m_targets.m_destZ,i_radius))
+                                i_data->push_back(itr->getSource());
+                        }
+                        else if (i_spell.m_targets.m_targetMask & TARGET_FLAG_SOURCE_LOCATION)
+                        {
+                            if (itr->getSource()->IsWithinDist3d(i_spell.m_targets.m_srcX, i_spell.m_targets.m_srcY, i_spell.m_targets.m_srcZ, i_radius))
+                                i_data->push_back(itr->getSource());
+                        }
+                        break;
+                    }
                     case PUSH_TARGET_CENTER:
                         if (i_spell.m_targets.getUnitTarget() && i_spell.m_targets.getUnitTarget()->IsWithinDist((Unit*)(itr->getSource()), i_radius))
                             i_data->push_back(itr->getSource());

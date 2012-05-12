@@ -436,6 +436,14 @@ bool ChatHandler::HandleReloadCreatureQuestInvRelationsCommand(char* /*args*/)
     return true;
 }
 
+bool ChatHandler::HandleReloadConditionsCommand(char* /*args*/)
+{
+    sLog.outString( "Re-Loading `conditions`... " );
+    sObjectMgr.LoadConditions();
+    SendGlobalSysMessage("DB table `conditions` reloaded.");
+    return true;
+}
+
 bool ChatHandler::HandleReloadGossipMenuCommand(char* /*args*/)
 {
     sObjectMgr.LoadGossipMenus();
@@ -858,12 +866,13 @@ bool ChatHandler::HandleReloadGameObjectScriptsCommand(char* args)
     }
 
     if (*args!='a')
-        sLog.outString( "Re-Loading Scripts from `gameobject_scripts`...");
+        sLog.outString( "Re-Loading Scripts from `gameobject_[template]_scripts`...");
 
     sScriptMgr.LoadGameObjectScripts();
+    sScriptMgr.LoadGameObjectTemplateScripts();
 
     if (*args!='a')
-        SendGlobalSysMessage("DB table `gameobject_scripts` reloaded.");
+        SendGlobalSysMessage("DB table `gameobject_[template]_scripts` reloaded.");
 
     return true;
 }
@@ -3922,30 +3931,22 @@ bool ChatHandler::HandleDamageCommand(char* args)
     // melee damage by specific school
     if (!*args)
     {
-        uint32 absorb = 0;
-        uint32 resist = 0;
-
-        target->CalculateDamageAbsorbAndResist(m_session->GetPlayer(),schoolmask, SPELL_DIRECT_DAMAGE, damage, &absorb, &resist);
-
-        if (damage <= absorb + resist)
-            return true;
-
-        damage -= absorb + resist;
-
-        m_session->GetPlayer()->DealDamageMods(target,damage,&absorb);
-        m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
         DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target, spellid);
         damageInfo.damage      = damage;
-        damageInfo.absorb      = absorb;
-        damageInfo.resist      = resist;
+        damageInfo.absorb      = 0;
+        damageInfo.resist      = 0;
         damageInfo.HitInfo     = HITINFO_NORMALSWING2;
         damageInfo.TargetState = VICTIMSTATE_NORMAL;
+
+        target->CalculateDamageAbsorbAndResist(m_session->GetPlayer(),&damageInfo, false);
+
+        m_session->GetPlayer()->DealDamageMods(target, damageInfo.damage, &damageInfo.absorb);
+        m_session->GetPlayer()->DealDamage(target,&damageInfo,false);
         m_session->GetPlayer()->SendAttackStateUpdate(&damageInfo);
         return true;
     }
 
     // non-melee damage
-
 
     m_session->GetPlayer()->SpellNonMeleeDamageLog(target, spellid, damage);
     return true;
@@ -4407,7 +4408,7 @@ bool ChatHandler::HandleExploreCheatCommand(char* args)
             ChatHandler(chr).PSendSysMessage(LANG_YOURS_EXPLORE_SET_NOTHING,GetNameLink().c_str());
     }
 
-    for (uint8 i=0; i<PLAYER_EXPLORED_ZONES_SIZE; ++i)
+    for (uint8 i=0; i < PLAYER_EXPLORED_ZONES_SIZE; ++i)
     {
         if (flag != 0)
         {
@@ -4563,7 +4564,7 @@ bool ChatHandler::HandleShowAreaCommand(char* args)
     int offset = area / 32;
     uint32 val = (uint32)(1 << (area % 32));
 
-    if(area<0 || offset >= PLAYER_EXPLORED_ZONES_SIZE)
+    if (area < 0 || offset >= PLAYER_EXPLORED_ZONES_SIZE)
     {
         SendSysMessage(LANG_BAD_VALUE);
         SetSentErrorMessage(true);
@@ -5124,6 +5125,7 @@ bool ChatHandler::HandleResetSpecsCommand(char* args)
     {
         target->resetTalents(true,true);
         target->SendTalentsInfoData(false);
+
         ChatHandler(target).SendSysMessage(LANG_RESET_TALENTS);
         if (!m_session || m_session->GetPlayer() != target)
             PSendSysMessage(LANG_RESET_TALENTS_ONLINE,GetNameLink(target).c_str());
@@ -6209,6 +6211,7 @@ bool ChatHandler::HandleMovegensCommand(char* /*args*/)
             case DISTRACT_MOTION_TYPE:
             case EFFECT_MOTION_TYPE:
                 break;
+
             case CHASE_MOTION_TYPE:
             {
                 Unit* target = NULL;
@@ -6610,7 +6613,7 @@ bool ChatHandler::HandleInstanceUnbindCommand(char* args)
                 ++itr;
                 continue;
             }
-            if(itr->first != player->GetMapId())
+            if (itr->first != player->GetMapId())
             {
                 DungeonPersistentState *save = itr->second.state;
                 std::string timeleft = secsToTimeString(save->GetResetTime() - time(NULL), true);
@@ -6631,6 +6634,7 @@ bool ChatHandler::HandleInstanceUnbindCommand(char* args)
         }
     }
     PSendSysMessage("instances unbound: %d", counter);
+
     return true;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2012 /dev/rsa for MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011-2012 /dev/rsa for MangosR2 <http://github.com/MangosR2>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #define _STATEMGR_H
 
 #include "ObjectHandler.h"
+#include "LockedVector.h"
 #include "Common.h"
 #include "MotionMaster.h"
 #include "StateMgrImpl.h"
@@ -42,6 +43,11 @@ struct ActionInfo
     ~ActionInfo() {};
 
     bool operator < (const ActionInfo& val) const;
+    bool operator == (ActionInfo& val);
+    bool operator == (UnitActionPtr _action);
+    bool operator != (ActionInfo& val);
+    bool operator != (UnitActionPtr _action);
+
     void Delete();
     void Initialize(UnitStateMgr* mgr);
     void Finalize(UnitStateMgr* mgr);
@@ -61,10 +67,11 @@ struct ActionInfo
     UnitActionPtr      action;
     UnitActionPriority priority;
     uint32             m_flags;
-    bool const         restoreable;
+    bool               restoreable;
 };
 
-typedef std::map<UnitActionPriority, ActionInfo> UnitActionStorage;
+//typedef std::map<UnitActionPriority, ActionInfo> UnitActionStorage;
+typedef ACE_Based::LockedVector<ActionInfo> UnitActionStorage;
 
 class UnitStateMgr
 {
@@ -96,6 +103,7 @@ public:
     void PushAction(UnitActionId actionId, UnitActionPtr state, UnitActionPriority priority, eActionType restoreable);
 
     ActionInfo* GetAction(UnitActionPriority priority);
+    ActionInfo* GetAction(UnitActionPtr _action);
 
     UnitActionPtr CurrentAction();
     ActionInfo*   CurrentState();
@@ -112,7 +120,7 @@ public:
 private:
     UnitActionStorage m_actions;
     Unit*             m_owner;
-    ActionInfo*       m_oldAction;
+    UnitActionPtr     m_oldAction;
     uint32            m_stateCounter[UNIT_ACTION_END];
     bool              m_needReinit;
 
