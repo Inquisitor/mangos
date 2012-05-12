@@ -1,0 +1,1 @@
+UPDATE mangos.`creature_template` t SET t.`minhealth` = t.`minhealth` / 2, maxhealth = t.`maxhealth` / 2 WHERE t.`name` LIKE '%lana\'thel%';
