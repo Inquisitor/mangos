@@ -4061,10 +4061,7 @@ bool Unit::IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skip
     // channeled spells may be delayed, but they are still considered casted
     else if (!skipChanneled && m_currentSpells[CURRENT_CHANNELED_SPELL] &&
         (m_currentSpells[CURRENT_CHANNELED_SPELL]->getState() != SPELL_STATE_FINISHED))
-        {
-            if (!(m_currentSpells[CURRENT_CHANNELED_SPELL]->m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_RESET_AUTOATTACK))
-                return(true);
-        }
+        return true;
 
     // autorepeat spells may be finished or delayed, but they are still considered casted
     else if (!skipAutorepeat && m_currentSpells[CURRENT_AUTOREPEAT_SPELL])
