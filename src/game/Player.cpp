@@ -7843,7 +7843,7 @@ void Player::_ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType att
         HandleStatModifier(unitMod, unitModType, float(modifier->m_amount),apply);
 
         // aura affects all damage
-        if (aura->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_WEAPON_DMG_MOD_ALL_DAMAGE)
+        if (aura->GetSpellProto()->AttributesEx5 & SPELL_ATTR_EX5_UNK16)
         {
             // workaround to prevent double applying:
             if (attackType != BASE_ATTACK)
