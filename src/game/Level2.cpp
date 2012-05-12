@@ -4305,7 +4305,8 @@ bool ChatHandler::HandleCharacterChangeFactionCommand(char* args)
         // TODO : add text into database
         PSendSysMessage(LANG_CUSTOMIZE_PLAYER, GetNameLink(target).c_str());
         target->SetAtLoginFlag(AT_LOGIN_CHANGE_FACTION);
-        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '64' WHERE guid = '%u'", target->GetGUIDLow());
+        target->SetAtLoginFlag(AT_LOGIN_CHECK_TITLES);
+        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '320' WHERE guid = '%u'", target->GetGUIDLow());
     }
     else
     {
@@ -4313,7 +4314,7 @@ bool ChatHandler::HandleCharacterChangeFactionCommand(char* args)
 
         // TODO : add text into database
         PSendSysMessage(LANG_CUSTOMIZE_PLAYER_GUID, oldNameLink.c_str(), target_guid.GetCounter());
-        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '64' WHERE guid = '%u'", target_guid.GetCounter());
+        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '320' WHERE guid = '%u'", target_guid.GetCounter());
     }
 
     return true;

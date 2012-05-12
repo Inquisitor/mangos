@@ -516,7 +516,7 @@ void Creature::Update(uint32 update_diff, uint32 diff)
                 {
                     SetDeathState(JUST_DIED);
                     SetHealth(0);
-                    GetUnitStateMgr().InitDefaults();
+                    GetUnitStateMgr().InitDefaults(true);
                     clearUnitState(UNIT_STAT_ALL_STATE);
                     LoadCreatureAddon(true);
                 }
@@ -561,10 +561,10 @@ void Creature::Update(uint32 update_diff, uint32 diff)
                 m_corpseDecayTimer -= update_diff;
                 if (m_groupLootId)
                 {
-                    if (update_diff < m_groupLootTimer)
-                        m_groupLootTimer -= update_diff;
-                    else
+                    if (m_groupLootTimer <= update_diff)
                         StopGroupLoot();
+                    else
+                        m_groupLootTimer -= update_diff;
                 }
             }
             break;
@@ -1174,6 +1174,9 @@ void Creature::SelectLevel(const CreatureInfo *cinfo, float percentHealth, float
 
     uint32 minhealth = std::min(cinfo->maxhealth, cinfo->minhealth);
     uint32 maxhealth = std::max(cinfo->maxhealth, cinfo->minhealth);
+    // Prevent setting current health to 0 when healthmod < 1 and hp = 1
+    if (maxhealth <= 1 && healthmod <= 1.0f)
+        healthmod = 1.0f;
     uint32 health = uint32(healthmod * (minhealth + uint32(rellevel*(maxhealth - minhealth))));
 
     SetCreateHealth(health);
@@ -1521,6 +1524,12 @@ float Creature::GetAttackDistance(Unit const* pl) const
     return (RetDistance*aggroRate);
 }
 
+float Creature::GetReachDistance(Unit const* unit) const
+{
+    //require realization of creature strategy (melee/spellcaster diffirent).
+    return GetAttackDistance(unit);
+}
+
 void Creature::SetDeathState(DeathState s)
 {
     if ((s == JUST_DIED && !m_isDeadByDefault) || (s == JUST_ALIVED && m_isDeadByDefault))
@@ -1546,9 +1555,7 @@ void Creature::SetDeathState(DeathState s)
             UpdateSpeed(MOVE_RUN, false);
         }
 
-        // FIXME: may not be blizzlike
-        if (Pet* pet = GetPet())
-            pet->Unsummon(PET_SAVE_AS_DELETED, this);
+        GetUnitStateMgr().InitDefaults(true);
 
         if (CanFly())
             GetMotionMaster()->MoveFall();

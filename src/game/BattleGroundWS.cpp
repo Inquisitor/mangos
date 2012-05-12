@@ -410,7 +410,9 @@ void BattleGroundWS::PickOrReturnFlag(Player* pPlayer, Team forTeam, bool picked
 
         if (!fromGround)
         {
+            //For timed achivements (Quick Cap)
             pPlayer->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, A ? BG_WS_SPELL_WARSONG_FLAG_PICKED : BG_WS_SPELL_SILVERWING_FLAG_PICKED);
+
             m_FlagCaptureTime[A ? 0 : 1]= m_EndTimer ;
         }
     }

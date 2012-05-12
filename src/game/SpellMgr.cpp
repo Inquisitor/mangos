@@ -719,12 +719,16 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 39289:                                         // Kargath's Executioner
         case 39290:                                         // Kargath's Executioner
         case 72290:                                         // Frost-Imbued Blade
+        case 66550:                                         // Teleport(BattlegroundIC)
+        case 66551:                                         // Teleport(BattlegroundIC)
             return false;
         case 552:                                           // Abolish Disease
         case 12042:                                         // Arcane Power
         case 24732:                                         // Bat Costume
         case 59286:                                         // Opening
         case 43730:                                         // Electrified
+        case 61716:                                         // Rabbit Costume
+        case 61734:                                         // Noblegarden Bunny
         case 47540:                                         // Penance start dummy aura - Rank 1
         case 53005:                                         // Penance start dummy aura - Rank 2
         case 53006:                                         // Penance start dummy aura - Rank 3
