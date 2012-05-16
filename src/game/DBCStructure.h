@@ -1354,7 +1354,7 @@ struct MapEntry
 
     bool IsTransport() const
     {
-        return map_type == MAP_COMMON &&  mapFlags == 1;
+        return map_type == MAP_COMMON && mapFlags == MAP_FLAG_INSTANCEABLE;
     }
 };
 

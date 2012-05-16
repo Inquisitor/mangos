@@ -2668,12 +2668,6 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     break;
                 default:
                     FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-
-                    // Custom cases
-                    if (m_spellInfo->IsFitToFamily<SPELLFAMILY_PRIEST, CF_PRIEST_MIND_SEAR1>()) // Mind Sear, triggered
-                        if (Unit* unitTarget = m_targets.getUnitTarget())
-                            targetUnitMap.remove(unitTarget);
-
                     break;
             }
             break;
@@ -9013,7 +9007,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         case 53022:
         {
             Unit* unitTarget = m_targets.getUnitTarget();
-            FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+            FillAreaTargets(targetUnitMap, radius, PUSH_INHERITED_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             if  (unitTarget)
                 targetUnitMap.remove(unitTarget);
             return true;

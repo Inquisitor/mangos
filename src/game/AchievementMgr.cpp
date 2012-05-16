@@ -2565,7 +2565,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                         {
                             case 204:
                                 {
-                                    if (!(bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS) == 0))
+                                    if (bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS))
                                         continue;
 
                                     break;
@@ -2619,7 +2619,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                             }
                             case 216:                    // EY, capture 3 flags without dying
                             {
-                                if (!(bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS) == 0))
+                                if (bg->GetPlayerScore(GetPlayer(), SCORE_DEATHS))
                                     continue;
                                 break;
                             }
