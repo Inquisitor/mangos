@@ -2085,10 +2085,11 @@ bool Pet::IsPermanentPetFor(Player* owner)
                     return GetCreatureInfo()->type == CREATURE_TYPE_UNDEAD;
                 case CLASS_MAGE:
                     // both permanent and temporary water elementals should be in spellbook
-                    return GetCreatureInfo()->Entry == owner->HasAura(70937) ? 37994 : 510;
+                    return GetCreatureInfo()->Entry == (owner->HasAura(70937) ? 37994 : 510);
                 default:
                     return false;
             }
+            break;
         case HUNTER_PET:
             return true;
         default:
@@ -2349,8 +2350,8 @@ void Pet::ApplyAttackPowerScalingBonus(bool apply)
                 newAPBonus = owner->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
                 break;
             }
-                             // No break another case!
         }
+        /* no break another case!*/
         case SUMMON_PET:
         {
             switch(owner->getClass())
@@ -2498,8 +2499,8 @@ void Pet::ApplySpellDamageScalingBonus(bool apply)
                 newDamageBonus = owner->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
                 break;
             }
-                             // No break another case!
         }
+        /* no break another case!*/
         case SUMMON_PET:
         {
             switch(owner->getClass())
